@@ -1,4 +1,6 @@
 from django.db import models
+from django.utils.text import slugify
+from django.utils import timezone
 from django.contrib.auth.models import User
 import eav
 
@@ -39,11 +41,20 @@ class Table(models.Model):
     """
 
     name = models.CharField(max_length=100)
-    slug = models.SlugField(max_length=50)
+    slug = models.SlugField(max_length=50, null=True, blank=True)
     database = models.ForeignKey("Database", on_delete=models.CASCADE, related_name="tables")
+    active = models.BooleanField(default=False)
 
-    date_created = models.DateField(auto_now_add=True)
+    date_created = models.DateTimeField(auto_now_add=True)
+
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
+    last_edit_date = models.DateTimeField(null=True, blank=True)
+    last_edit_user = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="last_table_edits")
 
     class Meta:
         permissions = (
@@ -58,6 +69,7 @@ class Table(models.Model):
     def save(self, *args, **kwargs):
         value = self.name
         self.slug = slugify(value, allow_unicode=True)
+        self.last_edit_date = timezone.now()
         super().save(*args, **kwargs)
 
 

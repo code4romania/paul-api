@@ -1,0 +1,11 @@
+"users" : [{
+    "name": "Laura Grey",
+    "department": "Eseuri",
+    "roles": ["Editor", "Reporter"],
+    "email": "laura@example.com"
+}],
+"pagination": {
+    "page": 1,
+    "num_entries": 1002,
+    "num_pages": 10,
+}

@@ -5,7 +5,7 @@ from eav.forms import BaseDynamicEntityForm
 
 @admin.register(models.Database)
 class DatabaseAdmin(admin.ModelAdmin):
-    list_display = ("name",)
+    list_display = ("name", "slug")
     list_filter = ()
     search_fields = ("name",)
 
@@ -45,7 +45,7 @@ class EntryAdmin(BaseEntityAdmin):
 
 @admin.register(models.Table)
 class TableAdmin(admin.ModelAdmin):
-    list_display = ("name", "database", "columns", "entries")
+    list_display = ("name", "slug", "database", "columns", "entries", "last_edit_date", "last_edit_user", "active")
     list_filter = ('database__name', )
     search_fields = ("name",)
     inlines = (TableColumnInline, )
@@ -55,3 +55,7 @@ class TableAdmin(admin.ModelAdmin):
 
     def entries(self, obj):
         return obj.entries.count()
+
+    def save_model(self, request, obj, form, change):
+        obj.last_edit_user = request.user
+        super().save_model(request, obj, form, change)

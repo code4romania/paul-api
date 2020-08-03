@@ -1,0 +1,15 @@
+{
+    "name": "Laura Grey",
+    "avatar": "/image/laura.png",
+    "department": "Eseuri",
+    "role": "Editor",
+    "city": "Bucharest",
+    "status": "Activ",
+    "statute": "Angajat",
+    "telefon": "0723456789",
+    "email": "laura@example.com",
+    "tables": [
+
+    ]
+}
+

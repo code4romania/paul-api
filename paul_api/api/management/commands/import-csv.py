@@ -26,7 +26,7 @@ class Command(BaseCommand):
                 owner=admin)
 
             print('Deleting all columns from table', table)
-            print(table.columns.all().delete())
+            print(table.fields.all().delete())
             print('Deleting all entries from table', table)
             print(table.entries.all().delete())
 
@@ -34,7 +34,7 @@ class Command(BaseCommand):
                 column = models.TableColumn.objects.get_or_create(
                     table=table,
                     name=gen_slug(field_name),
-                    column_type='text')
+                    field_type='text')
                 Attribute.objects.get_or_create(
                     name=field_name,
                     slug=gen_slug(field_name),

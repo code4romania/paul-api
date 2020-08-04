@@ -34,6 +34,12 @@ class Database(models.Model):
         self.slug = slugify(value, allow_unicode=True)
         super().save(*args, **kwargs)
 
+    def active_tables(self):
+        return self.tables.filter(active=True)
+
+    def archived_tables(self):
+        return self.tables.filter(active=False)
+
 
 class Table(models.Model):
     """
@@ -80,16 +86,17 @@ class TableColumn(models.Model):
 
     name = models.CharField(max_length=50)
     slug = models.SlugField(max_length=50, null=True, blank=True)
-    column_type = models.CharField(max_length=20, choices=datatypes)
+    field_type = models.CharField(max_length=20, choices=datatypes)
+
     table = models.ForeignKey(
-        "Table", on_delete=models.CASCADE, related_name="columns"
+        "Table", on_delete=models.CASCADE, related_name="fields"
     )
 
     class Meta:
         unique_together = ['table', 'slug']
 
     def __str__(self):
-        return "{} [{}]".format(self.name, self.column_type)
+        return "{} [{}]".format(self.name, self.field_type)
 
 
 class Entry(models.Model):
@@ -100,7 +107,7 @@ class Entry(models.Model):
     table = models.ForeignKey(
         "Table", on_delete=models.CASCADE, related_name="entries"
     )
-    date_created = models.DateField(auto_now_add=True)
+    date_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name_plural = 'Entries'

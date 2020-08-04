@@ -1,19 +1,10 @@
 {
-    "name": "DOR",
-    "active_tables": [
+    "name": "Users",
+    "filters": [
         {
-            "name": "Users",
-            "last_edit": "10/02/2020",
-            "last_edit_user": "Costi",
-            "entries": 34121
+            "name": "Tara",
+            "values": ["Romania", "Bulgaria"]
         }
     ],
-    "archived_tables": [
-        {
-            "name": "Users",
-            "last_edit": "10/02/2020",
-            "last_edit_user": "Costi",
-            "entries": 34121
-        }
-    ],
+    "active_filters"
 }

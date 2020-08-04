@@ -8,8 +8,16 @@
     "statute": "Angajat",
     "telefon": "0724673123",
     "email": "cristian.lupsa@gmail.com",
-    "tables": [
-
+    "databases": [
+        {
+            "name": "DOR",
+            "tables": [
+                {
+                    "name": "Users",
+                    "rights": "can read"
+                }
+            ]   
+        }
     ]
 }
 

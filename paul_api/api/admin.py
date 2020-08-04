@@ -12,7 +12,7 @@ class DatabaseAdmin(admin.ModelAdmin):
 
 class TableColumnInline(admin.TabularInline):
     model = models.TableColumn
-    fields = ("name", "column_type")
+    fields = ("name", "field_type")
     can_delete = False
     can_add = False
     verbose_name_plural = "Columns"
@@ -51,7 +51,7 @@ class TableAdmin(admin.ModelAdmin):
     inlines = (TableColumnInline, )
 
     def columns(self, obj):
-        return obj.columns.count()
+        return obj.fields.count()
 
     def entries(self, obj):
         return obj.entries.count()

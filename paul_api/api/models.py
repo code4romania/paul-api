@@ -56,17 +56,14 @@ class Table(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
     last_edit_date = models.DateTimeField(null=True, blank=True)
     last_edit_user = models.ForeignKey(
-        User,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="last_table_edits")
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="last_table_edits",
+    )
 
     class Meta:
         permissions = (
-            ('view', 'View'),
-            ('change', 'View'),
-            ('delete', 'View'),
+            ("view", "View"),
+            ("change", "View"),
+            ("delete", "View"),
         )
 
     def __str__(self):
@@ -88,12 +85,10 @@ class TableColumn(models.Model):
     slug = models.SlugField(max_length=50, null=True, blank=True)
     field_type = models.CharField(max_length=20, choices=datatypes)
 
-    table = models.ForeignKey(
-        "Table", on_delete=models.CASCADE, related_name="fields"
-    )
+    table = models.ForeignKey("Table", on_delete=models.CASCADE, related_name="fields")
 
     class Meta:
-        unique_together = ['table', 'slug']
+        unique_together = ["table", "slug"]
 
     def __str__(self):
         return "{} [{}]".format(self.name, self.field_type)
@@ -104,13 +99,11 @@ class Entry(models.Model):
     Description: Model Description
     """
 
-    table = models.ForeignKey(
-        "Table", on_delete=models.CASCADE, related_name="entries"
-    )
+    table = models.ForeignKey("Table", on_delete=models.CASCADE, related_name="entries")
     date_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name_plural = 'Entries'
+        verbose_name_plural = "Entries"
 
     def __str__(self):
         return self.table.name

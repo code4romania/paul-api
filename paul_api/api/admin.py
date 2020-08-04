@@ -3,6 +3,7 @@ from api import models
 from eav.admin import BaseEntityInline, BaseEntityAdmin
 from eav.forms import BaseDynamicEntityForm
 
+
 @admin.register(models.Database)
 class DatabaseAdmin(admin.ModelAdmin):
     list_display = ("name", "slug")
@@ -17,6 +18,7 @@ class TableColumnInline(admin.TabularInline):
     can_add = False
     verbose_name_plural = "Columns"
     extra = 0
+
 
 # class EntryAdminForm(BaseDynamicEntityForm):
 #     model = models.Entry
@@ -33,10 +35,9 @@ class EntryAdminForm(BaseDynamicEntityForm):
 
 @admin.register(models.Entry)
 class EntryAdmin(BaseEntityAdmin):
-    list_display = ('table', 'values')
+    list_display = ("table", "values")
     form = EntryAdminForm
-    list_filter = ('table__name',)
-
+    list_filter = ("table__name",)
 
     def values(self, obj):
         print(dir(obj.eav))
@@ -45,10 +46,19 @@ class EntryAdmin(BaseEntityAdmin):
 
 @admin.register(models.Table)
 class TableAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "database", "columns", "entries", "last_edit_date", "last_edit_user", "active")
-    list_filter = ('database__name', )
+    list_display = (
+        "name",
+        "slug",
+        "database",
+        "columns",
+        "entries",
+        "last_edit_date",
+        "last_edit_user",
+        "active",
+    )
+    list_filter = ("database__name",)
     search_fields = ("name",)
-    inlines = (TableColumnInline, )
+    inlines = (TableColumnInline,)
 
     def columns(self, obj):
         return obj.fields.count()

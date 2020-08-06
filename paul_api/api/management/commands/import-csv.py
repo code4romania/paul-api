@@ -42,3 +42,4 @@ class Command(BaseCommand):
                     print(" set {} to {}".format(gen_slug(field), value))
                     setattr(entry.eav, gen_slug(field), value)
                 entry.save()
+

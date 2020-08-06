@@ -77,6 +77,7 @@ class TableSerializer(serializers.ModelSerializer):
             "active",
             "fields",
             "entries",
+            "entries_count"
         ]
         # fields = '__all__'
         extra_kwargs = {
@@ -151,5 +152,4 @@ class EntrySerializer(serializers.ModelSerializer):
         super(EntrySerializer, self).__init__(*args, **kwargs)
         if fields is not None:
             for field_name in fields:
-                print(self.fields)
                 self.fields[field_name] = serializers.CharField(source="eav.{}".format(field_name))

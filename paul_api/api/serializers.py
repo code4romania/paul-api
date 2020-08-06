@@ -120,8 +120,8 @@ class DatabaseTableListSerializer(serializers.ModelSerializer):
 
 
 class DatabaseSerializer(serializers.HyperlinkedModelSerializer):
-    active_tables = DatabaseTableListSerializer(many=True, read_only=True, context={"test": "test"})
-    archived_tables = DatabaseTableListSerializer(many=True, read_only=True, context={"test": "test"})
+    active_tables = DatabaseTableListSerializer(many=True, read_only=True)
+    archived_tables = DatabaseTableListSerializer(many=True, read_only=True)
 
     class Meta:
         model = models.Database

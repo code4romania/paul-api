@@ -46,7 +46,7 @@ class TableViewSet(viewsets.ModelViewSet):
             str_fields = request.GET.get("fields", "") if request else None
             fields = str_fields.split(",") if str_fields else None
             if not fields:
-                fields = obj.fields.values_list("name", flat=True)[:2]
+                fields = obj.fields.values_list("name", flat=True)[:4]
             serializer = serializers.EntrySerializer(page, many=True, context={"fields": fields})
             return self.get_paginated_response(serializer.data)
         serializer = serializers.EntrySerializer(queryset, many=True)

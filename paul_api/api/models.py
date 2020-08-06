@@ -40,6 +40,9 @@ class Database(models.Model):
     def archived_tables(self):
         return self.tables.filter(active=False)
 
+    def tables_count(self):
+        return self.tables.count()
+
 
 class Table(models.Model):
     """
@@ -75,6 +78,8 @@ class Table(models.Model):
         self.last_edit_date = timezone.now()
         super().save(*args, **kwargs)
 
+    def entries_count(self):
+        return self.entries.count()
 
 class TableColumn(models.Model):
     """

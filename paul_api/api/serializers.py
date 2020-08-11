@@ -58,6 +58,9 @@ class TableDatabaseSerializer(serializers.HyperlinkedModelSerializer):
 class TableSerializer(serializers.ModelSerializer):
     database = TableDatabaseSerializer()
     owner = OwnerSerializer(read_only=True)
+    # owner = serializers.HiddenField(
+    #     default=serializers.CurrentUserDefault()
+    # )
     last_edit_user = UserSerializer(read_only=True)
     fields = TableColumnSerializer(many=True)
     entries = serializers.SerializerMethodField()

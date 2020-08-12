@@ -1,7 +1,29 @@
-from rest_framework import serializers
 from django.contrib.auth.models import User
+from django.utils import timezone
+from django.utils.text import slugify
 from django.urls import reverse
+from django.contrib.auth.models import Group
+
+from rest_framework import serializers
+from rest_framework_guardian.serializers import ObjectPermissionsAssignmentMixin
+
 from . import models
+
+from eav.models import Attribute
+
+datatypes = {
+    "int": Attribute.TYPE_INT,
+    "float": Attribute.TYPE_FLOAT,
+    "text": Attribute.TYPE_TEXT,
+    "date": Attribute.TYPE_DATE,
+    "bool": Attribute.TYPE_BOOLEAN,
+    "object": Attribute.TYPE_OBJECT,
+    "enum": Attribute.TYPE_ENUM,
+}
+
+
+def gen_slug(value):
+    return slugify(value).replace("-", "_")
 
 
 class DynamicFieldsModelSerializer(serializers.ModelSerializer):
@@ -54,6 +76,62 @@ class TableDatabaseSerializer(serializers.HyperlinkedModelSerializer):
         lookup_field = "slug"
         extra_kwargs = {"url": {"lookup_field": "slug"}}
 
+
+class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelSerializer):
+    # database = TableDatabaseSerializer()
+    database = serializers.SlugRelatedField(queryset=models.Database.objects.all(), slug_field='slug')
+    owner = serializers.HiddenField(
+        default=serializers.CurrentUserDefault()
+    )
+    last_edit_user = serializers.HiddenField(
+        default=serializers.CurrentUserDefault()
+    )
+    last_edit_date = serializers.HiddenField(
+        default=timezone.now()
+    )
+    active = serializers.HiddenField(
+        default=True
+    )
+    fields = TableColumnSerializer(many=True)
+
+    class Meta:
+        model = models.Table
+        # lookup_field = "slug"
+        fields = [
+            "database",
+            "name",
+            "owner",
+            "fields",
+            "last_edit_user",
+            "last_edit_date",
+            "active"
+        ]
+        extra_kwargs = {"database": {"lookup_field": "slug"}}
+
+    def create(self, validated_data):
+        print('validated_data', validated_data)
+        temp_fields = validated_data.pop('fields')
+        # database_slug = validated_data.pop('database')
+        # database = models.Database.objects.get(slug=database_slug)
+        # validated_data['database'] = database
+        new_table = models.Table.objects.create(**validated_data)
+        for i in temp_fields:
+            models.TableColumn.objects.create(table=new_table, **i)
+            Attribute.objects.get_or_create(
+                    name=i['name'], slug=gen_slug(i['name']), datatype=datatypes[i['field_type']],
+                )
+        return new_table
+
+    def get_permissions_map(self, created):
+        current_user = self.context['request'].user
+        print('current user', current_user)
+        admins = Group.objects.get(name='admin')
+
+        return {
+            'view_table': [current_user, admins],
+            'change_table': [current_user, admins],
+            'delete_table': [current_user, admins]
+        }
 
 class TableSerializer(serializers.ModelSerializer):
     database = TableDatabaseSerializer()

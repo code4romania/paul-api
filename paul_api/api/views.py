@@ -6,10 +6,14 @@ from rest_framework import viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action, permission_classes
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework import permissions
+
+from rest_framework_guardian.filters import ObjectPermissionsFilter
+
 from eav import models as eav_models
 
 from . import serializers, models
+from .permissions import BaseModelPermissions
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -28,14 +32,35 @@ class EntriesPagination(PageNumberPagination):
     page_size = 100
 
 
+class CanView(permissions.BasePermission):
+    """
+    Object-level permission to only allow owners of an object to access it.
+    Assumes the model instance has an `user` attribute.
+    """
+
+    def has_object_permission(self, request, view, obj):
+        # Instance must have an attribute named `user`.
+        return obj.owner == request.user
+
+
 class TableViewSet(viewsets.ModelViewSet):
     queryset = models.Table.objects.all()
     lookup_field = "slug"
     pagination_class = EntriesPagination
+    permission_classes = (BaseModelPermissions, )
+    filter_backends = [ObjectPermissionsFilter]
+
+    # def get_queryset(self):
+    #     user = self.request.user
+    #     return models.Table.objects.filter(owner=user)
 
     def get_serializer_class(self):
+        print('action:', self.action)
         if self.action == "list":
             return serializers.DatabaseTableListSerializer
+        elif self.action == "create":
+            print('this ser')
+            return serializers.TableCreateSerializer
         return serializers.TableSerializer
 
     @action(methods=["get"], detail=True, url_path="entries", url_name="entries")

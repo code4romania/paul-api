@@ -3,6 +3,8 @@ from django.utils.text import slugify
 from django.utils import timezone
 from django.contrib.auth.models import User
 import eav
+import uuid
+
 
 datatypes = (
     ("int", "int"),
@@ -14,6 +16,17 @@ datatypes = (
     ("enum", "enum"),
 )
 
+
+class Userprofile(models.Model):
+    """
+    Description: Model Description
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="userprofile")
+    token = models.UUIDField(default=uuid.uuid4)
+    avatar = models.ImageField(upload_to='avatars', null=True, blank=True)
+
+    class Meta:
+        pass
 
 class Database(models.Model):
     """
@@ -81,6 +94,7 @@ class Table(models.Model):
     def entries_count(self):
         return self.entries.count()
 
+
 class TableColumn(models.Model):
     """
     Description: Model Description
@@ -96,7 +110,7 @@ class TableColumn(models.Model):
         unique_together = ["table", "slug"]
 
     def __str__(self):
-        return "{} [{}]".format(self.name, self.field_type)
+        return "[{}] {} ({})".format(self.table, self.name, self.field_type)
 
 
 class Entry(models.Model):
@@ -115,3 +129,46 @@ class Entry(models.Model):
 
 
 eav.register(Entry)
+
+
+class FilterJoinTable(models.Model):
+    """
+    Description: Model Description
+    """
+    filter = models.ForeignKey('Filter', on_delete=models.CASCADE, related_name="filter_join_tables")
+    table = models.ForeignKey(Table, on_delete=models.CASCADE)
+    fields = models.ManyToManyField(TableColumn, related_name="filter_join_table_fields")
+    join_field = models.ForeignKey(TableColumn, on_delete=models.CASCADE)
+
+    class Meta:
+        pass
+
+
+class Filter(models.Model):
+    """
+    Description: Model Description
+    """
+    name = models.CharField(max_length=50)
+    slug = models.SlugField(max_length=50, null=True, blank=True)
+    primary_table = models.ForeignKey(Table, on_delete=models.CASCADE)
+    primary_table_fields = models.ManyToManyField(TableColumn, related_name="filter_primary_table_field")
+    join_field = models.ForeignKey(TableColumn, on_delete=models.CASCADE, related_name="filter_primary_table_join_field")
+    join_tables = models.ManyToManyField(
+        Table,
+        through=FilterJoinTable,
+        related_name="filter_join_table")
+    creation_date = models.DateTimeField(auto_now_add=True, null=True)
+
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    last_edit_date = models.DateTimeField(null=True, blank=True)
+    last_edit_user = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="last_filter_edits",
+    )
+
+    class Meta:
+        pass
+
+    def save(self, *args, **kwargs):
+        value = self.name
+        self.slug = slugify(value, allow_unicode=True)
+        super().save(*args, **kwargs)

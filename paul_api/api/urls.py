@@ -12,6 +12,7 @@ router = routers.DefaultRouter()
 router.register(r"users", views.UserViewSet)
 router.register(r"databases", views.DatabaseViewSet)
 router.register(r"tables", views.TableViewSet)
+router.register(r"filters", views.FilterViewSet)
 
 urlpatterns = [
     path('api-token-auth/', token_views.obtain_auth_token),

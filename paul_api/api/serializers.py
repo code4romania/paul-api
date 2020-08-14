@@ -46,14 +46,36 @@ class DynamicFieldsModelSerializer(serializers.ModelSerializer):
             for field_name in existing - allowed:
                 self.fields.pop(field_name)
 
-
-class UserSerializer(serializers.HyperlinkedModelSerializer):
+class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["url", "username", "email", "is_staff"]
+        fields = ["username", "email"]
+
+    def create(self, validated_data):
+        new_user = User.objects.create(**validated_data)
+        new_user.userprofile = models.Userprofile()
+        new_user.save()
+        userprofile = new_user.userprofile
+        userprofile
+        print('TODO: send mail')
+        return new_user
+
+
+class UserSerializer(serializers.HyperlinkedModelSerializer):
+    avatar = serializers.SerializerMethodField()
+    class Meta:
+        model = User
+        fields = ["url", "username", "email", "avatar", "first_name", "last_name"]
         lookup_field = "username"
         extra_kwargs = {"url": {"lookup_field": "username"}}
 
+    def get_avatar(self, obj):
+        try:
+            request = self.context.get('request')
+            avatar_url = obj.userprofile.avatar.url
+            return request.build_absolute_uri(avatar_url)
+        except:
+            pass
 
 class OwnerSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
@@ -234,3 +256,92 @@ class EntrySerializer(serializers.ModelSerializer):
         if fields is not None:
             for field_name in fields:
                 self.fields[field_name] = serializers.CharField(source="eav.{}".format(field_name))
+
+
+class FilterListSerializer(serializers.ModelSerializer):
+    owner = OwnerSerializer()
+    last_edit_user = OwnerSerializer()
+    tables = serializers.SerializerMethodField()
+
+    def get_tables(self, obj):
+        tables = [obj.primary_table.name] + list(obj.join_tables.values_list('name', flat=True))
+        return tables
+
+    class Meta:
+        model = models.Filter
+        lookup_field = "slug"
+        fields = [
+            "url",
+            "name",
+            "tables",
+            "owner",
+            "last_edit_user",
+            "last_edit_date",
+            "creation_date"
+        ]
+        lookup_field = "slug"
+        extra_kwargs = {
+            "url": {"lookup_field": "slug"},
+            "owner": {"lookup_field": "username"},
+            "last_edit_user": {"lookup_field": "username"},
+        }
+
+class FilterJoinTableListSerializer(serializers.ModelSerializer):
+    table = serializers.SerializerMethodField()
+    table_fields = serializers.SerializerMethodField()
+    join_field = serializers.SerializerMethodField()
+
+    class Meta:
+        model = models.FilterJoinTable
+        fields = ["table", "table_fields", "join_field"]
+
+    def get_table(self, obj):
+        return obj.table.slug
+
+    def get_join_field(self, obj):
+        return obj.join_field.name
+
+    def get_table_fields(self, obj):
+        return list(obj.fields.values_list('name', flat=True))
+
+
+class FilterDetailSerializer(serializers.ModelSerializer):
+    owner = OwnerSerializer()
+    last_edit_user = OwnerSerializer()
+    primary_table = serializers.SlugRelatedField(queryset=models.Table.objects.all(), slug_field='slug')
+    primary_table_fields = serializers.SerializerMethodField()
+    join_field = serializers.SerializerMethodField()
+    filter_join_tables = FilterJoinTableListSerializer(many=True)
+    entries = serializers.SerializerMethodField()
+
+
+    class Meta:
+        model = models.Filter
+        lookup_field = "slug"
+        fields = [
+            "url",
+            "name",
+            "owner",
+            "last_edit_user",
+            "last_edit_date",
+            "primary_table",
+            "primary_table_fields",
+            "join_field",
+            "filter_join_tables",
+            "entries"
+        ]
+        lookup_field = "slug"
+        extra_kwargs = {
+            "url": {"lookup_field": "slug"},
+            "owner": {"lookup_field": "username"},
+            "last_edit_user": {"lookup_field": "username"},
+        }
+
+    def get_primary_table_fields(self, obj):
+        return list(obj.primary_table_fields.values_list('name', flat=True))
+
+    def get_join_field(self, obj):
+        return obj.join_field.name
+
+    def get_entries(self, obj):
+        return self.context["request"].build_absolute_uri(reverse("filter-entries", kwargs={"slug": obj.slug}))

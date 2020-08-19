@@ -30,7 +30,7 @@ class UserViewSet(viewsets.ModelViewSet):
 class DatabaseViewSet(viewsets.ModelViewSet):
     queryset = models.Database.objects.all()
     serializer_class = serializers.DatabaseSerializer
-    lookup_field = "slug"
+    # lookup_field = "slug"
 
 
 class EntriesPagination(PageNumberPagination):
@@ -50,7 +50,7 @@ class CanView(permissions.BasePermission):
 
 class TableViewSet(viewsets.ModelViewSet):
     queryset = models.Table.objects.all()
-    lookup_field = "slug"
+    # lookup_field = "slug"
     pagination_class = EntriesPagination
     permission_classes = (BaseModelPermissions, )
     filter_backends = [ObjectPermissionsFilter]
@@ -69,7 +69,7 @@ class TableViewSet(viewsets.ModelViewSet):
         return serializers.TableSerializer
 
     @action(methods=["get"], detail=True, url_path="entries", url_name="entries")
-    def entries(self, request, slug):
+    def entries(self, request, pk):
         obj = self.get_object()
         str_q = request.GET.get("q", "") if request else None
         str_fields = request.GET.get("fields", "") if request else None
@@ -95,7 +95,7 @@ class TableViewSet(viewsets.ModelViewSet):
 
 class FilterViewSet(viewsets.ModelViewSet):
     queryset = models.Filter.objects.all()
-    lookup_field = "slug"
+    # lookup_field = "slug"
     pagination_class = EntriesPagination
     # permission_classes = (BaseModelPermissions, )
     # filter_backends = [ObjectPermissionsFilter]

@@ -95,8 +95,8 @@ class TableDatabaseSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = models.Database
         fields = ["url", "name", "slug"]
-        lookup_field = "slug"
-        extra_kwargs = {"url": {"lookup_field": "slug"}}
+        # lookup_field = "slug"
+        # extra_kwargs = {"url": {"lookup_field": "slug"}}
 
 
 class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelSerializer):
@@ -128,7 +128,7 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
             "last_edit_date",
             "active"
         ]
-        extra_kwargs = {"database": {"lookup_field": "slug"}}
+        # extra_kwargs = {"database": {"lookup_field": "slug"}}
 
     def create(self, validated_data):
         print('validated_data', validated_data)
@@ -167,7 +167,7 @@ class TableSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Table
-        lookup_field = "slug"
+        # lookup_field = "slug"
         fields = [
             "url",
             "database",
@@ -184,14 +184,14 @@ class TableSerializer(serializers.ModelSerializer):
         ]
         # fields = '__all__'
         extra_kwargs = {
-            "url": {"lookup_field": "slug"},
+            # "url": {"lookup_field": "slug"},
             "owner": {"lookup_field": "username"},
-            "database": {"lookup_field": "slug"},
+            # "database": {"lookup_field": "slug"},
             "last_edit_user": {"lookup_field": "username"},
         }
 
     def get_entries(self, obj):
-        return self.context["request"].build_absolute_uri(reverse("table-entries", kwargs={"slug": obj.slug}))
+        return self.context["request"].build_absolute_uri(reverse("table-entries", kwargs={"pk": obj.pk}))
 
 
 class DatabaseTableListSerializer(serializers.ModelSerializer):
@@ -205,7 +205,7 @@ class DatabaseTableListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Table
-        lookup_field = "slug"
+        # lookup_field = "slug"
         fields = [
             "url",
             "name",
@@ -215,9 +215,9 @@ class DatabaseTableListSerializer(serializers.ModelSerializer):
             "last_edit_user",
             "owner",
         ]
-        lookup_field = "slug"
+        # lookup_field = "slug"
         extra_kwargs = {
-            "url": {"lookup_field": "slug"},
+            # "url": {"lookup_field": "slug"},
             "owner": {"lookup_field": "username"},
             "last_edit_user": {"lookup_field": "username"},
         }
@@ -235,10 +235,10 @@ class DatabaseSerializer(serializers.HyperlinkedModelSerializer):
             "active_tables",
             "archived_tables",
         ]
-        lookup_field = "slug"
+        # lookup_field = "slug"
         extra_kwargs = {
-            "url": {"lookup_field": "slug"},
-            "tables": {"lookup_field": "slug"},
+            # "url": {"lookup_field": "slug"},
+            # "tables": {"lookup_field": "slug"},
         }
 
 
@@ -269,7 +269,7 @@ class FilterListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Filter
-        lookup_field = "slug"
+        # lookup_field = "slug"
         fields = [
             "url",
             "name",
@@ -279,9 +279,9 @@ class FilterListSerializer(serializers.ModelSerializer):
             "last_edit_date",
             "creation_date"
         ]
-        lookup_field = "slug"
+        # lookup_field = "slug"
         extra_kwargs = {
-            "url": {"lookup_field": "slug"},
+            # "url": {"lookup_field": "slug"},
             "owner": {"lookup_field": "username"},
             "last_edit_user": {"lookup_field": "username"},
         }
@@ -317,7 +317,7 @@ class FilterDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Filter
-        lookup_field = "slug"
+        # lookup_field = "slug"
         fields = [
             "url",
             "name",
@@ -330,9 +330,9 @@ class FilterDetailSerializer(serializers.ModelSerializer):
             "filter_join_tables",
             "entries"
         ]
-        lookup_field = "slug"
+        # lookup_field = "slug"
         extra_kwargs = {
-            "url": {"lookup_field": "slug"},
+            # "url": {"lookup_field": "slug"},
             "owner": {"lookup_field": "username"},
             "last_edit_user": {"lookup_field": "username"},
         }

@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "guardian",
-    "rest_framework.authtoken"
+    "rest_framework.authtoken",
+    "django_extensions"
 ]
 
 MIDDLEWARE = [
@@ -130,3 +131,5 @@ REST_FRAMEWORK = {
         # 'rest_framework_guardian.filters.ObjectPermissionsFilter',
     # ],
 }
+
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"

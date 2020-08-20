@@ -244,7 +244,7 @@ class DatabaseSerializer(serializers.HyperlinkedModelSerializer):
 class EntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Entry
-        fields = ["date_created"]
+        fields = ["id", "date_created"]
 
     def __init__(self, *args, **kwargs):
         fields = kwargs.get("context", {}).get("fields")

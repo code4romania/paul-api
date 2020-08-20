@@ -20,6 +20,16 @@ datatypes = {
 }
 
 
+DATATYPE_SERIALIZERS = {
+    'text': serializers.CharField,
+    'float': serializers.FloatField,
+    'int': serializers.IntegerField,
+    'date': serializers.DateTimeField,
+    'bool': serializers.BooleanField,
+    'enum': serializers.CharField,
+}
+
+
 def gen_slug(value):
     return slugify(value).replace("-", "_")
 
@@ -248,12 +258,15 @@ class EntrySerializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         fields = kwargs.get("context", {}).get("fields")
-        # str_fields = request.GET.get('fields', '') if request else None
-        # fields = str_fields.split(',') if str_fields else None
+        table = kwargs.get("context", {}).get("table")
+
+        table_fields = {field.name: field for field in table.fields.all()}
+
         super(EntrySerializer, self).__init__(*args, **kwargs)
         if fields is not None:
             for field_name in fields:
-                self.fields[field_name] = serializers.CharField(source="data.{}".format(field_name))
+                MappedField = DATATYPE_SERIALIZERS[table_fields[field_name].field_type]
+                self.fields[field_name] = MappedField(source="data.{}".format(field_name))
 
 
 class FilterListSerializer(serializers.ModelSerializer):

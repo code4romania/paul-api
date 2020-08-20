@@ -86,7 +86,7 @@ class TableViewSet(viewsets.ModelViewSet):
         page = self.paginate_queryset(queryset.filter())
 
         if page is not None:
-            serializer = serializers.EntrySerializer(page, many=True, context={"fields": fields})
+            serializer = serializers.EntrySerializer(page, many=True, context={"fields": fields, "table": obj})
             return self.get_paginated_response(serializer.data)
         serializer = serializers.EntrySerializer(queryset, many=True)
         return Response(serializer.data)

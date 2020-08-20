@@ -31,7 +31,14 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
 
         db, _ = models.Database.objects.get_or_create(name="DOR")
+        admin_group, _ = Group.objects.get_or_create(name='admin')
         admin, _ = User.objects.get_or_create(username='admin')
+        admin.set_password('admin')
+        admin.is_staff = True
+        admin.is_superuser = True
+        admin.groups.add(admin_group)
+        admin.save()
+
         tables = {}
         tables_map = {
             "Utilizatori": {

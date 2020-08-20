@@ -9,16 +9,14 @@ from rest_framework_guardian.serializers import ObjectPermissionsAssignmentMixin
 
 from . import models
 
-from eav.models import Attribute
 
 datatypes = {
-    "int": Attribute.TYPE_INT,
-    "float": Attribute.TYPE_FLOAT,
-    "text": Attribute.TYPE_TEXT,
-    "date": Attribute.TYPE_DATE,
-    "bool": Attribute.TYPE_BOOLEAN,
-    "object": Attribute.TYPE_OBJECT,
-    "enum": Attribute.TYPE_ENUM,
+    "int": 'int',
+    "float": 'float',
+    "text": 'text',
+    "date": 'date',
+    "bool": 'bool',
+    "enum": 'enum',
 }
 
 
@@ -88,7 +86,7 @@ class OwnerSerializer(serializers.HyperlinkedModelSerializer):
 class TableColumnSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.TableColumn
-        fields = ["name", "field_type"]
+        fields = ["name", "field_type", "help_text", "required", "unique", "choices"]
 
 
 class TableDatabaseSerializer(serializers.HyperlinkedModelSerializer):
@@ -139,9 +137,9 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
         new_table = models.Table.objects.create(**validated_data)
         for i in temp_fields:
             models.TableColumn.objects.create(table=new_table, **i)
-            Attribute.objects.get_or_create(
-                    name=i['name'], slug=gen_slug(i['name']), datatype=datatypes[i['field_type']],
-                )
+            # Attribute.objects.get_or_create(
+            #         name=i['name'], slug=gen_slug(i['name']), datatype=datatypes[i['field_type']],
+            #     )
         return new_table
 
     def get_permissions_map(self, created):
@@ -154,6 +152,7 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
             'change_table': [current_user, admins],
             'delete_table': [current_user, admins]
         }
+
 
 class TableSerializer(serializers.ModelSerializer):
     database = TableDatabaseSerializer()
@@ -251,11 +250,10 @@ class EntrySerializer(serializers.ModelSerializer):
         fields = kwargs.get("context", {}).get("fields")
         # str_fields = request.GET.get('fields', '') if request else None
         # fields = str_fields.split(',') if str_fields else None
-
         super(EntrySerializer, self).__init__(*args, **kwargs)
         if fields is not None:
             for field_name in fields:
-                self.fields[field_name] = serializers.CharField(source="eav.{}".format(field_name))
+                self.fields[field_name] = serializers.CharField(source="data.{}".format(field_name))
 
 
 class FilterListSerializer(serializers.ModelSerializer):

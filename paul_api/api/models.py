@@ -2,7 +2,9 @@ from django.db import models
 from django.utils.text import slugify
 from django.utils import timezone
 from django.contrib.auth.models import User
-import eav
+from django.contrib.postgres.fields import ArrayField
+from django.core.serializers.json import DjangoJSONEncoder
+from django.core.exceptions import ValidationError
 import uuid
 
 
@@ -100,11 +102,14 @@ class TableColumn(models.Model):
     Description: Model Description
     """
 
+    table = models.ForeignKey("Table", on_delete=models.CASCADE, related_name="fields")
     name = models.CharField(max_length=50)
     slug = models.SlugField(max_length=50, null=True, blank=True)
     field_type = models.CharField(max_length=20, choices=datatypes)
-
-    table = models.ForeignKey("Table", on_delete=models.CASCADE, related_name="fields")
+    help_text = models.CharField(max_length=255, null=True, blank=True)
+    choices = ArrayField(models.CharField(max_length=100), null=True, blank=True)
+    required = models.BooleanField(default=False)
+    unique = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ["table", "slug"]
@@ -119,6 +124,7 @@ class Entry(models.Model):
     """
 
     table = models.ForeignKey("Table", on_delete=models.CASCADE, related_name="entries")
+    data = models.JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)
     date_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -127,8 +133,26 @@ class Entry(models.Model):
     def __str__(self):
         return self.table.name
 
+    def clean_fields(self, exclude=None):
+        super().clean_fields(exclude=exclude)
+        fields = {x.name: x for x in self.table.fields.all()}
+        print('start validate', exclude)
+        print('entry fields:', fields)
+        for field, field_obj in fields.items():
+            print('field', field)
+            print(self.data)
+            value = self.data.get(field, None)
+            if field_obj.required:
+                if not value or value == '':
+                    # raise ValidationError({
+                    #     field: 'This field is required'
+                    #     })
+                    raise ValidationError('{} field is required'.format(field))
+            if field_obj.field_type == 'enum':
+                if value not in  field_obj.choices:
+                    print('*********', value, '*******')
+                    raise ValidationError('{} field value must be one of: {}'.format(field, ', '.join(field_obj.choices)))
 
-eav.register(Entry)
 
 
 class FilterJoinTable(models.Model):

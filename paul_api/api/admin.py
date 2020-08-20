@@ -1,10 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-
-from api import models
-from eav.admin import BaseEntityInline, BaseEntityAdmin
-from eav.forms import BaseDynamicEntityForm
+from django.contrib.admin.utils import flatten_fieldsets
+from api import models, forms
 
 
 class UserprofileAdmin(admin.TabularInline):
@@ -34,7 +32,7 @@ class DatabaseAdmin(admin.ModelAdmin):
 
 class TableColumnInline(admin.TabularInline):
     model = models.TableColumn
-    fields = ("name", "field_type")
+    fields = ("name", "field_type", "slug", "required", "unique", "choices", "help_text")
     can_delete = False
     can_add = False
     verbose_name_plural = "Columns"
@@ -50,20 +48,62 @@ class TableColumnInline(admin.TabularInline):
 #     form = EntryAdminForm
 
 
-class EntryAdminForm(BaseDynamicEntityForm):
+class EntryAdminForm(forms.BaseDynamicEntityForm):
     model = models.Entry
+
+from django.utils.safestring import mark_safe
+class BaseEntityAdmin(admin.ModelAdmin):
+    def render_change_form(self, request, context, *args, **kwargs):
+        """
+        Wrapper for ``ModelAdmin.render_change_form``. Replaces standard static
+        ``AdminForm`` with an EAV-friendly one. The point is that our form
+        generates fields dynamically and fieldsets must be inferred from a
+        prepared and validated form instance, not just the form class. Django
+        does not seem to provide hooks for this purpose, so we simply wrap the
+        view and substitute some data.
+        """
+        form = context['adminform'].form
+
+        # Infer correct data from the form.
+        fieldsets = self.fieldsets or [(None, {'fields': form.fields.keys()})]
+        adminform = admin.helpers.AdminForm(form, fieldsets, self.prepopulated_fields)
+        media = mark_safe(self.media + adminform.media)
+
+        context.update(adminform=adminform, media=media)
+
+        return super(BaseEntityAdmin, self).render_change_form(
+            request, context, *args, **kwargs
+        )
 
 
 @admin.register(models.Entry)
 class EntryAdmin(BaseEntityAdmin):
-    list_display = ("table", "values")
+    list_display = ("table", "data")
+    exclude= ()
+    # readonly_fields = ('table', )
     form = EntryAdminForm
     list_filter = ("table__name",)
 
-    def values(self, obj):
-        print(dir(obj.eav))
-        return obj.eav.get_values_dict()
 
+    # def get_form(self, request, obj=None, **kwargs):
+    #     # By passing 'fields', we prevent ModelAdmin.get_form from
+    #     # looking up the fields itself by calling self.get_fieldsets()
+    #     # If you do not do this you will get an error from 
+    #     # modelform_factory complaining about non-existent fields.
+
+    #     # use this line only for django before 1.9 (but after 1.5??)
+    #     kwargs['fields'] =  flatten_fieldsets(self.fieldsets)
+
+    #     return super(EntryAdmin, self).get_form(request, obj, **kwargs)
+
+    # def get_fieldsets(self, request, obj=None):
+    #     fieldsets = super(EntryAdmin, self).get_fieldsets(request, obj)
+
+    #     newfieldsets = list(fieldsets)
+    #     fields =  [x for x in self.instance.table.fields.values_list('name', flat=True)]
+    #     newfieldsets.append(['Dynamic Fields', { 'fields': fields }])
+
+    #     return newfieldsets
 
 @admin.register(models.Table)
 class TableAdmin(admin.ModelAdmin):

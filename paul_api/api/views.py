@@ -10,7 +10,6 @@ from rest_framework import permissions
 
 from rest_framework_guardian.filters import ObjectPermissionsFilter
 
-from eav import models as eav_models
 
 from . import serializers, models
 from .permissions import BaseModelPermissions
@@ -79,9 +78,9 @@ class TableViewSet(viewsets.ModelViewSet):
             fields = obj.fields.values_list("name", flat=True).order_by('name')[:4]
 
         q = Q()
-        if str_q:
-            values = eav_models.Value.objects.filter(value_text__icontains=str_q, Entry__table=obj, attribute__slug__in=fields).values_list('entity_id', flat=True)
-            q = Q(id__in=values)
+        # if str_q:
+        #     values = eav_models.Value.objects.filter(value_text__icontains=str_q, Entry__table=obj, attribute__slug__in=fields).values_list('entity_id', flat=True)
+        #     q = Q(id__in=values)
 
         queryset = obj.entries.filter(q)
         page = self.paginate_queryset(queryset.filter())

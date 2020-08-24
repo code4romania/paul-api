@@ -14,6 +14,8 @@ from rest_framework_guardian.filters import ObjectPermissionsFilter
 from . import serializers, models
 from .permissions import BaseModelPermissions
 
+from pprint import pprint
+
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -33,7 +35,7 @@ class DatabaseViewSet(viewsets.ModelViewSet):
 
 
 class EntriesPagination(PageNumberPagination):
-    page_size = 100
+    page_size = 10
 
 
 class CanView(permissions.BasePermission):
@@ -115,33 +117,59 @@ class FilterViewSet(viewsets.ModelViewSet):
         return serializers.FilterListSerializer
 
     @action(methods=["get"], detail=True, url_path="entries", url_name="entries")
-    def entries(self, request, slug):
+    def entries(self, request, pk):
         obj = self.get_object()
         str_q = request.GET.get("q", "") if request else None
         str_fields = request.GET.get("fields", "") if request else None
 
         fields = str_fields.split(",") if str_fields else None
-        primary_table_fields = list(obj.primary_table_fields.values_list("name", flat=True).order_by('name'))
-        join_tables_fileds = list(obj.filter_join_tables.values_list("fields__name", flat=True).order_by('fields__name'))
+        primary_table_fields = ['data__{}'.format(x) for x in obj.primary_table_fields.values_list("name", flat=True).order_by('name')]
+
+        primary_table = obj.primary_table
+        secondary_table = obj.filter_join_tables.all()[0]
+        secondary_table_name = secondary_table.table.slug
+        secondary_table_join_field = secondary_table.join_field.name
+
+        join_tables_fileds = ['data__{}'.format(x) for x in obj.filter_join_tables.values_list("fields__name", flat=True).order_by('fields__name')]
+        join_tables_fileds.append('data__{}'.format(secondary_table_join_field))
+        secondary_table_fields = ['{}__{}'.format(x[0].lower(), x[1]) for x in obj.filter_join_tables.values_list("table__name", "fields__name").order_by('fields__name')]
+        join_values = models.Entry.objects.filter(table=primary_table).values('data__{}'.format(obj.join_field.name))
+
+        result_values = models.Entry.objects.filter(
+            table__slug=secondary_table_name).filter(
+                **{'data__{}__in'.format(secondary_table_join_field): join_values}).\
+            values(*join_tables_fileds)
+
+        queryset = result_values
+
         if not fields:
-            fields = primary_table_fields + join_tables_fileds
+            fields = [x.replace('data__', '{}__'.format(primary_table.slug)) for x in primary_table_fields] 
+            fields +=  [x.replace('data__', '{}__'.format(secondary_table_name)) for x in join_tables_fileds]
 
-        # q = Q()
-        # if str_q:
-        #     values = eav_models.Value.objects.filter(value_text__icontains=str_q, Entry__table=obj, attribute__slug__in=fields).values_list('entity_id', flat=True)
-        #     q = Q(id__in=values)
-        print(primary_table_fields)
-        queryset = obj.primary_table.entries.values('eav_values')
-        return Response(queryset)
-        result = []
-        for entry in queryset:
-            for table in obj.filter_join_tables.all():
-                pass
-
-        page = self.paginate_queryset(queryset.filter())
+        # pprint(queryset)
+        page = self.paginate_queryset(queryset)
 
         if page is not None:
-            serializer = serializers.EntrySerializer(page, many=True, context={"fields": fields})
+            final_page = []
+            for entry in page:
+                final_entry = {}
+                final_entry_primary_table_values = {}
+                entry_primary_table_values = models.Entry.objects.filter(
+                    table=primary_table).filter(
+                        **{'data__{}'.format(obj.join_field.name): entry['data__{}'.format(secondary_table_join_field)]}).\
+                    values(*primary_table_fields)[0]
+                pprint(entry_primary_table_values)
+                for key in entry:
+                    final_entry[key.replace('data__', '{}__'.format(secondary_table_name))] = entry[key]
+                for key in entry_primary_table_values:
+                    final_entry_primary_table_values[key.replace('data__', '{}__'.format(primary_table.slug))] = entry_primary_table_values[key]
+
+                final_entry.update(final_entry_primary_table_values)
+                final_page.append(final_entry)
+            pprint(page)
+            print(fields)
+            # serializer = serializers.FilterEntrySerializer(page, many=True, context={"fields": ['test']})
+            serializer = serializers.FilterEntrySerializer(final_page, many=True, context={"fields": fields})
             return self.get_paginated_response(serializer.data)
-        serializer = serializers.EntrySerializer(queryset, many=True)
+        serializer = serializers.FilterEntrySerializer(queryset, many=True)
         return Response(serializer.data)

@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 from django.contrib.admin.utils import flatten_fieldsets
 from api import models, forms
-
+from pprint import pprint
 
 class UserprofileAdmin(admin.TabularInline):
     model = models.Userprofile
@@ -153,6 +153,7 @@ class FilterAdmin(admin.ModelAdmin):
 
     def get_join_tables(self, obj):
         tables = {}
-        for table in obj.join_tables.all():
-            tables[table.name] = ', '.join(table.fields.values_list('name', flat=True))
+        for table in obj.filter_join_tables.all():
+            tables[table.table.name] = ', '.join(table.fields.values_list('name', flat=True))
+        pprint(tables)
         return ', '.join(['{} ({})'.format(t, f) for t, f in tables.items()])

@@ -269,6 +269,24 @@ class EntrySerializer(serializers.ModelSerializer):
                 self.fields[field_name] = MappedField(source="data.{}".format(field_name))
 
 
+class FilterEntrySerializer(serializers.Serializer):
+    # class Meta:
+    #     model = models.Entry
+    #     fields = ["id", "date_created"]
+
+    def __init__(self, *args, **kwargs):
+        fields = kwargs.get("context", {}).get("fields")
+
+
+        super(FilterEntrySerializer, self).__init__(*args, **kwargs)
+        if fields is not None:
+            for field_name in fields:
+                # MappedField = DATATYPE_SERIALIZERS[table_fields[field_name].field_type]
+                try:
+                    self.fields[field_name] = serializers.CharField()
+                except:
+                    pass
+
 class FilterListSerializer(serializers.ModelSerializer):
     owner = OwnerSerializer()
     last_edit_user = OwnerSerializer()
@@ -355,4 +373,4 @@ class FilterDetailSerializer(serializers.ModelSerializer):
         return obj.join_field.name
 
     def get_entries(self, obj):
-        return self.context["request"].build_absolute_uri(reverse("filter-entries", kwargs={"slug": obj.slug}))
+        return self.context["request"].build_absolute_uri(reverse("filter-entries", kwargs={"pk": obj.pk}))

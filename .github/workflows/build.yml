@@ -12,26 +12,27 @@ jobs:
 
     steps:
         - name: Checkout
-        - uses: actions/checkout@master
+          uses: actions/checkout@master
 
         - name: Build Docker image
-            run: |
+          if: github.ref == 'refs/heads/master'
+          run: |
             docker build .  \
                 --tag $IMAGE_PAUL_API:$GITHUB_SHA \
                 --file docker/api/Docekrfile
 
         - name: Upload Docker image
-            if: github.ref == 'refs/heads/master'
-            run: |
+          if: github.ref == 'refs/heads/master'
+          run: |
                 echo ${{ secrets.DOCKER_HUB_PASSWORD }} | \
                 docker login \
                 -u ${{ secrets.DOCKER_HUB_USERNAME }} \
                 --password-stdin
                 docker push $IMAGE_PAUL_API:$GITHUB_SHA
         
-                - name: Tag Latest
-            if: github.ref == 'refs/heads/master'
-            run: |
+        - name: Tag Latest
+          if: github.ref == 'refs/heads/master'
+          run: |
                 docker tag \
                 $IMAGE_PAUL_API:$GITHUB_SHA \
                 $IMAGE_PAUL_API:latest

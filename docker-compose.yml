@@ -1,0 +1,30 @@
+version: '3'
+services:
+  api:
+    stdin_open: true
+    tty: true
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    command: dockerize -wait tcp://db:5432 -timeout 90s
+    env_file:
+      - .env
+    environment:
+      - "PYTHONUNBUFFERED=1"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/opt
+  db:
+    build:
+      context: .
+      dockerfile: docker/postgres/Dockerfile
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    volumes:
+      - database-data:/var/lib/postgresql/data/
+
+volumes:
+  database-data:

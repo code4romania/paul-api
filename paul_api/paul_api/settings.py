@@ -90,15 +90,7 @@ WSGI_APPLICATION = "paul_api.wsgi.application"
 # DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3",}}
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "HOST": env('DB_HOST'),
-        "PORT": env('DB_PORT'),
-        "NAME": env('DB_NAME'),
-        "USER": env('DB_USER'),
-        "PASSWORD": env('DB_PASSWORD'),
-        "CONN_MAX_AGE": 600,
-    }
+    "default": env.db("DATABASE_URL")
 }
 AUTHENTICATION_BACKENDS = (
     "django.contrib.auth.backends.ModelBackend",

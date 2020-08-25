@@ -34,7 +34,7 @@ SECRET_KEY = "xs-&03)q!&%akd_)+%#bmsp9$8tsyekp$u9c7ep0&)l1+d5+05"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["dev.api.paul.ro", "paul-dev.livehosting.ro"]
+ALLOWED_HOSTS = ["dev.api.paul.ro", "paul-dev.livehosting.ro", "127.0.0.1"]
 
 
 # Application definition

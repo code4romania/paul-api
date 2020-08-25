@@ -9,6 +9,9 @@ jobs:
   build:
     name: Build Docker image for Paul API
     runs-on: ubuntu-latest
+    defaults:
+        run:
+          working-directory: docker
 
     steps:
         - name: Checkout
@@ -19,7 +22,7 @@ jobs:
           run: |
             docker build .  \
                 --tag $IMAGE_PAUL_API:$GITHUB_SHA \
-                --file docker/api/Docekrfile
+                --file api/Docekrfile
 
         - name: Upload Docker image
           if: github.ref == 'refs/heads/master'

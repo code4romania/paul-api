@@ -33,7 +33,7 @@ class DatabaseAdmin(admin.ModelAdmin):
 class TableColumnInline(admin.TabularInline):
     model = models.TableColumn
     fields = ("name", "field_type", "slug", "required", "unique", "choices", "help_text")
-    can_delete = False
+    can_delete = True
     can_add = False
     verbose_name_plural = "Columns"
     extra = 0

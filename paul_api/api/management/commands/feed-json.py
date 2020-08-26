@@ -78,6 +78,8 @@ class Command(BaseCommand):
             print(table.entries.all().delete())
         for table_name, fields in tables_map.items():
             table = models.Table.objects.get(name=table_name)
+            table.active = True
+            table.save()
             for field_name, field_type in fields.items():
                 print('create field {} in table {}'.format(field_name, table))
                 if field_type == 'enum':

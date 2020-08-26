@@ -11,6 +11,7 @@ from rest_framework import status
 
 from rest_framework_guardian.filters import ObjectPermissionsFilter
 
+from rest_framework import filters as drf_filters
 from django_filters import rest_framework as filters
 
 
@@ -163,17 +164,14 @@ class FilterViewSet(viewsets.ModelViewSet):
 
 class EntryViewSet(viewsets.ModelViewSet):
     pagination_class = EntriesPagination
+    filter_backends = (drf_filters.SearchFilter,)
+    serializer_class = serializers.EntrySerializer
+    search_fields = ['data__nume']
+    # filter_backends = [filters.DjangoFilterBackend]
+    # filterset_fields = ['data__nume']
 
     def get_queryset(self):
         return models.Entry.objects.filter(table=self.kwargs['table_pk'])
-
-    def get_serializer_class(self):
-        if self.action == "list":
-            return serializers.EntrySerializer
-        # elif self.action == "create":
-        #     print('this ser')
-        #     return serializers.TableCreateSerializer
-        return serializers.EntrySerializer
 
     def list(self, request, table_pk):
         table = models.Table.objects.get(pk=table_pk)
@@ -181,14 +179,27 @@ class EntryViewSet(viewsets.ModelViewSet):
         str_fields = request.GET.get("fields", "") if request else None
 
         fields = str_fields.split(",") if str_fields else None
+
+        table_fields = {x.name: x for x in table.fields.all()}
+
         if not fields:
-            fields = table.fields.values_list("name", flat=True).order_by('name')[:4]
+            fields = [x for x in table_fields.keys()][:4]
 
         q = Q()
-
-        queryset = table.entries.filter(q)
-
-        page = self.paginate_queryset(queryset.filter())
+        print(table_fields)
+        filter_dict = {}
+        for key in request.GET:
+            print('===', key)
+            if key and key in table_fields.keys():
+                value = request.GET.get(key)
+                print('------', key, value)
+                if table_fields[key].field_type =='bool':
+                    filter_dict['data__{}'.format(key)] = True if value == '1' else False
+                else:
+                    filter_dict['data__{}__iexact'.format(key)] = value
+        print(filter_dict)
+        queryset = table.entries.filter(**filter_dict)
+        page = self.paginate_queryset(queryset)
 
         if page is not None:
             serializer = serializers.EntrySerializer(page, many=True, context={"fields": fields, "table": table, "request": request})

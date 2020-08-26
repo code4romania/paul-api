@@ -198,7 +198,7 @@ class TableSerializer(serializers.ModelSerializer):
         }
 
     def get_entries(self, obj):
-        return self.context["request"].build_absolute_uri(reverse("table-entries", kwargs={"pk": obj.pk}))
+        return self.context["request"].build_absolute_uri(reverse("table-entries-list", kwargs={"table_pk": obj.pk}))
 
 
 class DatabaseTableListSerializer(serializers.ModelSerializer):

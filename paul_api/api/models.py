@@ -112,10 +112,15 @@ class TableColumn(models.Model):
     unique = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ["table", "slug"]
+        unique_together = ["table", "name"]
 
     def __str__(self):
         return "[{}] {} ({})".format(self.table, self.name, self.field_type)
+
+
+    def save(self, *args, **kwargs):
+        self.slug = slugify(self.name, allow_unicode=True)
+        super().save(*args, **kwargs)
 
 
 class Entry(models.Model):
@@ -136,11 +141,8 @@ class Entry(models.Model):
     def clean_fields(self, exclude=None):
         super().clean_fields(exclude=exclude)
         fields = {x.name: x for x in self.table.fields.all()}
-        print('start validate', exclude)
-        print('entry fields:', fields)
+
         for field, field_obj in fields.items():
-            print('field', field)
-            print(self.data)
             value = self.data.get(field, None)
             if field_obj.required:
                 if not value or value == '':
@@ -150,7 +152,6 @@ class Entry(models.Model):
                     raise ValidationError('{} field is required'.format(field))
             if field_obj.field_type == 'enum':
                 if value not in  field_obj.choices:
-                    print('*********', value, '*******')
                     raise ValidationError('{} field value must be one of: {}'.format(field, ', '.join(field_obj.choices)))
 
 

@@ -52,7 +52,8 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",
     "django_extensions",
     "corsheaders",
-    "django_filters"
+    "django_filters",
+    "crispy_forms"
 ]
 
 MIDDLEWARE = [

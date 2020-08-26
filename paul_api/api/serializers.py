@@ -8,7 +8,7 @@ from rest_framework import serializers
 from rest_framework_guardian.serializers import ObjectPermissionsAssignmentMixin
 
 from . import models
-
+from pprint import pprint
 
 datatypes = {
     "int": 'int',
@@ -139,7 +139,6 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
         # extra_kwargs = {"database": {"lookup_field": "slug"}}
 
     def create(self, validated_data):
-        print('validated_data', validated_data)
         temp_fields = validated_data.pop('fields')
         # database_slug = validated_data.pop('database')
         # database = models.Database.objects.get(slug=database_slug)
@@ -154,7 +153,6 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
 
     def get_permissions_map(self, created):
         current_user = self.context['request'].user
-        print('current user', current_user)
         admins = Group.objects.get(name='admin')
 
         return {
@@ -252,22 +250,35 @@ class DatabaseSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class EntrySerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
     class Meta:
         model = models.Entry
-        fields = ["id", "date_created"]
+        fields = ["url", "id", "date_created"]
 
     def __init__(self, *args, **kwargs):
         fields = kwargs.get("context", {}).get("fields")
         table = kwargs.get("context", {}).get("table")
 
-        table_fields = {field.name: field for field in table.fields.all()}
+        if table:
+            table_fields = {field.name: field for field in table.fields.all()}
 
         super(EntrySerializer, self).__init__(*args, **kwargs)
         if fields is not None:
             for field_name in fields:
                 MappedField = DATATYPE_SERIALIZERS[table_fields[field_name].field_type]
-                self.fields[field_name] = MappedField(source="data.{}".format(field_name))
+                self.fields[field_name] = MappedField(source="data.{}".format(field_name), required=False)
 
+    def create(self, validated_data):
+        validated_data['table'] = self.context['table']
+        return models.Entry.objects.create(**validated_data)
+
+    def get_url(self, obj):
+        return self.context["request"].build_absolute_uri(
+            reverse("table-entries-detail",
+            kwargs={
+                "pk": obj.pk,
+                "table_pk": obj.table.pk
+            }))
 
 class FilterEntrySerializer(serializers.Serializer):
     # class Meta:
@@ -286,6 +297,7 @@ class FilterEntrySerializer(serializers.Serializer):
                     self.fields[field_name] = serializers.CharField()
                 except:
                     pass
+
 
 class FilterListSerializer(serializers.ModelSerializer):
     owner = OwnerSerializer()
@@ -315,6 +327,7 @@ class FilterListSerializer(serializers.ModelSerializer):
             "last_edit_user": {"lookup_field": "username"},
         }
 
+
 class FilterJoinTableListSerializer(serializers.ModelSerializer):
     table = serializers.SerializerMethodField()
     table_fields = serializers.SerializerMethodField()
@@ -337,12 +350,12 @@ class FilterJoinTableListSerializer(serializers.ModelSerializer):
 class FilterDetailSerializer(serializers.ModelSerializer):
     owner = OwnerSerializer()
     last_edit_user = OwnerSerializer()
-    primary_table = serializers.SlugRelatedField(queryset=models.Table.objects.all(), slug_field='slug')
+    primary_table = serializers.SlugRelatedField(
+        queryset=models.Table.objects.all(), slug_field='slug')
     primary_table_fields = serializers.SerializerMethodField()
     join_field = serializers.SerializerMethodField()
     filter_join_tables = FilterJoinTableListSerializer(many=True)
     entries = serializers.SerializerMethodField()
-
 
     class Meta:
         model = models.Filter
@@ -373,4 +386,5 @@ class FilterDetailSerializer(serializers.ModelSerializer):
         return obj.join_field.name
 
     def get_entries(self, obj):
-        return self.context["request"].build_absolute_uri(reverse("filter-entries", kwargs={"pk": obj.pk}))
+        return self.context["request"].build_absolute_uri(
+            reverse("filter-entries", kwargs={"pk": obj.pk}))

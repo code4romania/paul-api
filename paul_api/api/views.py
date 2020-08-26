@@ -7,8 +7,11 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action, permission_classes
 from rest_framework.response import Response
 from rest_framework import permissions
+from rest_framework import status
 
 from rest_framework_guardian.filters import ObjectPermissionsFilter
+
+from django_filters import rest_framework as filters
 
 
 from . import serializers, models
@@ -49,49 +52,34 @@ class CanView(permissions.BasePermission):
         return obj.owner == request.user
 
 
+class MyFilterBackend(filters.DjangoFilterBackend):
+    def get_filterset_kwargs(self, request, queryset, view):
+        kwargs = super().get_filterset_kwargs(request, queryset, view)
+
+        # merge filterset kwargs provided by view class
+        if hasattr(view, 'get_filterset_kwargs'):
+            kwargs.update(view.get_filterset_kwargs())
+
+        return kwargs
+
+
 class TableViewSet(viewsets.ModelViewSet):
     queryset = models.Table.objects.all()
     # lookup_field = "slug"
     pagination_class = EntriesPagination
     permission_classes = (BaseModelPermissions, )
-    filter_backends = [ObjectPermissionsFilter]
-
+    filter_backends = [ObjectPermissionsFilter, filters.DjangoFilterBackend]
+    filterset_fields = ['active']
     # def get_queryset(self):
     #     user = self.request.user
     #     return models.Table.objects.filter(owner=user)
 
     def get_serializer_class(self):
-        print('action:', self.action)
         if self.action == "list":
             return serializers.DatabaseTableListSerializer
         elif self.action == "create":
-            print('this ser')
             return serializers.TableCreateSerializer
         return serializers.TableSerializer
-
-    @action(methods=["get"], detail=True, url_path="entries", url_name="entries")
-    def entries(self, request, pk):
-        obj = self.get_object()
-        str_q = request.GET.get("q", "") if request else None
-        str_fields = request.GET.get("fields", "") if request else None
-
-        fields = str_fields.split(",") if str_fields else None
-        if not fields:
-            fields = obj.fields.values_list("name", flat=True).order_by('name')[:4]
-
-        q = Q()
-        # if str_q:
-        #     values = eav_models.Value.objects.filter(value_text__icontains=str_q, Entry__table=obj, attribute__slug__in=fields).values_list('entity_id', flat=True)
-        #     q = Q(id__in=values)
-
-        queryset = obj.entries.filter(q)
-        page = self.paginate_queryset(queryset.filter())
-
-        if page is not None:
-            serializer = serializers.EntrySerializer(page, many=True, context={"fields": fields, "table": obj})
-            return self.get_paginated_response(serializer.data)
-        serializer = serializers.EntrySerializer(queryset, many=True)
-        return Response(serializer.data)
 
 
 class FilterViewSet(viewsets.ModelViewSet):
@@ -106,7 +94,6 @@ class FilterViewSet(viewsets.ModelViewSet):
     #     return models.Table.objects.filter(owner=user)
 
     def get_serializer_class(self):
-        print('action:', self.action)
         if self.action == "list":
             return serializers.FilterListSerializer
 
@@ -116,10 +103,10 @@ class FilterViewSet(viewsets.ModelViewSet):
             return serializers.FilterDetailSerializer
         return serializers.FilterListSerializer
 
+
     @action(methods=["get"], detail=True, url_path="entries", url_name="entries")
     def entries(self, request, pk):
         obj = self.get_object()
-        str_q = request.GET.get("q", "") if request else None
         str_fields = request.GET.get("fields", "") if request else None
 
         fields = str_fields.split(",") if str_fields else None
@@ -158,7 +145,7 @@ class FilterViewSet(viewsets.ModelViewSet):
                     table=primary_table).filter(
                         **{'data__{}'.format(obj.join_field.name): entry['data__{}'.format(secondary_table_join_field)]}).\
                     values(*primary_table_fields)[0]
-                pprint(entry_primary_table_values)
+
                 for key in entry:
                     final_entry[key.replace('data__', '{}__'.format(secondary_table_name))] = entry[key]
                 for key in entry_primary_table_values:
@@ -166,10 +153,79 @@ class FilterViewSet(viewsets.ModelViewSet):
 
                 final_entry.update(final_entry_primary_table_values)
                 final_page.append(final_entry)
-            pprint(page)
-            print(fields)
+
             # serializer = serializers.FilterEntrySerializer(page, many=True, context={"fields": ['test']})
             serializer = serializers.FilterEntrySerializer(final_page, many=True, context={"fields": fields})
             return self.get_paginated_response(serializer.data)
         serializer = serializers.FilterEntrySerializer(queryset, many=True)
         return Response(serializer.data)
+
+
+class EntryViewSet(viewsets.ModelViewSet):
+    pagination_class = EntriesPagination
+
+    def get_queryset(self):
+        return models.Entry.objects.filter(table=self.kwargs['table_pk'])
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return serializers.EntrySerializer
+        # elif self.action == "create":
+        #     print('this ser')
+        #     return serializers.TableCreateSerializer
+        return serializers.EntrySerializer
+
+    def list(self, request, table_pk):
+        table = models.Table.objects.get(pk=table_pk)
+        str_q = request.GET.get("q", "") if request else None
+        str_fields = request.GET.get("fields", "") if request else None
+
+        fields = str_fields.split(",") if str_fields else None
+        if not fields:
+            fields = table.fields.values_list("name", flat=True).order_by('name')[:4]
+
+        q = Q()
+
+        queryset = table.entries.filter(q)
+
+        page = self.paginate_queryset(queryset.filter())
+
+        if page is not None:
+            serializer = serializers.EntrySerializer(page, many=True, context={"fields": fields, "table": table, "request": request})
+            return self.get_paginated_response(serializer.data)
+        serializer = serializers.EntrySerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request, table_pk, pk):
+        table = models.Table.objects.get(pk=table_pk)
+        object = models.Entry.objects.get(pk=pk)
+
+        fields = table.fields.values_list("name", flat=True).order_by('name')
+        serializer = serializers.EntrySerializer(object, context={"fields": fields, "table": table, "request": request})
+
+
+        return Response(serializer.data)
+
+    def update(self, request, table_pk, pk, *args, **kwargs):
+        table = models.Table.objects.get(pk=table_pk)
+        object = self.get_object()
+
+        fields = table.fields.values_list("name", flat=True).order_by('name')
+        serializer = serializers.EntrySerializer(object, data=request.data, context={"fields": fields, "table": table, "request": request})
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
+    def create(self, request, table_pk):
+        table = models.Table.objects.get(pk=table_pk)
+        # object = self.get_object()
+        data = request.data
+        data['table'] = table.pk
+        fields = table.fields.values_list("name", flat=True).order_by('name')
+
+        serializer = serializers.EntrySerializer(data=data, context={"fields": fields, "table": table, "request": request})
+        serializer.is_valid(raise_exception=True)
+
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)

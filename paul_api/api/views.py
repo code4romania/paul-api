@@ -179,25 +179,25 @@ class EntryViewSet(viewsets.ModelViewSet):
         str_fields = request.GET.get("fields", "") if request else None
 
         fields = str_fields.split(",") if str_fields else None
-
         table_fields = {x.name: x for x in table.fields.all()}
 
         if not fields:
             fields = [x for x in table_fields.keys()][:4]
 
         q = Q()
-        print(table_fields)
+
         filter_dict = {}
         for key in request.GET:
-            print('===', key)
-            if key and key in table_fields.keys():
+            if key and key.split('__')[0] in table_fields.keys():
                 value = request.GET.get(key)
-                print('------', key, value)
-                if table_fields[key].field_type =='bool':
+
+                if table_fields[key.split('__')[0]].field_type =='bool':
                     filter_dict['data__{}'.format(key)] = True if value == '1' else False
+                elif table_fields[key.split('__')[0]].field_type in ['float', 'int']:
+                    filter_dict['data__{}'.format(key)] = float(value)
                 else:
-                    filter_dict['data__{}__iexact'.format(key)] = value
-        print(filter_dict)
+                    filter_dict['data__{}'.format(key)] = value
+
         queryset = table.entries.filter(**filter_dict)
         page = self.paginate_queryset(queryset)
 

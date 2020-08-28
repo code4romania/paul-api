@@ -14,10 +14,13 @@ from rest_framework_guardian.filters import ObjectPermissionsFilter
 from rest_framework import filters as drf_filters
 from django_filters import rest_framework as filters
 
+import csv
+from io import StringIO
+from datetime import datetime
 
 from . import serializers, models
 from .permissions import BaseModelPermissions
-
+from . import utils
 from pprint import pprint
 
 
@@ -68,9 +71,10 @@ class TableViewSet(viewsets.ModelViewSet):
     queryset = models.Table.objects.all()
     # lookup_field = "slug"
     pagination_class = EntriesPagination
-    permission_classes = (BaseModelPermissions, )
+    permission_classes = (BaseModelPermissions,)
     filter_backends = [ObjectPermissionsFilter, filters.DjangoFilterBackend]
     filterset_fields = ['active']
+    # parser_classes = (FileUploadParser,)
     # def get_queryset(self):
     #     user = self.request.user
     #     return models.Table.objects.filter(owner=user)
@@ -78,9 +82,134 @@ class TableViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "list":
             return serializers.DatabaseTableListSerializer
-        elif self.action == "create":
+        elif self.action in ["create", "update"]:
             return serializers.TableCreateSerializer
         return serializers.TableSerializer
+
+
+    @action(detail=True, methods=['put'], name='Uploader View', url_path='csv-prepare-fields')
+    def csv_prepare_fields(self, request, pk):
+        file = request.FILES['file']
+        delimiter = request.POST.get('delimiter')
+        fields = []
+        table = self.get_object()
+
+        decoded_file = file.read().decode('utf-8').splitlines()
+        csv_import = models.CsvImport.objects.create(
+            table=table,
+            file=file,
+            delimiter=delimiter)
+        reader = csv.DictReader(decoded_file, delimiter=delimiter)
+
+        for field in reader.fieldnames:
+            csv_field_map = models.CsvFieldMap.objects.create(
+                table=table,
+                original_name=field,
+                field_name=field)
+            fields.append({
+                'original_name': field.encode(),
+                'field_name': field,
+                'field_type': 'text',
+                'field_format': ''
+                })
+
+        response = {
+            'table': table.name,
+            'import_id': csv_import.pk,
+            'fields': fields
+        }
+        return Response(response)
+
+
+    @action(detail=True, methods=['post'], name='CSV import view', url_path='csv-import/(?P<csv_import_pk>[^/.]+)')
+    def csv_import(self, request, pk, csv_import_pk ):
+        fields = request.data.get('fields')
+        csv_import = models.CsvImport.objects.get(pk=csv_import_pk)
+        table = self.get_object()
+        errors_count = 0
+        imports_count = 0
+        errors = []
+        table.csv_field_mapping.all().delete()
+        for field in fields:
+            csv_field_map = models.CsvFieldMap.objects.create(
+                table=table,
+                original_name=field['original_name'],
+                field_name=field['field_name'],
+                field_type=field['field_type'],
+                field_format=field['field_format']
+                )
+            table_column, _ = models.TableColumn.objects.get_or_create(
+                table=table,
+                name=utils.snake_case(field['field_name']),
+                display_name=field['field_name'],
+                field_type=field['field_type']
+                )
+        
+        reader = csv.DictReader(StringIO(csv_import.file.read().decode('utf-8')), delimiter=csv_import.delimiter)
+        csv_field_mapping = {x.original_name: x for x in table.csv_field_mapping.all()}
+        table_fields = {x.name: x for x in table.fields.all()}
+        field_choices = {x.name: x.choices for x in table.fields.all()}
+        i = 0
+        for row in reader:
+            i += 1
+            if i > 10:
+                continue
+            entry_dict = {}
+            error_in_row = False
+            errors_in_row = {}
+            try:
+                for key, field in csv_field_mapping.items():
+                    field_name = utils.snake_case(field.field_name)
+                    try:
+                        if row[key]:
+                            if field.field_type == 'int':
+                                entry_dict[field_name] = int(row[key])
+                            elif field.field_type == 'float':
+                                entry_dict[field_name] = float(row[key])
+                            elif field.field_type == 'date':
+                                    value = datetime.strptime(row[key], field.field_format)
+                                    entry_dict[field_name] = value
+                            elif field.field_type == 'enum':
+                                value = row[key]
+                                if not value in field_choices[field_name]:
+                                    field_choices[field_name].append(value)
+                                    table_fields[field_name].choices = list(set(field_choices[field_name]))
+                                    table_fields[field_name].save()
+                                entry_dict[field_name] = value
+                            else:
+                                entry_dict[field_name] = row[key]
+                        else:
+                            if table_fields[field_name].required:
+                                error_in_row = True
+                                errors_in_row[key] = 'This field is required'
+                            entry_dict[field_name] = None
+                    except Exception as e:
+                        print(e)
+                        error_in_row = True
+                        errors_in_row[key] = e.__class__.__name__
+                if not error_in_row:
+                    models.Entry.objects.create(
+                        table=table,
+                        data=entry_dict)
+                    imports_count += 1
+                else:
+                    errors.append({
+                        'row': row,
+                        'errors': errors_in_row
+                        })
+                    errors_count += 1
+
+            except Exception as e:
+                print('=====', e)
+                errors_count += 1
+
+            print('errors: {} imports: {}'.format(errors_count, imports_count))
+        response = {
+            'errors_count': errors_count,
+            'imports_count': imports_count,
+            'errors': errors
+        }
+        return Response(response)
 
 
 class FilterViewSet(viewsets.ModelViewSet):

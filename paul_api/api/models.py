@@ -77,12 +77,15 @@ class Table(models.Model):
         User, null=True, blank=True, on_delete=models.SET_NULL, related_name="last_table_edits",
     )
 
+    
+
     class Meta:
         permissions = (
             ("view", "View"),
             ("change", "View"),
             ("delete", "View"),
         )
+        unique_together = ['name', 'database']
 
     def __str__(self):
         return self.name
@@ -101,9 +104,9 @@ class TableColumn(models.Model):
     """
     Description: Model Description
     """
-
     table = models.ForeignKey("Table", on_delete=models.CASCADE, related_name="fields")
     name = models.CharField(max_length=50)
+    display_name = models.CharField(max_length=50, null=True, blank=True)
     slug = models.SlugField(max_length=50, null=True, blank=True)
     field_type = models.CharField(max_length=20, choices=datatypes)
     help_text = models.CharField(max_length=255, null=True, blank=True)
@@ -117,10 +120,40 @@ class TableColumn(models.Model):
     def __str__(self):
         return "[{}] {} ({})".format(self.table, self.name, self.field_type)
 
-
     def save(self, *args, **kwargs):
         self.slug = slugify(self.name, allow_unicode=True)
         super().save(*args, **kwargs)
+
+
+class CsvFieldMap(models.Model):
+    """
+    Description: Model Description
+    """
+    table = models.ForeignKey('Table', on_delete=models.CASCADE, related_name='csv_field_mapping')
+    original_name = models.CharField(max_length=100)
+    field_name = models.CharField(max_length=100)
+    field_type = models.CharField(max_length=20, choices=datatypes, default=datatypes[0])
+    field_format  = models.CharField(max_length=20, null=True, blank=True)
+
+    class Meta:
+        pass
+
+
+class CsvImport(models.Model):
+    """
+    Description: Model Description
+    """
+    file = models.FileField(upload_to='csvs/')
+    delimiter = models.CharField(max_length=2, null=True, blank=True)
+    table = models.ForeignKey('Table', related_name='csv_imports', on_delete=models.CASCADE)
+
+    success = models.IntegerField(default=0)
+    errors = models.IntegerField(default=0)
+    imported = models.BooleanField(default=False)
+    date_created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        pass
 
 
 class Entry(models.Model):

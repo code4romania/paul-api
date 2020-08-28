@@ -30,9 +30,17 @@ class DatabaseAdmin(admin.ModelAdmin):
     search_fields = ("name",)
 
 
+class CsvFieldMapInline(admin.TabularInline):
+    model = models.CsvFieldMap
+    fields = ('original_name','field_name','field_type','field_format')
+    can_delete = True
+    can_add = False
+    verbose_name_plural = "Csv File Fields Map"
+    extra = 0
+
 class TableColumnInline(admin.TabularInline):
     model = models.TableColumn
-    fields = ("name", "field_type", "slug", "required", "unique", "choices", "help_text")
+    fields = ("name", "display_name", "field_type", "slug", "required", "unique", "choices", "help_text")
     can_delete = True
     can_add = False
     verbose_name_plural = "Columns"
@@ -119,7 +127,7 @@ class TableAdmin(admin.ModelAdmin):
     )
     list_filter = ("database__name",)
     search_fields = ("name",)
-    inlines = (TableColumnInline,)
+    inlines = (TableColumnInline, CsvFieldMapInline)
 
     def columns(self, obj):
         return obj.fields.count()
@@ -157,3 +165,10 @@ class FilterAdmin(admin.ModelAdmin):
             tables[table.table.name] = ', '.join(table.fields.values_list('name', flat=True))
         pprint(tables)
         return ', '.join(['{} ({})'.format(t, f) for t, f in tables.items()])
+
+
+@admin.register(models.CsvImport)
+class CsvImportAdmin(admin.ModelAdmin):
+    list_display = ("table", "file")
+    list_filter = ()
+    search_fields = ("table__name",)

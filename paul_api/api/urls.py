@@ -22,6 +22,7 @@ tables_router.register('entries', views.EntryViewSet, basename='table-entries')
 
 urlpatterns = [
     path('api-token-auth/', token_views.obtain_auth_token),
+
     path('openapi', get_schema_view(
             title="Paul OpenSchema",
             description="API for Paul",
@@ -34,4 +35,3 @@ urlpatterns = [
     path("", include(router.urls)),
     path("", include(tables_router.urls))
 ]
-

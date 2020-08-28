@@ -34,7 +34,7 @@ SECRET_KEY = "xs-&03)q!&%akd_)+%#bmsp9$8tsyekp$u9c7ep0&)l1+d5+05"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["dev.api.paul.ro", "paul-dev.livehosting.ro", "127.0.0.1"]
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 
 
 # Application definition
@@ -134,7 +134,8 @@ STATIC_URL = "/static/"
 STATICFILES_DIRS = (os.path.join(BASE_DIR, "static"),)
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+# MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_ROOT = '/var/www/paul_api/media'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -151,6 +152,7 @@ REST_FRAMEWORK = {
 
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8080",
-]
+env('CORS_ALLOWED_ORIGINS')
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS')
+
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000

@@ -1,8 +1,10 @@
 from django.urls import path, include
 from django.contrib.auth.models import User
-from rest_framework import routers
+# from rest_framework import routers
 from rest_framework.schemas import get_schema_view
 from rest_framework.authtoken import views as token_views
+
+from rest_framework_nested import routers
 
 from . import views
 from django.views.generic import TemplateView
@@ -11,11 +13,16 @@ from django.views.generic import TemplateView
 router = routers.DefaultRouter()
 router.register(r"users", views.UserViewSet)
 router.register(r"databases", views.DatabaseViewSet)
-router.register(r"tables", views.TableViewSet)
 router.register(r"filters", views.FilterViewSet)
+router.register(r"tables", views.TableViewSet)
+
+tables_router = routers.NestedSimpleRouter(router, 'tables', lookup='table')
+tables_router.register('entries', views.EntryViewSet, basename='table-entries')
+
 
 urlpatterns = [
     path('api-token-auth/', token_views.obtain_auth_token),
+
     path('openapi', get_schema_view(
             title="Paul OpenSchema",
             description="API for Paul",
@@ -25,6 +32,6 @@ urlpatterns = [
             template_name='api/swagger-ui.html',
             extra_context={'schema_url':'openapi-schema'}
         ), name='swagger-ui'),
-    path("", include(router.urls))
+    path("", include(router.urls)),
+    path("", include(tables_router.urls))
 ]
-

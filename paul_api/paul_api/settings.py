@@ -34,8 +34,8 @@ SECRET_KEY = "xs-&03)q!&%akd_)+%#bmsp9$8tsyekp$u9c7ep0&)l1+d5+05"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["dev.api.paul.ro"]
 CORS_ORIGIN_ALLOW_ALL = True
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 
 # Application definition
 
@@ -51,7 +51,10 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "guardian",
     "rest_framework.authtoken",
-    "django_extensions"
+    "django_extensions",
+    "corsheaders",
+    "django_filters",
+    "crispy_forms"
 ]
 
 MIDDLEWARE = [
@@ -92,15 +95,7 @@ WSGI_APPLICATION = "paul_api.wsgi.application"
 # DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3",}}
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "HOST": env('DB_HOST'),
-        "PORT": env('DB_PORT'),
-        "NAME": env('DB_NAME'),
-        "USER": env('DB_USER'),
-        "PASSWORD": env('DB_PASSWORD'),
-        "CONN_MAX_AGE": 600,
-    }
+    "default": env.db("DATABASE_URL")
 }
 AUTHENTICATION_BACKENDS = (
     "django.contrib.auth.backends.ModelBackend",
@@ -140,7 +135,8 @@ STATIC_URL = "/static/"
 STATICFILES_DIRS = (os.path.join(BASE_DIR, "static"),)
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+# MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_ROOT = '/var/www/paul_api/media'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -150,9 +146,14 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
-    # 'DEFAULT_FILTER_BACKENDS': [
-        # 'rest_framework_guardian.filters.ObjectPermissionsFilter',
-    # ],
+     'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend'
+    ]
 }
 
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
+
+env('CORS_ALLOWED_ORIGINS')
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS')
+
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000

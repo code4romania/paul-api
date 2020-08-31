@@ -66,8 +66,8 @@ class Command(BaseCommand):
                 "tip": "text"
             }
         }
-        print(models.Table.objects.all().delete())
-        print(models.Entry.objects.all().delete())
+        # print(models.Table.objects.all().delete())
+        # print(models.Entry.objects.all().delete())
         for table_name in tables_map.keys():
             tables[table_name], _ = models.Table.objects.get_or_create(database=db, name=table_name.capitalize(), owner=admin)
 
@@ -84,11 +84,11 @@ class Command(BaseCommand):
                 print('create field {} in table {}'.format(field_name, table))
                 if field_type == 'enum':
                     column = models.TableColumn.objects.get_or_create(
-                        table=table, name=gen_slug(field_name), field_type=field_type, choices=['M', 'F']
+                        table=table, name=gen_slug(field_name), field_type=field_type, choices=['M', 'F'], display_name=field_name.replace('_', ' ').title()
                     )
                 else:
                     column = models.TableColumn.objects.get_or_create(
-                        table=table, name=gen_slug(field_name), field_type=field_type
+                        table=table, name=gen_slug(field_name), field_type=field_type, display_name=field_name.replace('_', ' ').title()
                     )
                 
 

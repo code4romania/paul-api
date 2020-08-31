@@ -300,24 +300,57 @@ class DatabaseSerializer(serializers.HyperlinkedModelSerializer):
         }
 
 
-class EntrySerializer(serializers.ModelSerializer):
-    url = serializers.SerializerMethodField()
+class EntryDataSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = models.Entry
-        fields = ["url", "id", "date_created"]
+        fields = []
 
     def __init__(self, *args, **kwargs):
         fields = kwargs.get("context", {}).get("fields")
         table = kwargs.get("context", {}).get("table")
-
         if table:
             table_fields = {field.name: field for field in table.fields.all()}
 
-        super(EntrySerializer, self).__init__(*args, **kwargs)
+        super(EntryDataSerializer, self).__init__(*args, **kwargs)
         if fields is not None:
             for field_name in fields:
                 MappedField = DATATYPE_SERIALIZERS[table_fields[field_name].field_type]
                 self.fields[field_name] = MappedField(source="data.{}".format(field_name), required=False)
+
+
+class EntrySerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+    data = serializers.SerializerMethodField()
+
+    class Meta:
+        model = models.Entry
+        fields = ["url", "id", "date_created", "data"]
+
+    def get_data(self, obj):
+        serializer = EntryDataSerializer(obj, context=self.context)
+        return serializer.data
+
+    def __init__(self, *args, **kwargs):
+        # print(self.data)
+        fields = kwargs.get("context", {}).get("fields")
+        table = kwargs.get("context", {}).get("table")
+
+        # if table:
+        #     table_fields = {field.name: field for field in table.fields.all()}
+
+        super(EntrySerializer, self).__init__(*args, **kwargs)
+
+        self.fields['data'].context.update({
+            'table': table,
+            'fields': fields
+            })
+
+        # if fields is not None:
+        #     for field_name in fields:
+        #         MappedField = DATATYPE_SERIALIZERS[table_fields[field_name].field_type]
+        #         self.fields[field_name] = MappedField(source="data.{}".format(field_name), required=False)
+
 
     def create(self, validated_data):
         validated_data['table'] = self.context['table']
@@ -364,6 +397,7 @@ class FilterListSerializer(serializers.ModelSerializer):
         # lookup_field = "slug"
         fields = [
             "url",
+            "id",
             "name",
             "tables",
             "owner",
@@ -381,12 +415,12 @@ class FilterListSerializer(serializers.ModelSerializer):
 
 class FilterJoinTableListSerializer(serializers.ModelSerializer):
     table = serializers.SerializerMethodField()
-    table_fields = serializers.SerializerMethodField()
+    # table_fields = serializers.SerializerMethodField()
     join_field = serializers.SerializerMethodField()
-
+    fields = TableColumnSerializer(many=True)
     class Meta:
         model = models.FilterJoinTable
-        fields = ["table", "table_fields", "join_field"]
+        fields = ["table", "fields", "join_field"]
 
     def get_table(self, obj):
         return obj.table.slug
@@ -394,8 +428,8 @@ class FilterJoinTableListSerializer(serializers.ModelSerializer):
     def get_join_field(self, obj):
         return obj.join_field.name
 
-    def get_table_fields(self, obj):
-        return list(obj.fields.values_list('name', flat=True))
+    # def get_table_fields(self, obj):
+    #     return list(obj.fields.values_list('name', flat=True))
 
 
 class FilterDetailSerializer(serializers.ModelSerializer):

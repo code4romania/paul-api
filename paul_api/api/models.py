@@ -77,7 +77,6 @@ class Table(models.Model):
         User, null=True, blank=True, on_delete=models.SET_NULL, related_name="last_table_edits",
     )
 
-    
 
     class Meta:
         permissions = (

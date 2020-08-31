@@ -89,8 +89,8 @@ class OwnerSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
         fields = ["url", "username", "first_name", "last_name"]
-        lookup_field = "username"
-        extra_kwargs = {"url": {"lookup_field": "username"}}
+        # lookup_field = "username"
+        # extra_kwargs = {"url": {"lookup_field": "username"}}
 
 
 class TableColumnSerializer(serializers.ModelSerializer):

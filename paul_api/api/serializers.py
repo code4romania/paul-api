@@ -241,9 +241,9 @@ class TableSerializer(serializers.ModelSerializer):
         # fields = '__all__'
         extra_kwargs = {
             # "url": {"lookup_field": "slug"},
-            "owner": {"lookup_field": "username"},
+            # "owner": {"lookup_field": "username"},
             # "database": {"lookup_field": "slug"},
-            "last_edit_user": {"lookup_field": "username"},
+            # "last_edit_user": {"lookup_field": "username"},
         }
 
     def get_entries(self, obj):
@@ -275,8 +275,8 @@ class DatabaseTableListSerializer(serializers.ModelSerializer):
         # lookup_field = "slug"
         extra_kwargs = {
             # "url": {"lookup_field": "slug"},
-            "owner": {"lookup_field": "username"},
-            "last_edit_user": {"lookup_field": "username"},
+            # "owner": {"lookup_field": "username"},
+            # "last_edit_user": {"lookup_field": "username"},
         }
 
 
@@ -408,8 +408,8 @@ class FilterListSerializer(serializers.ModelSerializer):
         # lookup_field = "slug"
         extra_kwargs = {
             # "url": {"lookup_field": "slug"},
-            "owner": {"lookup_field": "username"},
-            "last_edit_user": {"lookup_field": "username"},
+            # "owner": {"lookup_field": "username"},
+            # "last_edit_user": {"lookup_field": "username"},
         }
 
 
@@ -460,8 +460,8 @@ class FilterDetailSerializer(serializers.ModelSerializer):
         # lookup_field = "slug"
         extra_kwargs = {
             # "url": {"lookup_field": "slug"},
-            "owner": {"lookup_field": "username"},
-            "last_edit_user": {"lookup_field": "username"},
+            # "owner": {"lookup_field": "username"},
+            # "last_edit_user": {"lookup_field": "username"},
         }
 
     def get_primary_table_fields(self, obj):

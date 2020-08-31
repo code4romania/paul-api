@@ -34,14 +34,15 @@ SECRET_KEY = "xs-&03)q!&%akd_)+%#bmsp9$8tsyekp$u9c7ep0&)l1+d5+05"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+CORS_ORIGIN_ALLOW_ALL = True
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
-
 
 # Application definition
 
 INSTALLED_APPS = [
     "api",
     "rest_framework",
+    "corsheaders",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",

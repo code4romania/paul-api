@@ -264,6 +264,7 @@ class DatabaseTableListSerializer(serializers.ModelSerializer):
         # lookup_field = "slug"
         fields = [
             "url",
+            "id",
             "name",
             "active",
             "entries",

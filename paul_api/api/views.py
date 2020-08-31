@@ -27,7 +27,7 @@ from pprint import pprint
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = serializers.UserSerializer
-    lookup_field = "username"
+    # lookup_field = "username"
 
     def get_serializer_class(self):
         if self.action == "create":

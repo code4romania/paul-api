@@ -74,8 +74,8 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
         fields = ["url", "id", "username", "email", "avatar", "first_name", "last_name"]
-        lookup_field = "username"
-        extra_kwargs = {"url": {"lookup_field": "username"}}
+        # lookup_field = "username"
+        # extra_kwargs = {"url": {"lookup_field": "username"}}
 
     def get_avatar(self, obj):
         try:

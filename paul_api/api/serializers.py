@@ -73,7 +73,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
     avatar = serializers.SerializerMethodField()
     class Meta:
         model = User
-        fields = ["url", "username", "email", "avatar", "first_name", "last_name"]
+        fields = ["url", "id", "username", "email", "avatar", "first_name", "last_name"]
         lookup_field = "username"
         extra_kwargs = {"url": {"lookup_field": "username"}}
 
@@ -103,7 +103,7 @@ class TableColumnSerializer(serializers.ModelSerializer):
 class TableDatabaseSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = models.Database
-        fields = ["url", "name", "slug"]
+        fields = ["url", "id", "name", "slug"]
         # lookup_field = "slug"
         # extra_kwargs = {"url": {"lookup_field": "slug"}}
 
@@ -288,6 +288,7 @@ class DatabaseSerializer(serializers.HyperlinkedModelSerializer):
         model = models.Database
         fields = [
             "url",
+            "id",
             "name",
             "active_tables",
             "archived_tables",

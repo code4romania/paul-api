@@ -20,6 +20,7 @@ from django_filters import rest_framework as filters
 import csv
 from io import StringIO
 import os
+from datetime import datetime
 
 from . import serializers, models
 from .permissions import BaseModelPermissions
@@ -73,7 +74,7 @@ class MyFilterBackend(filters.DjangoFilterBackend):
 class TableViewSet(viewsets.ModelViewSet):
     queryset = models.Table.objects.all()
     pagination_class = EntriesPagination
-    permission_classes = (BaseModelPermissions,)
+    permission_classes = (BaseModelPermissions, )
     filter_backends = [ObjectPermissionsFilter, filters.DjangoFilterBackend]
     filterset_fields = ["active"]
 
@@ -193,8 +194,55 @@ class TableViewSet(viewsets.ModelViewSet):
             "errors_count": errors_count,
             "imports_count": imports_count,
             "errors": errors,
+            "import_id": csv_import.pk,
         }
         return Response(response)
+
+
+    @action(
+        detail=True,
+        methods=["post"],
+        name="CSV Export",
+        url_path="csv-export",
+    )
+    def csv_export(self, request, pk):
+        table = self.get_object()
+        table_fields = {x.name: x for x in table.fields.all()}
+
+        filter_dict = {}
+        for key, value in request.data.get('filter', {}).items():
+            filter_dict['data__{}'.format(key)] = value
+        # pprint(request.GET)
+        # for key in request.GET:
+        #     if key and key.split("__")[0] in table_fields.keys():
+        #         value = request.GET.getlist(key)
+        #         if len(value) == 1:
+        #             value = value[0]
+        #         print(key, value)
+        #         if table_fields[key.split("__")[0]].field_type in [
+        #             "float",
+        #             "int",
+        #         ]:
+        #             filter_dict["data__{}".format(key)] = float(value)
+        #         else:
+        #             filter_dict["data__{}".format(key)] = value
+
+
+        file_name = '{}__{}.csv'.format(table.name, datetime.now().strftime('%d.%m.%Y'))
+        with open('/tmp/{}'.format(file_name), 'w', encoding='utf-8-sig') as  csv_export_file:
+            writer = csv.DictWriter(csv_export_file, delimiter=';', quoting=csv.QUOTE_MINIMAL, fieldnames=table.fields.values_list('name', flat=True))
+            writer.writeheader()
+            pprint(filter_dict)
+            for row in table.entries.filter(**filter_dict):
+                writer.writerow(row.data)
+
+        with open('/tmp/{}'.format(file_name), 'rb') as  csv_export_file:
+        # response = HttpResponse(FileWrapper(csv_export_file), content_type='application/vnd.ms-excel')
+            response = HttpResponse(csv_export_file.read(), content_type="application/vnd.ms-excel")
+            response['Content-Disposition'] = 'attachment; filename="{}"'.format(file_name)
+        os.remove('/tmp/{}'.format(file_name))
+        return response
+
 
 class FilterViewSet(viewsets.ModelViewSet):
     queryset = models.Filter.objects.all()
@@ -424,9 +472,6 @@ class CsvImportViewSet(viewsets.ReadOnlyModelViewSet):
     def export_errors(self, request, pk):
         csv_import = self.get_object()
 
-        response = {
-            "fields": csv_import.errors
-        }
         file_name = 'errors__' + csv_import.file.name.split('/')[-1]
         with open('/tmp/{}'.format(file_name), 'w', encoding='utf-8-sig') as  csv_export_file:
             writer = csv.DictWriter(csv_export_file, delimiter=';', quoting=csv.QUOTE_MINIMAL, fieldnames=csv_import.errors[0]['row'].keys())
@@ -440,19 +485,7 @@ class CsvImportViewSet(viewsets.ReadOnlyModelViewSet):
             response['Content-Disposition'] = 'attachment; filename="{}"'.format(file_name)
         os.remove('/tmp/{}'.format(file_name))
         return response
-        # return Response(response)
-            
-    #         response['Content-Disposition'] = 'inline; filename=' + out_filename
 
-
-
-
-    #         with open('/tmp/{}'.format(out_filename), 'rb') as fh:
-    #         os.remove(in_filename)
-    #         os.remove('/tmp/{}'.format(out_filename))
-    #         return response
-
-    # return render(request, 'app/index.html', {})
 
 
 

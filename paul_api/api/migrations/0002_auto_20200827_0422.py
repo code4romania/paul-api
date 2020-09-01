@@ -7,39 +7,77 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0001_initial'),
+        ("api", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='CsvFiledMap',
+            name="CsvFiledMap",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('original_name', models.CharField(max_length=100)),
-                ('field_name', models.CharField(max_length=100)),
-                ('field_type', models.CharField(choices=[('int', 'int'), ('float', 'float'), ('text', 'text'), ('date', 'date'), ('bool', 'bool'), ('object', 'object'), ('enum', 'enum')], default=('int', 'int'), max_length=20)),
-                ('field_format', models.CharField(max_length=20, null=True)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("original_name", models.CharField(max_length=100)),
+                ("field_name", models.CharField(max_length=100)),
+                (
+                    "field_type",
+                    models.CharField(
+                        choices=[
+                            ("int", "int"),
+                            ("float", "float"),
+                            ("text", "text"),
+                            ("date", "date"),
+                            ("bool", "bool"),
+                            ("object", "object"),
+                            ("enum", "enum"),
+                        ],
+                        default=("int", "int"),
+                        max_length=20,
+                    ),
+                ),
+                ("field_format", models.CharField(max_length=20, null=True)),
             ],
         ),
         migrations.AlterUniqueTogether(
-            name='table',
-            unique_together={('name', 'database')},
+            name="table",
+            unique_together={("name", "database")},
         ),
         migrations.AlterUniqueTogether(
-            name='tablecolumn',
-            unique_together={('table', 'name')},
+            name="tablecolumn",
+            unique_together={("table", "name")},
         ),
         migrations.CreateModel(
-            name='CsvImport',
+            name="CsvImport",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('file', models.FileField(upload_to='csvs')),
-                ('success', models.IntegerField(default=0)),
-                ('errors', models.IntegerField(default=0)),
-                ('imported', models.BooleanField(default=False)),
-                ('date_created', models.DateTimeField(auto_now_add=True)),
-                ('field_mapping', models.ManyToManyField(to='api.CsvFiledMap')),
-                ('table', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='csv_imports', to='api.table')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("file", models.FileField(upload_to="csvs")),
+                ("success", models.IntegerField(default=0)),
+                ("errors", models.IntegerField(default=0)),
+                ("imported", models.BooleanField(default=False)),
+                ("date_created", models.DateTimeField(auto_now_add=True)),
+                ("field_mapping", models.ManyToManyField(to="api.CsvFiledMap")),
+                (
+                    "table",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="csv_imports",
+                        to="api.table",
+                    ),
+                ),
             ],
         ),
     ]

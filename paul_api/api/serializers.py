@@ -11,22 +11,22 @@ from . import models
 from pprint import pprint
 
 datatypes = {
-    "int": 'int',
-    "float": 'float',
-    "text": 'text',
-    "date": 'date',
-    "bool": 'bool',
-    "enum": 'enum',
+    "int": "int",
+    "float": "float",
+    "text": "text",
+    "date": "date",
+    "bool": "bool",
+    "enum": "enum",
 }
 
 
 DATATYPE_SERIALIZERS = {
-    'text': serializers.CharField,
-    'float': serializers.FloatField,
-    'int': serializers.IntegerField,
-    'date': serializers.DateTimeField,
-    'bool': serializers.BooleanField,
-    'enum': serializers.CharField,
+    "text": serializers.CharField,
+    "float": serializers.FloatField,
+    "int": serializers.IntegerField,
+    "date": serializers.DateTimeField,
+    "bool": serializers.BooleanField,
+    "enum": serializers.CharField,
 }
 
 
@@ -42,7 +42,7 @@ class DynamicFieldsModelSerializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         # Don't pass the 'fields' arg up to the superclass
-        fields = kwargs.pop('fields', None)
+        fields = kwargs.pop("fields", None)
 
         # Instantiate the superclass normally
         super(DynamicFieldsModelSerializer, self).__init__(*args, **kwargs)
@@ -53,6 +53,7 @@ class DynamicFieldsModelSerializer(serializers.ModelSerializer):
             existing = set(self.fields.keys())
             for field_name in existing - allowed:
                 self.fields.pop(field_name)
+
 
 class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -65,68 +66,80 @@ class UserCreateSerializer(serializers.ModelSerializer):
         new_user.save()
         userprofile = new_user.userprofile
         userprofile
-        print('TODO: send mail')
+        print("TODO: send mail")
         return new_user
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     avatar = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ["url", "id", "username", "email", "avatar", "first_name", "last_name"]
-        # lookup_field = "username"
-        # extra_kwargs = {"url": {"lookup_field": "username"}}
+        fields = [
+            "url",
+            "id",
+            "username",
+            "email",
+            "avatar",
+            "first_name",
+            "last_name",
+        ]
 
     def get_avatar(self, obj):
         try:
-            request = self.context.get('request')
+            request = self.context.get("request")
             avatar_url = obj.userprofile.avatar.url
             return request.build_absolute_uri(avatar_url)
         except:
             pass
 
+
 class OwnerSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
         fields = ["url", "username", "first_name", "last_name"]
-        # lookup_field = "username"
-        # extra_kwargs = {"url": {"lookup_field": "username"}}
 
 
 class TableColumnSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
+
     class Meta:
         model = models.TableColumn
-        fields = ["id", "name", "display_name", "field_type", "help_text", "required", "unique", "choices"]
+        fields = [
+            "id",
+            "name",
+            "display_name",
+            "field_type",
+            "help_text",
+            "required",
+            "unique",
+            "choices",
+        ]
 
 
 class TableDatabaseSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = models.Database
         fields = ["url", "id", "name", "slug"]
-        # lookup_field = "slug"
-        # extra_kwargs = {"url": {"lookup_field": "slug"}}
 
 
-class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelSerializer):
-    database = serializers.PrimaryKeyRelatedField(queryset=models.Database.objects.all())
-    owner = serializers.HiddenField(
-        default=serializers.CurrentUserDefault()
+class TableCreateSerializer(
+    ObjectPermissionsAssignmentMixin, serializers.ModelSerializer
+):
+    database = serializers.PrimaryKeyRelatedField(
+        queryset=models.Database.objects.all()
     )
+    owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
     last_edit_user = serializers.HiddenField(
         default=serializers.CurrentUserDefault()
     )
-    last_edit_date = serializers.HiddenField(
-        default=timezone.now()
-    )
-    active = serializers.BooleanField(
-        default=True
-    )
+    last_edit_date = serializers.HiddenField(default=timezone.now())
+    active = serializers.BooleanField(default=True)
     fields = TableColumnSerializer(many=True, required=False)
     id = serializers.IntegerField(required=False)
+
     class Meta:
         model = models.Table
-        # lookup_field = "slug"
         fields = [
             "id",
             "database",
@@ -135,27 +148,34 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
             "fields",
             "last_edit_user",
             "last_edit_date",
-            "active"
+            "active",
         ]
-        # extra_kwargs = {"database": {"lookup_field": "slug"}}
 
     def validate(self, data):
-        if 'id' in data.keys():
-            table = models.Table.objects.get(pk=data['id'])
+        if "id" in data.keys():
+            table = models.Table.objects.get(pk=data["id"])
             if table.entries.exists():
-                if 'fields' in data.keys():
-                    for field in data.get('fields'):
-                        if 'id' in field.keys():
-                            field_obj = models.TableColumn.objects.get(pk=field['id'])
-                            if field_obj.field_type != field['field_type']:
-                                raise serializers.ValidationError({'fields-{}'.format(field['id']): "Changing field type is not permited on a table with entries"})
+                if "fields" in data.keys():
+                    for field in data.get("fields"):
+                        if "id" in field.keys():
+                            field_obj = models.TableColumn.objects.get(
+                                pk=field["id"]
+                            )
+                            if field_obj.field_type != field["field_type"]:
+                                raise serializers.ValidationError(
+                                    {
+                                        "fields-{}".format(
+                                            field["id"]
+                                        ): "Changing field type is not permited on a table with entries"
+                                    }
+                                )
         return data
 
     def create(self, validated_data):
 
         temp_fields = []
-        if 'fields' in validated_data.keys():
-            temp_fields = validated_data.pop('fields')
+        if "fields" in validated_data.keys():
+            temp_fields = validated_data.pop("fields")
 
         new_table = models.Table.objects.create(**validated_data)
         for i in temp_fields:
@@ -164,14 +184,16 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
         return new_table
 
     def update(self, instance, validated_data):
-        instance.name = validated_data.get('name')
-        instance.active = validated_data.get('active')
-        instance.database = validated_data.get('database')
+        instance.name = validated_data.get("name")
+        instance.active = validated_data.get("active")
+        instance.database = validated_data.get("database")
 
-        if 'fields' in validated_data.keys():
+        if "fields" in validated_data.keys():
             # Check to see if we need to delete any field
-            old_fields_ids = set(instance.fields.values_list('id', flat=True))
-            new_fields_ids = set([x.get('id') for x in validated_data.get('fields')])
+            old_fields_ids = set(instance.fields.values_list("id", flat=True))
+            new_fields_ids = set(
+                [x.get("id") for x in validated_data.get("fields")]
+            )
             for id_to_remove in old_fields_ids - new_fields_ids:
                 field = models.TableColumn.objects.get(pk=id_to_remove)
                 field_name = field.name
@@ -180,11 +202,11 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
                     del entry.data[field_name]
                     entry.save()
             # Create or update fields
-            for field in validated_data.pop('fields'):
-                if 'id' in field.keys():
-                    field_obj = models.TableColumn.objects.get(pk=field['id'])
+            for field in validated_data.pop("fields"):
+                if "id" in field.keys():
+                    field_obj = models.TableColumn.objects.get(pk=field["id"])
                     old_name = field_obj.name
-                    new_name = field['name']
+                    new_name = field["name"]
                     if old_name != new_name:
                         for entry in instance.entries.all():
                             entry.data[new_name] = entry.data[old_name]
@@ -193,36 +215,32 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
                     field_obj.__dict__.update(field)
                     field_obj.save()
                 else:
-                    field['table'] = instance
+                    field["table"] = instance
                     models.TableColumn.objects.create(**field)
 
         instance.save()
         return instance
 
     def get_permissions_map(self, created):
-        current_user = self.context['request'].user
-        admins = Group.objects.get(name='admin')
+        current_user = self.context["request"].user
+        admins = Group.objects.get(name="admin")
 
         return {
-            'view_table': [current_user, admins],
-            'change_table': [current_user, admins],
-            'delete_table': [current_user, admins]
+            "view_table": [current_user, admins],
+            "change_table": [current_user, admins],
+            "delete_table": [current_user, admins],
         }
 
 
 class TableSerializer(serializers.ModelSerializer):
     database = TableDatabaseSerializer()
     owner = OwnerSerializer(read_only=True)
-    # owner = serializers.HiddenField(
-    #     default=serializers.CurrentUserDefault()
-    # )
     last_edit_user = UserSerializer(read_only=True)
     fields = TableColumnSerializer(many=True)
     entries = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Table
-        # lookup_field = "slug"
         fields = [
             "url",
             "id",
@@ -236,22 +254,16 @@ class TableSerializer(serializers.ModelSerializer):
             "active",
             "fields",
             "entries",
-            "entries_count"
+            "entries_count",
         ]
-        # fields = '__all__'
-        extra_kwargs = {
-            # "url": {"lookup_field": "slug"},
-            # "owner": {"lookup_field": "username"},
-            # "database": {"lookup_field": "slug"},
-            # "last_edit_user": {"lookup_field": "username"},
-        }
 
     def get_entries(self, obj):
-        return self.context["request"].build_absolute_uri(reverse("table-entries-list", kwargs={"table_pk": obj.pk}))
+        return self.context["request"].build_absolute_uri(
+            reverse("table-entries-list", kwargs={"table_pk": obj.pk})
+        )
 
 
 class DatabaseTableListDataSerializer(serializers.ModelSerializer):
-
     def get_entries(self, obj):
         return obj.entries.count()
 
@@ -259,20 +271,13 @@ class DatabaseTableListDataSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Table
-        # lookup_field = "slug"
         fields = [
-
             "name",
             "entries",
             "last_edit_date",
             "last_edit_user",
         ]
-        # lookup_field = "slug"
-        extra_kwargs = {
-            # "url": {"lookup_field": "slug"},
-            # "owner": {"lookup_field": "username"},
-            # "last_edit_user": {"lookup_field": "username"},
-        }
+
 
 class DatabaseTableListSerializer(serializers.ModelSerializer):
     owner = OwnerSerializer()
@@ -284,20 +289,7 @@ class DatabaseTableListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Table
-        # lookup_field = "slug"
-        fields = [
-            "url",
-            "id",
-            "active",
-            "owner",
-            "data"
-        ]
-        # lookup_field = "slug"
-        extra_kwargs = {
-            # "url": {"lookup_field": "slug"},
-            # "owner": {"lookup_field": "username"},
-            # "last_edit_user": {"lookup_field": "username"},
-        }
+        fields = ["url", "id", "active", "owner", "data"]
 
 
 class DatabaseSerializer(serializers.HyperlinkedModelSerializer):
@@ -313,15 +305,9 @@ class DatabaseSerializer(serializers.HyperlinkedModelSerializer):
             "active_tables",
             "archived_tables",
         ]
-        # lookup_field = "slug"
-        extra_kwargs = {
-            # "url": {"lookup_field": "slug"},
-            # "tables": {"lookup_field": "slug"},
-        }
 
 
 class EntryDataSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = models.Entry
         fields = []
@@ -335,8 +321,12 @@ class EntryDataSerializer(serializers.ModelSerializer):
         super(EntryDataSerializer, self).__init__(*args, **kwargs)
         if fields is not None:
             for field_name in fields:
-                MappedField = DATATYPE_SERIALIZERS[table_fields[field_name].field_type]
-                self.fields[field_name] = MappedField(source="data.{}".format(field_name), required=False)
+                MappedField = DATATYPE_SERIALIZERS[
+                    table_fields[field_name].field_type
+                ]
+                self.fields[field_name] = MappedField(
+                    source="data.{}".format(field_name), required=False
+                )
 
 
 class EntrySerializer(serializers.ModelSerializer):
@@ -352,46 +342,30 @@ class EntrySerializer(serializers.ModelSerializer):
         return serializer.data
 
     def __init__(self, *args, **kwargs):
-        # print(self.data)
         fields = kwargs.get("context", {}).get("fields")
         table = kwargs.get("context", {}).get("table")
 
-        # if table:
-        #     table_fields = {field.name: field for field in table.fields.all()}
-
         super(EntrySerializer, self).__init__(*args, **kwargs)
 
-        self.fields['data'].context.update({
-            'table': table,
-            'fields': fields
-            })
-
-        # if fields is not None:
-        #     for field_name in fields:
-        #         MappedField = DATATYPE_SERIALIZERS[table_fields[field_name].field_type]
-        #         self.fields[field_name] = MappedField(source="data.{}".format(field_name), required=False)
-
+        self.fields["data"].context.update({"table": table, "fields": fields})
 
     def create(self, validated_data):
-        validated_data['table'] = self.context['table']
+        validated_data["table"] = self.context["table"]
         return models.Entry.objects.create(**validated_data)
 
     def get_url(self, obj):
         return self.context["request"].build_absolute_uri(
-            reverse("table-entries-detail",
-            kwargs={
-                "pk": obj.pk,
-                "table_pk": obj.table.pk
-            }))
+            reverse(
+                "table-entries-detail",
+                kwargs={"pk": obj.pk, "table_pk": obj.table.pk},
+            )
+        )
+
 
 class FilterEntrySerializer(serializers.Serializer):
-    # class Meta:
-    #     model = models.Entry
-    #     fields = ["id", "date_created"]
 
     def __init__(self, *args, **kwargs):
         fields = kwargs.get("context", {}).get("fields")
-
 
         super(FilterEntrySerializer, self).__init__(*args, **kwargs)
         if fields is not None:
@@ -409,12 +383,13 @@ class FilterListSerializer(serializers.ModelSerializer):
     tables = serializers.SerializerMethodField()
 
     def get_tables(self, obj):
-        tables = [obj.primary_table.name] + list(obj.join_tables.values_list('name', flat=True))
+        tables = [obj.primary_table.name] + list(
+            obj.join_tables.values_list("name", flat=True)
+        )
         return tables
 
     class Meta:
         model = models.Filter
-        # lookup_field = "slug"
         fields = [
             "url",
             "id",
@@ -423,21 +398,15 @@ class FilterListSerializer(serializers.ModelSerializer):
             "owner",
             "last_edit_user",
             "last_edit_date",
-            "creation_date"
+            "creation_date",
         ]
-        # lookup_field = "slug"
-        extra_kwargs = {
-            # "url": {"lookup_field": "slug"},
-            # "owner": {"lookup_field": "username"},
-            # "last_edit_user": {"lookup_field": "username"},
-        }
 
 
 class FilterJoinTableListSerializer(serializers.ModelSerializer):
     table = serializers.SerializerMethodField()
-    # table_fields = serializers.SerializerMethodField()
     join_field = serializers.SerializerMethodField()
     fields = TableColumnSerializer(many=True)
+
     class Meta:
         model = models.FilterJoinTable
         fields = ["table", "fields", "join_field"]
@@ -448,15 +417,13 @@ class FilterJoinTableListSerializer(serializers.ModelSerializer):
     def get_join_field(self, obj):
         return obj.join_field.name
 
-    # def get_table_fields(self, obj):
-    #     return list(obj.fields.values_list('name', flat=True))
-
 
 class FilterDetailSerializer(serializers.ModelSerializer):
     owner = OwnerSerializer()
     last_edit_user = OwnerSerializer()
     primary_table = serializers.SlugRelatedField(
-        queryset=models.Table.objects.all(), slug_field='slug')
+        queryset=models.Table.objects.all(), slug_field="slug"
+    )
     primary_table_fields = serializers.SerializerMethodField()
     join_field = serializers.SerializerMethodField()
     filter_join_tables = FilterJoinTableListSerializer(many=True)
@@ -464,7 +431,6 @@ class FilterDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Filter
-        # lookup_field = "slug"
         fields = [
             "url",
             "name",
@@ -475,21 +441,16 @@ class FilterDetailSerializer(serializers.ModelSerializer):
             "primary_table_fields",
             "join_field",
             "filter_join_tables",
-            "entries"
+            "entries",
         ]
-        # lookup_field = "slug"
-        extra_kwargs = {
-            # "url": {"lookup_field": "slug"},
-            # "owner": {"lookup_field": "username"},
-            # "last_edit_user": {"lookup_field": "username"},
-        }
 
     def get_primary_table_fields(self, obj):
-        return list(obj.primary_table_fields.values_list('name', flat=True))
+        return list(obj.primary_table_fields.values_list("name", flat=True))
 
     def get_join_field(self, obj):
         return obj.join_field.name
 
     def get_entries(self, obj):
         return self.context["request"].build_absolute_uri(
-            reverse("filter-entries", kwargs={"pk": obj.pk}))
+            reverse("filter-entries", kwargs={"pk": obj.pk})
+        )

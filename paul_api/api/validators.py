@@ -22,7 +22,7 @@ def validate_text(value):
     Raises ``ValidationError`` unless *value* type is ``str`` or ``unicode``
     """
     if not isinstance(value, str):
-        raise ValidationError(_(u"Must be str or unicode"))
+        raise ValidationError(_("Must be str or unicode"))
 
 
 def validate_float(value):
@@ -32,7 +32,7 @@ def validate_float(value):
     try:
         float(value)
     except ValueError:
-        raise ValidationError(_(u"Must be a float"))
+        raise ValidationError(_("Must be a float"))
 
 
 def validate_int(value):
@@ -42,7 +42,7 @@ def validate_int(value):
     try:
         int(value)
     except ValueError:
-        raise ValidationError(_(u"Must be an integer"))
+        raise ValidationError(_("Must be an integer"))
 
 
 def validate_date(value):
@@ -50,8 +50,10 @@ def validate_date(value):
     Raises ``ValidationError`` unless *value* is an instance of ``datetime``
     or ``date``
     """
-    if not isinstance(value, datetime.datetime) and not isinstance(value, datetime.date):
-        raise ValidationError(_(u"Must be a date or datetime"))
+    if not isinstance(value, datetime.datetime) and not isinstance(
+        value, datetime.date
+    ):
+        raise ValidationError(_("Must be a date or datetime"))
 
 
 def validate_bool(value):
@@ -59,7 +61,7 @@ def validate_bool(value):
     Raises ``ValidationError`` unless *value* type is ``bool``
     """
     if not isinstance(value, bool):
-        raise ValidationError(_(u"Must be a boolean"))
+        raise ValidationError(_("Must be a boolean"))
 
 
 def validate_object(value):
@@ -68,10 +70,10 @@ def validate_object(value):
     django model instance.
     """
     if not isinstance(value, models.Model):
-        raise ValidationError(_(u"Must be a django model object instance"))
+        raise ValidationError(_("Must be a django model object instance"))
 
     if not value.pk:
-        raise ValidationError(_(u"Model has not been saved yet"))
+        raise ValidationError(_("Model has not been saved yet"))
 
 
 def validate_enum(value):

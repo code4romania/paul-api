@@ -20,7 +20,9 @@ class Command(BaseCommand):
             table_name = f.name.split("/")[-1].split(".")[0]
             admin = User.objects.get(username="admin")
             db, _ = models.Database.objects.get_or_create(name="DOR")
-            table, _ = models.Table.objects.get_or_create(database=db, name=table_name.capitalize(), owner=admin)
+            table, _ = models.Table.objects.get_or_create(
+                database=db, name=table_name.capitalize(), owner=admin
+            )
 
             print("Deleting all columns from table", table)
             print(table.fields.all().delete())
@@ -32,7 +34,9 @@ class Command(BaseCommand):
                     table=table, name=gen_slug(field_name), field_type="text"
                 )
                 Attribute.objects.get_or_create(
-                    name=field_name, slug=gen_slug(field_name), datatype=Attribute.TYPE_TEXT,
+                    name=field_name,
+                    slug=gen_slug(field_name),
+                    datatype=Attribute.TYPE_TEXT,
                 )
 
             for row in csvfile:
@@ -42,4 +46,3 @@ class Command(BaseCommand):
                     print(" set {} to {}".format(gen_slug(field), value))
                     setattr(entry.eav, gen_slug(field), value)
                 entry.save()
-

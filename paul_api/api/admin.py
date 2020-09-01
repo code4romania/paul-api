@@ -5,6 +5,7 @@ from django.contrib.admin.utils import flatten_fieldsets
 from api import models, forms
 from pprint import pprint
 
+
 class UserprofileAdmin(admin.TabularInline):
     model = models.Userprofile
     fields = ("avatar", "token")
@@ -17,6 +18,7 @@ class UserprofileAdmin(admin.TabularInline):
 # Define a new User admin
 class UserAdmin(BaseUserAdmin):
     inlines = (UserprofileAdmin,)
+
 
 # Re-register UserAdmin
 admin.site.unregister(User)
@@ -32,15 +34,25 @@ class DatabaseAdmin(admin.ModelAdmin):
 
 class CsvFieldMapInline(admin.TabularInline):
     model = models.CsvFieldMap
-    fields = ('original_name','field_name','field_type','field_format')
+    fields = ("original_name", "field_name", "field_type", "field_format")
     can_delete = True
     can_add = False
     verbose_name_plural = "Csv File Fields Map"
     extra = 0
 
+
 class TableColumnInline(admin.TabularInline):
     model = models.TableColumn
-    fields = ("name", "display_name", "field_type", "slug", "required", "unique", "choices", "help_text")
+    fields = (
+        "name",
+        "display_name",
+        "field_type",
+        "slug",
+        "required",
+        "unique",
+        "choices",
+        "help_text",
+    )
     can_delete = True
     can_add = False
     verbose_name_plural = "Columns"
@@ -59,7 +71,10 @@ class TableColumnInline(admin.TabularInline):
 class EntryAdminForm(forms.BaseDynamicEntityForm):
     model = models.Entry
 
+
 from django.utils.safestring import mark_safe
+
+
 class BaseEntityAdmin(admin.ModelAdmin):
     def render_change_form(self, request, context, *args, **kwargs):
         """
@@ -70,11 +85,13 @@ class BaseEntityAdmin(admin.ModelAdmin):
         does not seem to provide hooks for this purpose, so we simply wrap the
         view and substitute some data.
         """
-        form = context['adminform'].form
+        form = context["adminform"].form
 
         # Infer correct data from the form.
-        fieldsets = self.fieldsets or [(None, {'fields': form.fields.keys()})]
-        adminform = admin.helpers.AdminForm(form, fieldsets, self.prepopulated_fields)
+        fieldsets = self.fieldsets or [(None, {"fields": form.fields.keys()})]
+        adminform = admin.helpers.AdminForm(
+            form, fieldsets, self.prepopulated_fields
+        )
         media = mark_safe(self.media + adminform.media)
 
         context.update(adminform=adminform, media=media)
@@ -87,16 +104,15 @@ class BaseEntityAdmin(admin.ModelAdmin):
 @admin.register(models.Entry)
 class EntryAdmin(BaseEntityAdmin):
     list_display = ("table", "data")
-    exclude= ()
+    exclude = ()
     # readonly_fields = ('table', )
     form = EntryAdminForm
     list_filter = ("table__name",)
 
-
     # def get_form(self, request, obj=None, **kwargs):
     #     # By passing 'fields', we prevent ModelAdmin.get_form from
     #     # looking up the fields itself by calling self.get_fieldsets()
-    #     # If you do not do this you will get an error from 
+    #     # If you do not do this you will get an error from
     #     # modelform_factory complaining about non-existent fields.
 
     #     # use this line only for django before 1.9 (but after 1.5??)
@@ -112,6 +128,7 @@ class EntryAdmin(BaseEntityAdmin):
     #     newfieldsets.append(['Dynamic Fields', { 'fields': fields }])
 
     #     return newfieldsets
+
 
 @admin.register(models.Table)
 class TableAdmin(admin.ModelAdmin):
@@ -142,7 +159,11 @@ class TableAdmin(admin.ModelAdmin):
 
 class FilterJoinTableInline(admin.TabularInline):
     model = models.FilterJoinTable
-    fields = ("table", "fields", "join_field",)
+    fields = (
+        "table",
+        "fields",
+        "join_field",
+    )
     can_delete = False
     # can_add = False
     verbose_name_plural = "Join Tables"
@@ -151,20 +172,29 @@ class FilterJoinTableInline(admin.TabularInline):
 
 @admin.register(models.Filter)
 class FilterAdmin(admin.ModelAdmin):
-    list_display = ("primary_table", "get_primary_table_fields", "join_field", "get_join_tables")
+    list_display = (
+        "primary_table",
+        "get_primary_table_fields",
+        "join_field",
+        "get_join_tables",
+    )
     list_filter = ()
     search_fields = ()
     inlines = (FilterJoinTableInline,)
 
     def get_primary_table_fields(self, obj):
-        return ', '.join(obj.primary_table_fields.values_list('name', flat=True))
+        return ", ".join(
+            obj.primary_table_fields.values_list("name", flat=True)
+        )
 
     def get_join_tables(self, obj):
         tables = {}
         for table in obj.filter_join_tables.all():
-            tables[table.table.name] = ', '.join(table.fields.values_list('name', flat=True))
+            tables[table.table.name] = ", ".join(
+                table.fields.values_list("name", flat=True)
+            )
         pprint(tables)
-        return ', '.join(['{} ({})'.format(t, f) for t, f in tables.items()])
+        return ", ".join(["{} ({})".format(t, f) for t, f in tables.items()])
 
 
 @admin.register(models.CsvImport)

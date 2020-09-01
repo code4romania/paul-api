@@ -1,8 +1,15 @@
 from copy import deepcopy
 
 from django.contrib.admin.widgets import AdminSplitDateTime
-from django.forms import (BooleanField, CharField, ChoiceField, DateTimeField,
-                          FloatField, IntegerField, ModelForm)
+from django.forms import (
+    BooleanField,
+    CharField,
+    ChoiceField,
+    DateTimeField,
+    FloatField,
+    IntegerField,
+    ModelForm,
+)
 from django.utils.translation import ugettext_lazy as _
 
 from .validators import (
@@ -12,10 +19,11 @@ from .validators import (
     validate_date,
     validate_bool,
     validate_object,
-    validate_enum
+    validate_enum,
 )
 from datetime import datetime
 from pprint import pprint
+
 
 class BaseDynamicEntityForm(ModelForm):
     """
@@ -39,22 +47,23 @@ class BaseDynamicEntityForm(ModelForm):
     enum   ChoiceField
     =====  =============
     """
+
     FIELD_CLASSES = {
-        'text': CharField,
-        'float': FloatField,
-        'int': IntegerField,
-        'date': DateTimeField,
-        'bool': BooleanField,
-        'enum': ChoiceField,
+        "text": CharField,
+        "float": FloatField,
+        "int": IntegerField,
+        "date": DateTimeField,
+        "bool": BooleanField,
+        "enum": ChoiceField,
     }
 
     DATATYPE_VALIDATORS = {
-        'text':   validate_text,
-        'float':  validate_float,
-        'int':    validate_int,
-        'date':   validate_date,
-        'bool':   validate_bool,
-        'enum':   validate_enum,
+        "text": validate_text,
+        "float": validate_float,
+        "int": validate_int,
+        "date": validate_date,
+        "bool": validate_bool,
+        "enum": validate_enum,
     }
 
     def __init__(self, data=None, *args, **kwargs):
@@ -71,23 +80,22 @@ class BaseDynamicEntityForm(ModelForm):
             value = self.instance.data[attribute.name]
             datatype = attribute.field_type
             defaults = {
-                'label': attribute.name.capitalize(),
+                "label": attribute.name.capitalize(),
                 # 'required': False,
-                'required': attribute.required,
-                'help_text': attribute.help_text,
-                'validators': [self.DATATYPE_VALIDATORS[datatype]],
+                "required": attribute.required,
+                "help_text": attribute.help_text,
+                "validators": [self.DATATYPE_VALIDATORS[datatype]],
             }
 
-
-            if datatype == 'enum':
-                values = [(x,x) for x in attribute.choices]
-                choices = [('', '-----')] + values
-                defaults.update({'choices': choices})
+            if datatype == "enum":
+                values = [(x, x) for x in attribute.choices]
+                choices = [("", "-----")] + values
+                defaults.update({"choices": choices})
 
                 if value:
-                    defaults.update({'initial': value})
+                    defaults.update({"initial": value})
 
-            elif datatype == 'date':
+            elif datatype == "date":
                 value = datetime.fromisoformat(value)
                 # defaults.update({'widget': AdminSplitDateTime})
 
@@ -102,25 +110,27 @@ class BaseDynamicEntityForm(ModelForm):
         """
         Saves this ``form``'s cleaned_data into model instance
         """
-        print('SAVE inainte errors')
+        print("SAVE inainte errors")
         if self.errors:
-            raise ValueError(_(
-                'The %s could not be saved because the data'
-                'didn\'t validate.' % self.instance._meta.object_name
-            ))
+            raise ValueError(
+                _(
+                    "The %s could not be saved because the data"
+                    "didn't validate." % self.instance._meta.object_name
+                )
+            )
 
         # Create entity instance, don't save yet.
-        print('SAVE')
-        print('SAVE')
+        print("SAVE")
+        print("SAVE")
         instance = super(BaseDynamicEntityForm, self).save(commit=False)
-        print('SAVE')
-        print('SAVE')
-        print('SAVE')
-        print('SAVE')
+        print("SAVE")
+        print("SAVE")
+        print("SAVE")
+        print("SAVE")
         # Assign attributes.
         for attribute in instance.table.fields.all():
             value = self.cleaned_data.get(attribute.name)
-            print(attribute.name,value)
+            print(attribute.name, value)
 
             instance.data[attribute.name] = value
 

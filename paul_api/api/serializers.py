@@ -250,9 +250,7 @@ class TableSerializer(serializers.ModelSerializer):
         return self.context["request"].build_absolute_uri(reverse("table-entries-list", kwargs={"table_pk": obj.pk}))
 
 
-class DatabaseTableListSerializer(serializers.ModelSerializer):
-    owner = OwnerSerializer()
-    last_edit_user = OwnerSerializer()
+class DatabaseTableListDataSerializer(serializers.ModelSerializer):
 
     def get_entries(self, obj):
         return obj.entries.count()
@@ -263,14 +261,36 @@ class DatabaseTableListSerializer(serializers.ModelSerializer):
         model = models.Table
         # lookup_field = "slug"
         fields = [
-            "url",
-            "id",
+
             "name",
-            "active",
             "entries",
             "last_edit_date",
             "last_edit_user",
+        ]
+        # lookup_field = "slug"
+        extra_kwargs = {
+            # "url": {"lookup_field": "slug"},
+            # "owner": {"lookup_field": "username"},
+            # "last_edit_user": {"lookup_field": "username"},
+        }
+
+class DatabaseTableListSerializer(serializers.ModelSerializer):
+    owner = OwnerSerializer()
+    data = serializers.SerializerMethodField()
+
+    def get_data(self, obj):
+        serializer = DatabaseTableListDataSerializer(obj, context=self.context)
+        return serializer.data
+
+    class Meta:
+        model = models.Table
+        # lookup_field = "slug"
+        fields = [
+            "url",
+            "id",
+            "active",
             "owner",
+            "data"
         ]
         # lookup_field = "slug"
         extra_kwargs = {

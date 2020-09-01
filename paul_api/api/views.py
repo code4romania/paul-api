@@ -1,6 +1,9 @@
 from django.shortcuts import render
 from django.db.models import Q
 from django.contrib.auth.models import User
+from django.http import HttpResponse
+
+from wsgiref.util import FileWrapper
 
 from rest_framework import viewsets
 from rest_framework.pagination import PageNumberPagination
@@ -16,7 +19,7 @@ from django_filters import rest_framework as filters
 
 import csv
 from io import StringIO
-from datetime import datetime
+import os
 
 from . import serializers, models
 from .permissions import BaseModelPermissions
@@ -75,6 +78,7 @@ class TableViewSet(viewsets.ModelViewSet):
     filterset_fields = ["active"]
 
     def get_serializer_class(self):
+        print('self.action', self.action)
         if self.action == "list":
             return serializers.DatabaseTableListSerializer
         elif self.action in ["create", "update"]:
@@ -129,9 +133,7 @@ class TableViewSet(viewsets.ModelViewSet):
         fields = request.data.get("fields")
         csv_import = models.CsvImport.objects.get(pk=csv_import_pk)
         table = self.get_object()
-        errors_count = 0
-        imports_count = 0
-        errors = []
+
         table.csv_field_mapping.all().delete()
         for field in fields:
             csv_field_map = models.CsvFieldMap.objects.create(
@@ -152,65 +154,11 @@ class TableViewSet(viewsets.ModelViewSet):
             StringIO(csv_import.file.read().decode("utf-8")),
             delimiter=csv_import.delimiter,
         )
-        csv_field_mapping = {
-            x.original_name: x for x in table.csv_field_mapping.all()
-        }
-        table_fields = {x.name: x for x in table.fields.all()}
-        field_choices = {x.name: x.choices for x in table.fields.all()}
-        i = 0
-        for row in reader:
-            i += 1
-            if i > 10:
-                continue
-            entry_dict = {}
-            error_in_row = False
-            errors_in_row = {}
-            try:
-                for key, field in csv_field_mapping.items():
-                    field_name = utils.snake_case(field.field_name)
-                    try:
-                        if row[key]:
-                            if field.field_type == "int":
-                                entry_dict[field_name] = int(row[key])
-                            elif field.field_type == "float":
-                                entry_dict[field_name] = float(row[key])
-                            elif field.field_type == "date":
-                                value = datetime.strptime(
-                                    row[key], field.field_format
-                                )
-                                entry_dict[field_name] = value
-                            elif field.field_type == "enum":
-                                value = row[key]
-                                if not value in field_choices[field_name]:
-                                    field_choices[field_name].append(value)
-                                    table_fields[field_name].choices = list(
-                                        set(field_choices[field_name])
-                                    )
-                                    table_fields[field_name].save()
-                                entry_dict[field_name] = value
-                            else:
-                                entry_dict[field_name] = row[key]
-                        else:
-                            if table_fields[field_name].required:
-                                error_in_row = True
-                                errors_in_row[key] = "This field is required"
-                            entry_dict[field_name] = None
-                    except Exception as e:
-                        print(e)
-                        error_in_row = True
-                        errors_in_row[key] = e.__class__.__name__
-                if not error_in_row:
-                    models.Entry.objects.create(table=table, data=entry_dict)
-                    imports_count += 1
-                else:
-                    errors.append({"row": row, "errors": errors_in_row})
-                    errors_count += 1
-
-            except Exception as e:
-                print("=====", e)
-                errors_count += 1
-
-            print("errors: {} imports: {}".format(errors_count, imports_count))
+        errors, errors_count, imports_count = utils.import_csv(reader, table)
+        csv_import.errors = errors
+        csv_import.errors_count = errors_count
+        csv_import.imports_count = imports_count
+        csv_import.save()
         response = {
             "errors_count": errors_count,
             "imports_count": imports_count,
@@ -218,6 +166,35 @@ class TableViewSet(viewsets.ModelViewSet):
         }
         return Response(response)
 
+    @action(
+        detail=True,
+        methods=["put"],
+        name="CSV manual import view",
+        url_path="csv-manual-import"
+    )
+    def csv_manual_import(self, request, pk):
+        file = request.FILES["file"]
+        delimiter = request.POST.get("delimiter")
+        fields = []
+        table = self.get_object()
+
+        decoded_file = file.read().decode("utf-8").splitlines()
+        csv_import = models.CsvImport.objects.create(
+            table=table, file=file, delimiter=delimiter
+        )
+        reader = csv.DictReader(decoded_file, delimiter=delimiter)
+
+        errors, errors_count, imports_count = utils.import_csv(reader, table)
+        csv_import.errors = errors
+        csv_import.errors_count = errors_count
+        csv_import.imports_count = imports_count
+        csv_import.save()
+        response = {
+            "errors_count": errors_count,
+            "imports_count": imports_count,
+            "errors": errors,
+        }
+        return Response(response)
 
 class FilterViewSet(viewsets.ModelViewSet):
     queryset = models.Filter.objects.all()
@@ -426,3 +403,58 @@ class EntryViewSet(viewsets.ModelViewSet):
         return Response(
             serializer.data, status=status.HTTP_201_CREATED, headers=headers
         )
+
+
+class CsvImportViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = models.CsvImport.objects.all()
+    # permission_classes = (BaseModelPermissions,)
+
+    def get_serializer_class(self):
+        print('self.action', self.action)
+        if self.action == "list":
+            return serializers.CsvImportListSerializer
+        return serializers.CsvImportSerializer
+
+    @action(
+        detail=True,
+        methods=["get"],
+        name="Csv errors Export",
+        url_path="export-errors",
+    )
+    def export_errors(self, request, pk):
+        csv_import = self.get_object()
+
+        response = {
+            "fields": csv_import.errors
+        }
+        file_name = 'errors__' + csv_import.file.name.split('/')[-1]
+        with open('/tmp/{}'.format(file_name), 'w', encoding='utf-8-sig') as  csv_export_file:
+            writer = csv.DictWriter(csv_export_file, delimiter=';', quoting=csv.QUOTE_MINIMAL, fieldnames=csv_import.errors[0]['row'].keys())
+            writer.writeheader()
+            for row in csv_import.errors:
+                writer.writerow(row['row'])
+            
+        with open('/tmp/{}'.format(file_name), 'rb') as  csv_export_file:
+        # response = HttpResponse(FileWrapper(csv_export_file), content_type='application/vnd.ms-excel')
+            response = HttpResponse(csv_export_file.read(), content_type="application/vnd.ms-excel")
+            response['Content-Disposition'] = 'attachment; filename="{}"'.format(file_name)
+        os.remove('/tmp/{}'.format(file_name))
+        return response
+        # return Response(response)
+            
+    #         response['Content-Disposition'] = 'inline; filename=' + out_filename
+
+
+
+
+    #         with open('/tmp/{}'.format(out_filename), 'rb') as fh:
+    #         os.remove(in_filename)
+    #         os.remove('/tmp/{}'.format(out_filename))
+    #         return response
+
+    # return render(request, 'app/index.html', {})
+
+
+
+
+

@@ -199,6 +199,6 @@ class FilterAdmin(admin.ModelAdmin):
 
 @admin.register(models.CsvImport)
 class CsvImportAdmin(admin.ModelAdmin):
-    list_display = ("table", "file")
+    list_display = ("table", "file", "imports_count", "errors_count", "errors")
     list_filter = ()
     search_fields = ("table__name",)

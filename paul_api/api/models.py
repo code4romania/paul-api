@@ -168,9 +168,9 @@ class CsvImport(models.Model):
         "Table", related_name="csv_imports", on_delete=models.CASCADE
     )
 
-    success = models.IntegerField(default=0)
-    errors = models.IntegerField(default=0)
-    imported = models.BooleanField(default=False)
+    errors = models.JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)
+    errors_count = models.IntegerField(default=0)
+    imports_count = models.IntegerField(default=0)
     date_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:

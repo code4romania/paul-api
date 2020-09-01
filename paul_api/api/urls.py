@@ -17,6 +17,7 @@ router.register(r"users", views.UserViewSet)
 router.register(r"databases", views.DatabaseViewSet)
 router.register(r"filters", views.FilterViewSet)
 router.register(r"tables", views.TableViewSet)
+router.register(r"csv-imports", views.CsvImportViewSet)
 
 tables_router = routers.NestedSimpleRouter(router, "tables", lookup="table")
 tables_router.register("entries", views.EntryViewSet, basename="table-entries")

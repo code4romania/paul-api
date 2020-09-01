@@ -454,3 +454,17 @@ class FilterDetailSerializer(serializers.ModelSerializer):
         return self.context["request"].build_absolute_uri(
             reverse("filter-entries", kwargs={"pk": obj.pk})
         )
+
+
+class CsvImportListSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = models.CsvImport
+        fields = ["url","table", "id", "file", "errors_count", "imports_count"]
+
+
+class CsvImportSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = models.CsvImport
+        fields = ["url","table", "id", "file", "errors_count", "imports_count", "errors"]

@@ -43,6 +43,7 @@ class DatabaseViewSet(viewsets.ModelViewSet):
 
 class EntriesPagination(PageNumberPagination):
     page_size = 10
+    page_size_query_param = 'perPage'
 
 
 class CanView(permissions.BasePermission):

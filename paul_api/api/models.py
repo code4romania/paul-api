@@ -23,12 +23,16 @@ class Userprofile(models.Model):
     """
     Description: Model Description
     """
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="userprofile")
+
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="userprofile"
+    )
     token = models.UUIDField(default=uuid.uuid4)
-    avatar = models.ImageField(upload_to='avatars', null=True, blank=True)
+    avatar = models.ImageField(upload_to="avatars", null=True, blank=True)
 
     class Meta:
         pass
+
 
 class Database(models.Model):
     """
@@ -66,7 +70,9 @@ class Table(models.Model):
 
     name = models.CharField(max_length=100)
     slug = models.SlugField(max_length=50, null=True, blank=True)
-    database = models.ForeignKey("Database", on_delete=models.CASCADE, related_name="tables")
+    database = models.ForeignKey(
+        "Database", on_delete=models.CASCADE, related_name="tables"
+    )
     active = models.BooleanField(default=False)
 
     date_created = models.DateTimeField(auto_now_add=True)
@@ -74,9 +80,12 @@ class Table(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
     last_edit_date = models.DateTimeField(null=True, blank=True)
     last_edit_user = models.ForeignKey(
-        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="last_table_edits",
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="last_table_edits",
     )
-
 
     class Meta:
         permissions = (
@@ -84,7 +93,7 @@ class Table(models.Model):
             ("change", "View"),
             ("delete", "View"),
         )
-        unique_together = ['name', 'database']
+        unique_together = ["name", "database"]
 
     def __str__(self):
         return self.name
@@ -103,13 +112,18 @@ class TableColumn(models.Model):
     """
     Description: Model Description
     """
-    table = models.ForeignKey("Table", on_delete=models.CASCADE, related_name="fields")
+
+    table = models.ForeignKey(
+        "Table", on_delete=models.CASCADE, related_name="fields"
+    )
     name = models.CharField(max_length=50)
     display_name = models.CharField(max_length=50, null=True, blank=True)
     slug = models.SlugField(max_length=50, null=True, blank=True)
     field_type = models.CharField(max_length=20, choices=datatypes)
     help_text = models.CharField(max_length=255, null=True, blank=True)
-    choices = ArrayField(models.CharField(max_length=100), null=True, blank=True)
+    choices = ArrayField(
+        models.CharField(max_length=100), null=True, blank=True
+    )
     required = models.BooleanField(default=False)
     unique = models.BooleanField(default=False)
 
@@ -128,11 +142,16 @@ class CsvFieldMap(models.Model):
     """
     Description: Model Description
     """
-    table = models.ForeignKey('Table', on_delete=models.CASCADE, related_name='csv_field_mapping')
+
+    table = models.ForeignKey(
+        "Table", on_delete=models.CASCADE, related_name="csv_field_mapping"
+    )
     original_name = models.CharField(max_length=100)
     field_name = models.CharField(max_length=100)
-    field_type = models.CharField(max_length=20, choices=datatypes, default=datatypes[0])
-    field_format  = models.CharField(max_length=20, null=True, blank=True)
+    field_type = models.CharField(
+        max_length=20, choices=datatypes, default=datatypes[0]
+    )
+    field_format = models.CharField(max_length=20, null=True, blank=True)
 
     class Meta:
         pass
@@ -142,9 +161,12 @@ class CsvImport(models.Model):
     """
     Description: Model Description
     """
-    file = models.FileField(upload_to='csvs/')
+
+    file = models.FileField(upload_to="csvs/")
     delimiter = models.CharField(max_length=2, null=True, blank=True)
-    table = models.ForeignKey('Table', related_name='csv_imports', on_delete=models.CASCADE)
+    table = models.ForeignKey(
+        "Table", related_name="csv_imports", on_delete=models.CASCADE
+    )
 
     success = models.IntegerField(default=0)
     errors = models.IntegerField(default=0)
@@ -160,7 +182,9 @@ class Entry(models.Model):
     Description: Model Description
     """
 
-    table = models.ForeignKey("Table", on_delete=models.CASCADE, related_name="entries")
+    table = models.ForeignKey(
+        "Table", on_delete=models.CASCADE, related_name="entries"
+    )
     data = models.JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)
     date_created = models.DateTimeField(auto_now_add=True)
 
@@ -177,24 +201,32 @@ class Entry(models.Model):
         for field, field_obj in fields.items():
             value = self.data.get(field, None)
             if field_obj.required:
-                if not value or value == '':
+                if not value or value == "":
                     # raise ValidationError({
                     #     field: 'This field is required'
                     #     })
-                    raise ValidationError('{} field is required'.format(field))
-            if field_obj.field_type == 'enum':
-                if value not in  field_obj.choices:
-                    raise ValidationError('{} field value must be one of: {}'.format(field, ', '.join(field_obj.choices)))
-
+                    raise ValidationError("{} field is required".format(field))
+            if field_obj.field_type == "enum":
+                if value not in field_obj.choices:
+                    raise ValidationError(
+                        "{} field value must be one of: {}".format(
+                            field, ", ".join(field_obj.choices)
+                        )
+                    )
 
 
 class FilterJoinTable(models.Model):
     """
     Description: Model Description
     """
-    filter = models.ForeignKey('Filter', on_delete=models.CASCADE, related_name="filter_join_tables")
+
+    filter = models.ForeignKey(
+        "Filter", on_delete=models.CASCADE, related_name="filter_join_tables"
+    )
     table = models.ForeignKey(Table, on_delete=models.CASCADE)
-    fields = models.ManyToManyField(TableColumn, related_name="filter_join_table_fields")
+    fields = models.ManyToManyField(
+        TableColumn, related_name="filter_join_table_fields"
+    )
     join_field = models.ForeignKey(TableColumn, on_delete=models.CASCADE)
 
     class Meta:
@@ -205,21 +237,31 @@ class Filter(models.Model):
     """
     Description: Model Description
     """
+
     name = models.CharField(max_length=50)
     slug = models.SlugField(max_length=50, null=True, blank=True)
     primary_table = models.ForeignKey(Table, on_delete=models.CASCADE)
-    primary_table_fields = models.ManyToManyField(TableColumn, related_name="filter_primary_table_field")
-    join_field = models.ForeignKey(TableColumn, on_delete=models.CASCADE, related_name="filter_primary_table_join_field")
+    primary_table_fields = models.ManyToManyField(
+        TableColumn, related_name="filter_primary_table_field"
+    )
+    join_field = models.ForeignKey(
+        TableColumn,
+        on_delete=models.CASCADE,
+        related_name="filter_primary_table_join_field",
+    )
     join_tables = models.ManyToManyField(
-        Table,
-        through=FilterJoinTable,
-        related_name="filter_join_table")
+        Table, through=FilterJoinTable, related_name="filter_join_table"
+    )
     creation_date = models.DateTimeField(auto_now_add=True, null=True)
 
     owner = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     last_edit_date = models.DateTimeField(null=True, blank=True)
     last_edit_user = models.ForeignKey(
-        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="last_filter_edits",
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="last_filter_edits",
     )
 
     class Meta:

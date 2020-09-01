@@ -6,17 +6,17 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0003_auto_20200827_0429'),
+        ("api", "0003_auto_20200827_0429"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='csvimport',
-            name='field_mapping',
+            model_name="csvimport",
+            name="field_mapping",
         ),
         migrations.AddField(
-            model_name='table',
-            name='csv_field_mapping',
-            field=models.ManyToManyField(to='api.CsvFiledMap'),
+            model_name="table",
+            name="csv_field_mapping",
+            field=models.ManyToManyField(to="api.CsvFiledMap"),
         ),
     ]

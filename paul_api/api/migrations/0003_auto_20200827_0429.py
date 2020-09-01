@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0002_auto_20200827_0422'),
+        ("api", "0002_auto_20200827_0422"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='csvimport',
-            name='file',
-            field=models.FileField(upload_to=''),
+            model_name="csvimport",
+            name="file",
+            field=models.FileField(upload_to=""),
         ),
     ]

@@ -3,8 +3,6 @@ from django.db.models import Q
 from django.contrib.auth.models import User
 from django.http import HttpResponse
 
-from wsgiref.util import FileWrapper
-
 from rest_framework import viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action, permission_classes
@@ -16,6 +14,8 @@ from rest_framework_guardian.filters import ObjectPermissionsFilter
 
 from rest_framework import filters as drf_filters
 from django_filters import rest_framework as filters
+
+from silk.profiling.profiler import silk_profile
 
 import csv
 from io import StringIO
@@ -46,7 +46,7 @@ class DatabaseViewSet(viewsets.ModelViewSet):
 class EntriesPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = "perPage"
-    max_page_size = 200
+    max_page_size = 1000
 
 
 class CanView(permissions.BasePermission):
@@ -191,17 +191,17 @@ class TableViewSet(viewsets.ModelViewSet):
         csv_import.imports_count = imports_count
         csv_import.save()
         response = {
+            "import_id": csv_import.pk,
             "errors_count": errors_count,
             "imports_count": imports_count,
             "errors": errors,
-            "import_id": csv_import.pk,
         }
         return Response(response)
 
 
     @action(
         detail=True,
-        methods=["post"],
+        methods=["get"],
         name="CSV Export",
         url_path="csv-export",
     )
@@ -209,35 +209,33 @@ class TableViewSet(viewsets.ModelViewSet):
         table = self.get_object()
         table_fields = {x.name: x for x in table.fields.all()}
 
+        
         filter_dict = {}
-        for key, value in request.data.get('filter', {}).items():
-            filter_dict['data__{}'.format(key)] = value
-        # pprint(request.GET)
-        # for key in request.GET:
-        #     if key and key.split("__")[0] in table_fields.keys():
-        #         value = request.GET.getlist(key)
-        #         if len(value) == 1:
-        #             value = value[0]
-        #         print(key, value)
-        #         if table_fields[key.split("__")[0]].field_type in [
-        #             "float",
-        #             "int",
-        #         ]:
-        #             filter_dict["data__{}".format(key)] = float(value)
-        #         else:
-        #             filter_dict["data__{}".format(key)] = value
+        for key in request.GET:
+            if key and key.split("__")[0] in table_fields.keys():
+                value = request.GET.getlist(key)
+                if len(value) == 1:
+                    value = value[0]
+                else:
+                    key = key + '__in'
+
+                if table_fields[key.split("__")[0]].field_type in [
+                    "float",
+                    "int",
+                ]:
+                    filter_dict["data__{}".format(key)] = float(value)
+                else:
+                    filter_dict["data__{}".format(key)] = value
 
 
         file_name = '{}__{}.csv'.format(table.name, datetime.now().strftime('%d.%m.%Y'))
         with open('/tmp/{}'.format(file_name), 'w', encoding='utf-8-sig') as  csv_export_file:
             writer = csv.DictWriter(csv_export_file, delimiter=';', quoting=csv.QUOTE_MINIMAL, fieldnames=table.fields.values_list('name', flat=True))
             writer.writeheader()
-            pprint(filter_dict)
             for row in table.entries.filter(**filter_dict):
                 writer.writerow(row.data)
 
         with open('/tmp/{}'.format(file_name), 'rb') as  csv_export_file:
-        # response = HttpResponse(FileWrapper(csv_export_file), content_type='application/vnd.ms-excel')
             response = HttpResponse(csv_export_file.read(), content_type="application/vnd.ms-excel")
             response['Content-Disposition'] = 'attachment; filename="{}"'.format(file_name)
         os.remove('/tmp/{}'.format(file_name))
@@ -264,6 +262,7 @@ class FilterViewSet(viewsets.ModelViewSet):
         str_fields = request.GET.get("fields", "") if request else None
 
         fields = str_fields.split(",") if str_fields else None
+
         primary_table_fields = [
             "data__{}".format(x)
             for x in obj.primary_table_fields.values_list(
@@ -275,6 +274,7 @@ class FilterViewSet(viewsets.ModelViewSet):
         secondary_table = obj.filter_join_tables.all()[0]
         secondary_table_name = secondary_table.table.slug
         secondary_table_join_field = secondary_table.join_field.name
+        primary_table_values = {x.data[obj.join_field.name]: {'data__' + key: value for key, value in x.data.items()} for x in models.Entry.objects.filter(table=primary_table).exclude(data=None)}
 
         join_tables_fileds = [
             "data__{}".format(x)
@@ -324,17 +324,21 @@ class FilterViewSet(viewsets.ModelViewSet):
             for entry in page:
                 final_entry = {}
                 final_entry_primary_table_values = {}
-                entry_primary_table_values = (
-                    models.Entry.objects.filter(table=primary_table)
-                    .filter(
-                        **{
-                            "data__{}".format(obj.join_field.name): entry[
+
+                entry_primary_table_values = primary_table_values[entry[
                                 "data__{}".format(secondary_table_join_field)
-                            ]
-                        }
-                    )
-                    .values(*primary_table_fields)[0]
-                )
+                            ]]
+                # entry_primary_table_values = (
+                #     models.Entry.objects.filter(table=primary_table)
+                #     .filter(
+                #         **{
+                #             "data__{}".format(obj.join_field.name): entry[
+                #                 "data__{}".format(secondary_table_join_field)
+                #             ]
+                #         }
+                #     )
+                #     .values(*primary_table_fields)[0]
+                # )
 
                 for key in entry:
                     final_entry[
@@ -371,7 +375,7 @@ class EntryViewSet(viewsets.ModelViewSet):
     def list(self, request, table_pk):
         table = models.Table.objects.get(pk=table_pk)
         str_fields = request.GET.get("fields", "") if request else None
-
+        print('aici')
         fields = str_fields.split(",") if str_fields else None
         table_fields = {x.name: x for x in table.fields.all()}
 
@@ -381,13 +385,13 @@ class EntryViewSet(viewsets.ModelViewSet):
         filter_dict = {}
         for key in request.GET:
             if key and key.split("__")[0] in table_fields.keys():
-                value = request.GET.get(key)
+                value = request.GET.getlist(key)
+                if len(value) == 1:
+                    value = value[0]
+                else:
+                    key = key + '__in'
 
-                if table_fields[key.split("__")[0]].field_type == "bool":
-                    filter_dict["data__{}".format(key)] = (
-                        True if value == "1" else False
-                    )
-                elif table_fields[key.split("__")[0]].field_type in [
+                if table_fields[key.split("__")[0]].field_type in [
                     "float",
                     "int",
                 ]:
@@ -404,6 +408,7 @@ class EntryViewSet(viewsets.ModelViewSet):
                 many=True,
                 context={"fields": fields, "table": table, "request": request},
             )
+
             return self.get_paginated_response(serializer.data)
         serializer = serializers.EntrySerializer(queryset, many=True)
         return Response(serializer.data)

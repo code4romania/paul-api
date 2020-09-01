@@ -72,7 +72,7 @@ class MyFilterBackend(filters.DjangoFilterBackend):
 
 
 class TableViewSet(viewsets.ModelViewSet):
-    queryset = models.Table.objects.all()
+    queryset = models.Table.objects.all().prefetch_related('fields').select_related('database')
     pagination_class = EntriesPagination
     permission_classes = (BaseModelPermissions, )
     filter_backends = [ObjectPermissionsFilter, filters.DjangoFilterBackend]

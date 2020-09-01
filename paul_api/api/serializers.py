@@ -264,10 +264,10 @@ class TableSerializer(serializers.ModelSerializer):
 
 
 class DatabaseTableListDataSerializer(serializers.ModelSerializer):
+    entries = serializers.SerializerMethodField()
+
     def get_entries(self, obj):
         return obj.entries.count()
-
-    entries = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Table

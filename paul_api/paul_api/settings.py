@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "crispy_forms",
+    "silk"
 ]
 
 MIDDLEWARE = [
@@ -66,6 +67,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # "api.middlewares.SqlPrintMiddleware",
+    "silk.middleware.SilkyMiddleware"
 ]
 
 ROOT_URLCONF = "paul_api.urls"
@@ -163,3 +166,8 @@ env("CORS_ALLOWED_ORIGINS")
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS")
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
+
+# SILKY_PYTHON_PROFILER = True
+# SILKY_PYTHON_PROFILER_BINARY = True
+SILKY_AUTHENTICATION = True  # User must login
+SILKY_AUTHORISATION = True  # User must have permissions

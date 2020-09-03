@@ -273,7 +273,7 @@ class FilterViewSet(viewsets.ModelViewSet):
         secondary_table = obj.filter_join_tables.all()[0]
         secondary_table_name = secondary_table.table.slug
         secondary_table_join_field = secondary_table.join_field.name
-        primary_table_values = {x.data[obj.join_field.name]: {'data__' + key: value for key, value in x.data.items()} for x in models.Entry.objects.filter(table=primary_table).exclude(data=None)}
+        
 
         join_tables_fileds = [
             "data__{}".format(x)
@@ -320,6 +320,11 @@ class FilterViewSet(viewsets.ModelViewSet):
 
         if page is not None:
             final_page = []
+            page_join_values = [x['data__{}'.format(secondary_table_join_field)] for x in page]
+            q_primary_table_page = {"data__{}__in".format(obj.join_field.name): page_join_values}
+
+            primary_table_values = {x.data[obj.join_field.name]: {'data__' + key: value for key, value in x.data.items()} for x in models.Entry.objects.filter(table=primary_table).filter(**q_primary_table_page).exclude(data=None)}
+
             for entry in page:
                 final_entry = {}
                 final_entry_primary_table_values = {}
@@ -327,17 +332,6 @@ class FilterViewSet(viewsets.ModelViewSet):
                 entry_primary_table_values = primary_table_values[entry[
                                 "data__{}".format(secondary_table_join_field)
                             ]]
-                # entry_primary_table_values = (
-                #     models.Entry.objects.filter(table=primary_table)
-                #     .filter(
-                #         **{
-                #             "data__{}".format(obj.join_field.name): entry[
-                #                 "data__{}".format(secondary_table_join_field)
-                #             ]
-                #         }
-                #     )
-                #     .values(*primary_table_fields)[0]
-                # )
 
                 for key in entry:
                     final_entry[

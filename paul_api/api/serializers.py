@@ -498,6 +498,7 @@ class FilterDetailSerializer(serializers.ModelSerializer):
         fields = [
             "url",
             "name",
+            "entries",
             "owner",
             "last_edit_user",
             "last_edit_date",
@@ -505,7 +506,6 @@ class FilterDetailSerializer(serializers.ModelSerializer):
             "primary_table_fields",
             "join_field",
             "filter_join_tables",
-            "entries",
         ]
 
     def get_primary_table_fields(self, obj):

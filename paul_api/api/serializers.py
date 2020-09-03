@@ -244,8 +244,10 @@ class TableSerializer(serializers.ModelSerializer):
         fields = [
             "url",
             "id",
-            "database",
             "name",
+            "entries",
+            "entries_count",
+            "database",
             "slug",
             "owner",
             "last_edit_user",
@@ -253,8 +255,6 @@ class TableSerializer(serializers.ModelSerializer):
             "date_created",
             "active",
             "fields",
-            "entries",
-            "entries_count",
         ]
 
     def get_entries(self, obj):

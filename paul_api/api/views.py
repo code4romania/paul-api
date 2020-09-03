@@ -79,7 +79,6 @@ class TableViewSet(viewsets.ModelViewSet):
     filterset_fields = ["active"]
 
     def get_serializer_class(self):
-        print('self.action', self.action)
         if self.action == "list":
             return serializers.DatabaseTableListSerializer
         elif self.action in ["create", "update"]:
@@ -302,7 +301,7 @@ class FilterViewSet(viewsets.ModelViewSet):
                     ): join_values
                 }
             )
-            .values(*join_tables_fileds)
+            .values(*join_tables_fileds).order_by('data__{}'.format(secondary_table_join_field))
         )
 
         queryset = result_values
@@ -375,12 +374,14 @@ class EntryViewSet(viewsets.ModelViewSet):
     def list(self, request, table_pk):
         table = models.Table.objects.get(pk=table_pk)
         str_fields = request.GET.get("fields", "") if request else None
-        print('aici')
-        fields = str_fields.split(",") if str_fields else None
         table_fields = {x.name: x for x in table.fields.all()}
 
-        if not fields:
-            fields = [x for x in table_fields.keys()][:4]
+        if str_fields == 'ALL':
+            fields = [x for x in table_fields.keys()]
+        else:
+            fields = str_fields.split(",") if str_fields else None
+            if not fields:
+                fields = [x for x in table_fields.keys()][:7]
 
         filter_dict = {}
         for key in request.GET:
@@ -463,7 +464,6 @@ class CsvImportViewSet(viewsets.ReadOnlyModelViewSet):
     # permission_classes = (BaseModelPermissions,)
 
     def get_serializer_class(self):
-        print('self.action', self.action)
         if self.action == "list":
             return serializers.CsvImportListSerializer
         return serializers.CsvImportSerializer
@@ -490,9 +490,3 @@ class CsvImportViewSet(viewsets.ReadOnlyModelViewSet):
             response['Content-Disposition'] = 'attachment; filename="{}"'.format(file_name)
         os.remove('/tmp/{}'.format(file_name))
         return response
-
-
-
-
-
-

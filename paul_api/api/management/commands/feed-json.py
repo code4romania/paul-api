@@ -77,7 +77,7 @@ class Command(BaseCommand):
 
         for table in models.Table.objects.all():
             print("Deleting all columns from table", table)
-            print(table.fields.all().delete())
+            # print(table.fields.all().delete())
             print("Deleting all entries from table", table)
             print(table.entries.all().delete())
         for table_name, fields in tables_map.items():

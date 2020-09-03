@@ -424,11 +424,14 @@ class FilterEntrySerializer(serializers.Serializer):
                 except:
                     pass
 
-
-class FilterListSerializer(serializers.ModelSerializer):
-    owner = OwnerSerializer()
-    last_edit_user = OwnerSerializer()
+class FilterListDataSerializer(serializers.ModelSerializer):
     tables = serializers.SerializerMethodField()
+    show_in_dashboard = serializers.SerializerMethodField()
+    owner = OwnerSerializer()
+
+    def get_show_in_dashboard(self, obj):
+        userprofile = self.context['request'].user.userprofile
+        return obj in userprofile.dashboard_filters.all()
 
     def get_tables(self, obj):
         tables = [obj.primary_table.name] + list(
@@ -439,14 +442,27 @@ class FilterListSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Filter
         fields = [
-            "url",
-            "id",
             "name",
+            "creation_date",
             "tables",
             "owner",
-            "last_edit_user",
-            "last_edit_date",
-            "creation_date",
+            "show_in_dashboard"
+        ]
+
+
+class FilterListSerializer(serializers.ModelSerializer):
+    data = serializers.SerializerMethodField()
+
+    def get_data(self, obj):
+        serializer = FilterListDataSerializer(obj, context=self.context)
+        return serializer.data
+
+    class Meta:
+        model = models.Filter
+        fields = [
+            "url",
+            "id",
+            "data"
         ]
 
 

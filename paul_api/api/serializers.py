@@ -8,6 +8,8 @@ from rest_framework import serializers
 from rest_framework_guardian.serializers import ObjectPermissionsAssignmentMixin
 
 from . import models
+
+from datetime import datetime
 from pprint import pprint
 
 datatypes = {
@@ -332,11 +334,9 @@ class EntryDataSerializer(serializers.ModelSerializer):
                 )
 
 
-
 class EntrySerializer(serializers.ModelSerializer):
     url = serializers.SerializerMethodField()
     data = serializers.SerializerMethodField()
-    # data = EntryDataSerializer()
 
     class Meta:
         model = models.Entry
@@ -345,18 +345,42 @@ class EntrySerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         table = self.context.get('table')
         table_fields = {field.name: field for field in table.fields.all()}
+        errors = {}
 
         unknown =  set(self.initial_data) - set(self.fields) - set(table_fields.keys())
+
         if unknown:
-            raise serializers.ValidationError("Unknown field(s): {}".format(", ".join(unknown)))
+            errors['non_field_errors'] = "Unknown field(s): {}".format(", ".join(unknown))
 
         for field_name, field_value in self.initial_data.items():
-            print(field_name, field_value)
+            field = table_fields[field_name]
+            print(field_name, field_value, field.field_type)
 
+            if field.field_type == 'int':
+                try:
+                    int(field_value)
+                except:
+                    errors[field_name] = "Integer is not valid"
+            elif field.field_type == 'float':
+                try:
+                    float(field_value)
+                except:
+                    errors[field_name] = "Float is not valid"
+            elif field.field_type == 'date':
+                try:
+                    datetime.strptime(field_value, "%Y-%m-%dT%H:%M:%S%z")
+                except:
+                    errors[field_name] = "Invalid date format"
+            elif field.field_type == 'enum':
+                if field_value not in field.choices:
+                    errors[field_name] = "{} is not a valid choice({})".format(field_value, ','.join(field.choices))
+
+        if errors:
+            raise serializers.ValidationError(errors)
         return attrs
 
     def get_data(self, obj):
-        serializer = EntryDataSerializer(obj, context= self.context)
+        serializer = EntryDataSerializer(obj, context=self.context)
         return serializer.data
 
     def __init__(self, *args, **kwargs):
@@ -366,7 +390,6 @@ class EntrySerializer(serializers.ModelSerializer):
         super(EntrySerializer, self).__init__(*args, **kwargs)
 
         self.fields["data"].context.update({"table": table, "fields": fields})
-
 
     def create(self, validated_data):
         validated_data['data'] = self.initial_data

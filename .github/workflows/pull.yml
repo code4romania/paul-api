@@ -12,4 +12,4 @@ jobs:
         host: ${{ secrets.DEV_SERVER_IP }}
         username: ${{ secrets.DEV_SERVER_SSH_USERNAME }}
         key: ${{ secrets.DEV_SERVER_SSH_KEY }}
-        script: "./root/paul-api/deploy/pull.sh"
+        script: "/root/paul-api/deploy/pull.sh"

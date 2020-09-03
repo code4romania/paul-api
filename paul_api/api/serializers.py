@@ -308,6 +308,7 @@ class DatabaseSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class EntryDataSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = models.Entry
         fields = []
@@ -315,10 +316,12 @@ class EntryDataSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         fields = kwargs.get("context", {}).get("fields")
         table = kwargs.get("context", {}).get("table")
+
         if table:
             table_fields = {field.name: field for field in table.fields.all()}
 
         super(EntryDataSerializer, self).__init__(*args, **kwargs)
+
         if fields is not None:
             for field_name in fields:
                 MappedField = DATATYPE_SERIALIZERS[
@@ -329,16 +332,31 @@ class EntryDataSerializer(serializers.ModelSerializer):
                 )
 
 
+
 class EntrySerializer(serializers.ModelSerializer):
     url = serializers.SerializerMethodField()
     data = serializers.SerializerMethodField()
+    # data = EntryDataSerializer()
 
     class Meta:
         model = models.Entry
         fields = ["url", "id", "date_created", "data"]
 
+    def validate(self, attrs):
+        table = self.context.get('table')
+        table_fields = {field.name: field for field in table.fields.all()}
+
+        unknown =  set(self.initial_data) - set(self.fields) - set(table_fields.keys())
+        if unknown:
+            raise serializers.ValidationError("Unknown field(s): {}".format(", ".join(unknown)))
+
+        for field_name, field_value in self.initial_data.items():
+            print(field_name, field_value)
+
+        return attrs
+
     def get_data(self, obj):
-        serializer = EntryDataSerializer(obj, context=self.context)
+        serializer = EntryDataSerializer(obj, context= self.context)
         return serializer.data
 
     def __init__(self, *args, **kwargs):
@@ -349,9 +367,16 @@ class EntrySerializer(serializers.ModelSerializer):
 
         self.fields["data"].context.update({"table": table, "fields": fields})
 
+
     def create(self, validated_data):
+        validated_data['data'] = self.initial_data
         validated_data["table"] = self.context["table"]
         return models.Entry.objects.create(**validated_data)
+
+    def update(self, instance, validated_data, *args, **kwargs):
+        instance.data = self.initial_data
+        instance.save()
+        return instance
 
     def get_url(self, obj):
         return self.context["request"].build_absolute_uri(

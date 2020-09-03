@@ -431,6 +431,7 @@ class EntryViewSet(viewsets.ModelViewSet):
         object = self.get_object()
 
         fields = table.fields.values_list("name", flat=True).order_by("name")
+
         serializer = serializers.EntrySerializer(
             object,
             data=request.data,
@@ -450,7 +451,7 @@ class EntryViewSet(viewsets.ModelViewSet):
             data=data,
             context={"fields": fields, "table": table, "request": request},
         )
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid()
 
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)

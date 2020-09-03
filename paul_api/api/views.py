@@ -396,6 +396,7 @@ class EntryViewSet(viewsets.ModelViewSet):
                 else:
                     key = key + '__in'
 
+
                 if table_fields[key.split("__")[0]].field_type in [
                     "float",
                     "int",

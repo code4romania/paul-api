@@ -240,6 +240,7 @@ class TableSerializer(serializers.ModelSerializer):
     last_edit_user = UserSerializer(read_only=True)
     fields = TableColumnSerializer(many=True)
     entries = serializers.SerializerMethodField()
+    default_fields = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Table
@@ -256,8 +257,12 @@ class TableSerializer(serializers.ModelSerializer):
             "last_edit_date",
             "date_created",
             "active",
+            "default_fields",
             "fields",
         ]
+
+    def get_default_fields(self, obj):
+        return [x for x in obj.fields.values_list('name', flat=True).order_by('id')][:7]
 
     def get_entries(self, obj):
         return self.context["request"].build_absolute_uri(

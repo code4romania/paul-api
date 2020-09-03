@@ -8,7 +8,7 @@ from pprint import pprint
 
 class UserprofileAdmin(admin.TabularInline):
     model = models.Userprofile
-    fields = ("avatar", "token")
+    fields = ("avatar", "token", "dashboard_filters")
     readonly_field = ("token",)
     can_delete = False
     can_add = False

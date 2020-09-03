@@ -40,7 +40,9 @@ class Command(BaseCommand):
         admin.is_superuser = True
         admin.groups.add(admin_group)
         admin.save()
-
+        profile = models.Userprofile(user=admin)
+        profile.save()
+        return 
         tables = {}
         tables_map = {
             "Utilizatori": {

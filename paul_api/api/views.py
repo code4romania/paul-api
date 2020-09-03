@@ -378,7 +378,7 @@ class EntryViewSet(viewsets.ModelViewSet):
     def list(self, request, table_pk):
         table = models.Table.objects.get(pk=table_pk)
         str_fields = request.GET.get("__fields", "") if request else None
-        table_fields = {x.name: x for x in table.fields.all()}
+        table_fields = {x.name: x for x in table.fields.all().order_by('id')}
 
         if str_fields == 'ALL':
             fields = [x for x in table_fields.keys()]

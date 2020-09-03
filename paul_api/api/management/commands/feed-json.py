@@ -42,7 +42,7 @@ class Command(BaseCommand):
         admin.save()
         profile = models.Userprofile(user=admin)
         profile.save()
-        return 
+
         tables = {}
         tables_map = {
             "Utilizatori": {

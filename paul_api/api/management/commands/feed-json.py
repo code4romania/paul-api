@@ -40,8 +40,11 @@ class Command(BaseCommand):
         admin.is_superuser = True
         admin.groups.add(admin_group)
         admin.save()
-        profile = models.Userprofile(user=admin)
-        profile.save()
+        try:
+            print(admin.userprofile)
+        except:
+            profile = models.Userprofile(user=admin)
+            profile.save()
 
         tables = {}
         tables_map = {

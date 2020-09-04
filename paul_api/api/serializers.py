@@ -10,6 +10,8 @@ from rest_framework_guardian.serializers import ObjectPermissionsAssignmentMixin
 from . import models
 
 from datetime import datetime
+from dateutil.parser import isoparse
+
 from pprint import pprint
 
 datatypes = {
@@ -339,6 +341,7 @@ class EntryDataSerializer(serializers.ModelSerializer):
                 )
 
 
+
 class EntrySerializer(serializers.ModelSerializer):
     url = serializers.SerializerMethodField()
     data = serializers.SerializerMethodField()
@@ -373,8 +376,10 @@ class EntrySerializer(serializers.ModelSerializer):
                     errors[field_name] = "Float is not valid"
             elif field.field_type == 'date':
                 try:
-                    datetime.strptime(field_value, "%Y-%m-%dT%H:%M:%S%z")
-                except:
+                    # datetime.strptime(field_value, "%Y-%m-%dT%H:%M:%S%z")
+                    isoparse(field_value)
+                except Exception as e:
+                    print(e)
                     errors[field_name] = "Invalid date format"
             elif field.field_type == 'enum':
                 if field_value not in field.choices:

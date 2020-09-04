@@ -378,6 +378,7 @@ class EntryViewSet(viewsets.ModelViewSet):
     def list(self, request, table_pk):
         table = models.Table.objects.get(pk=table_pk)
         str_fields = request.GET.get("__fields", "") if request else None
+        str_order = request.GET.get("__order", "") if request else None
         table_fields = {x.name: x for x in table.fields.all().order_by('id')}
 
         if str_fields == 'ALL':
@@ -405,7 +406,13 @@ class EntryViewSet(viewsets.ModelViewSet):
                 else:
                     filter_dict["data__{}".format(key)] = value
 
-        queryset = table.entries.filter(**filter_dict)
+        if str_order and str_order.replace('-', '') in fields:
+            if str_order.startswith('-'):
+                queryset = table.entries.filter(**filter_dict).order_by('-data__{}'.format(str_order[1:]))
+            else:
+                queryset = table.entries.filter(**filter_dict).order_by('data__{}'.format(str_order))
+        else:
+            queryset = table.entries.filter(**filter_dict)
         page = self.paginate_queryset(queryset)
 
         if page is not None:

@@ -213,15 +213,17 @@ class TableCreateSerializer(
                     entry.save()
             # Create or update fields
             for field in validated_data.pop("fields"):
+                pprint(field)
                 if "id" in field.keys():
                     field_obj = models.TableColumn.objects.get(pk=field["id"])
                     old_name = field_obj.name
                     new_name = field["name"]
-                    if old_name != new_name:
-                        for entry in instance.entries.all():
-                            entry.data[new_name] = entry.data[old_name]
-                            del entry.data[old_name]
-                            entry.save()
+                    # if old_name != new_name:
+
+                        # for entry in instance.entries.all():
+                        #     entry.data[new_name] = entry.data[old_name]
+                        #     del entry.data[old_name]
+                        #     entry.save()
                     field_obj.__dict__.update(field)
                     field_obj.save()
                 else:

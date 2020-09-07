@@ -1,7 +1,8 @@
-from rest_framework.permissions import DjangoModelPermissions
+from rest_framework import permissions
+from rest_framework.authtoken.models import Token
 
 
-class BaseModelPermissions(DjangoModelPermissions):
+class BaseModelPermissions(permissions.DjangoModelPermissions):
     perms_map = {
         "GET": ["%(app_label)s.view_%(model_name)s"],
         "OPTIONS": ["%(app_label)s.view_%(model_name)s"],
@@ -11,3 +12,21 @@ class BaseModelPermissions(DjangoModelPermissions):
         "PATCH": ["%(app_label)s.change_%(model_name)s"],
         "DELETE": ["%(app_label)s.delete_%(model_name)s"],
     }
+
+
+class IsAuthenticatedOrGetToken(permissions.BasePermission):
+    """
+    Object-level permission to only allow owners of an object to edit it.
+    Assumes the model instance has an `owner` attribute.
+    """
+
+    def has_permission(self, request, view):
+        token_str = request.GET.get('token')
+        token = Token.objects.filter(key=token_str)
+        if token.exists():
+            return True
+
+        if request.user.is_authenticated:
+            return True
+
+        return False

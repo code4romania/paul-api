@@ -463,8 +463,9 @@ class EntryViewSet(viewsets.ModelViewSet):
             data=data,
             context={"fields": fields, "table": table, "request": request},
         )
-        serializer.is_valid()
-
+        serializer.is_valid(raise_exception=True)
+        print('S is valid')
+        print('====')
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(

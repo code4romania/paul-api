@@ -550,4 +550,4 @@ class CsvImportSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.CsvImport
-        fields = ["url","table", "id", "file", "errors_count", "imports_count", "errors"]
+        fields = ["url", "table", "id", "file", "delimiter", "errors_count", "imports_count", "errors"]

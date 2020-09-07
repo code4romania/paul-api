@@ -120,60 +120,116 @@ class TableViewSet(viewsets.ModelViewSet):
         print(self.action)
         if self.action == 'csv_export':
             # base_permissions.append(api_permissions.IsAuthenticatedOrGetToken())
-            base_permissions = (api_permissions.IsAuthenticatedOrGetToken(), )
-            print('aici=====')
+            base_permissions = (api_permissions.IsAuthenticatedOrGetToken(),)
         return base_permissions
 
-    @action(
-        detail=True,
-        methods=["put"],
-        name="Uploader View",
-        url_path="csv-prepare-fields",
-    )
-    def csv_prepare_fields(self, request, pk):
-        file = request.FILES["file"]
-        delimiter = request.POST.get("delimiter")
-        fields = []
-        table = self.get_object()
+    # @action(
+    #     detail=True,
+    #     methods=["put"],
+    #     name="Uploader View",
+    #     url_path="csv-prepare-fields",
+    # )
+    # def csv_prepare_fields(self, request, pk):
+    #     file = request.FILES["file"]
+    #     delimiter = request.POST.get("delimiter")
+    #     fields = []
+    #     table = self.get_object()
 
-        decoded_file = file.read().decode("utf-8").splitlines()
-        csv_import = models.CsvImport.objects.create(
-            table=table, file=file, delimiter=delimiter
+    #     decoded_file = file.read().decode("utf-8").splitlines()
+    #     csv_import = models.CsvImport.objects.create(
+    #         table=table, file=file, delimiter=delimiter
+    #     )
+    #     reader = csv.DictReader(decoded_file, delimiter=delimiter)
+
+    #     for field in reader.fieldnames:
+    #         csv_field_map = models.CsvFieldMap.objects.create(
+    #             table=table, original_name=field, field_name=field
+    #         )
+    #         fields.append(
+    #             {
+    #                 "original_name": field.encode(),
+    #                 "field_name": field,
+    #                 "field_type": "text",
+    #                 "field_format": "",
+    #             }
+    #         )
+
+    #     response = {
+    #         "table": table.name,
+    #         "import_id": csv_import.pk,
+    #         "fields": fields,
+    #     }
+    #     return Response(response)
+
+    # @action(
+    #     detail=True,
+    #     methods=["post"],
+    #     name="CSV import view",
+    #     url_path="csv-import/(?P<csv_import_pk>[^/.]+)",
+    # )
+    # def csv_import(self, request, pk, csv_import_pk):
+    #     fields = request.data.get("fields")
+    #     csv_import = models.CsvImport.objects.get(pk=csv_import_pk)
+    #     table = self.get_object()
+
+    #     table.csv_field_mapping.all().delete()
+    #     for field in fields:
+    #         csv_field_map = models.CsvFieldMap.objects.create(
+    #             table=table,
+    #             original_name=field["original_name"],
+    #             field_name=field["field_name"],
+    #             field_type=field["field_type"],
+    #             field_format=field["field_format"],
+    #         )
+    #         table_column, _ = models.TableColumn.objects.get_or_create(
+    #             table=table,
+    #             name=utils.snake_case(field["field_name"]),
+    #             display_name=field["field_name"],
+    #             field_type=field["field_type"],
+    #         )
+
+    #     reader = csv.DictReader(
+    #         StringIO(csv_import.file.read().decode("utf-8")),
+    #         delimiter=csv_import.delimiter,
+    #     )
+    #     errors, errors_count, imports_count = utils.import_csv(reader, table)
+    #     csv_import.errors = errors
+    #     csv_import.errors_count = errors_count
+    #     csv_import.imports_count = imports_count
+    #     csv_import.save()
+    #     response = {
+    #         "errors_count": errors_count,
+    #         "imports_count": imports_count,
+    #         "errors": errors,
+    #     }
+    #     return Response(response)
+
+
+    def create(self, request):
+        fields = request.data.get("csv_fields")
+        csv_import_pk = request.data.get("csv_import")
+        data = request.data
+
+        serializer = serializers.TableCreateSerializer(
+            data=data,
+            context={"request": request},
         )
-        reader = csv.DictReader(decoded_file, delimiter=delimiter)
+        serializer.is_valid(raise_exception=True)
 
-        for field in reader.fieldnames:
-            csv_field_map = models.CsvFieldMap.objects.create(
-                table=table, original_name=field, field_name=field
-            )
-            fields.append(
-                {
-                    "original_name": field.encode(),
-                    "field_name": field,
-                    "field_type": "text",
-                    "field_format": "",
-                }
+        self.perform_create(serializer)
+
+        if not csv_import_pk:
+            headers = self.get_success_headers(serializer.data)
+            return Response(
+                serializer.data, status=status.HTTP_201_CREATED, headers=headers
             )
 
-        response = {
-            "table": table.name,
-            "import_id": csv_import.pk,
-            "fields": fields,
-        }
-        return Response(response)
 
-    @action(
-        detail=True,
-        methods=["post"],
-        name="CSV import view",
-        url_path="csv-import/(?P<csv_import_pk>[^/.]+)",
-    )
-    def csv_import(self, request, pk, csv_import_pk):
-        fields = request.data.get("fields")
+        pprint(serializer.data)
+        print('-------')
+        table = models.Table.objects.get(pk=serializer.data['id'])
         csv_import = models.CsvImport.objects.get(pk=csv_import_pk)
-        table = self.get_object()
 
-        table.csv_field_mapping.all().delete()
         for field in fields:
             csv_field_map = models.CsvFieldMap.objects.create(
                 table=table,
@@ -204,6 +260,7 @@ class TableViewSet(viewsets.ModelViewSet):
             "errors": errors,
         }
         return Response(response)
+
 
     @action(
         detail=True,
@@ -501,7 +558,7 @@ class EntryViewSet(viewsets.ModelViewSet):
         )
 
 
-class CsvImportViewSet(viewsets.ReadOnlyModelViewSet):
+class CsvImportViewSet(viewsets.ModelViewSet):
     queryset = models.CsvImport.objects.all()
     # permission_classes = (BaseModelPermissions,)
 
@@ -532,3 +589,34 @@ class CsvImportViewSet(viewsets.ReadOnlyModelViewSet):
             response['Content-Disposition'] = 'attachment; filename="{}"'.format(file_name)
         os.remove('/tmp/{}'.format(file_name))
         return response
+
+    def create(self, request):
+        file = request.FILES["file"]
+        delimiter = request.POST.get("delimiter")
+        fields = []
+
+        decoded_file = file.read().decode("utf-8").splitlines()
+        csv_import = models.CsvImport.objects.create(
+            file=file, delimiter=delimiter
+        )
+        reader = csv.DictReader(decoded_file, delimiter=delimiter)
+
+
+        for field in reader.fieldnames:
+            csv_field_map = models.CsvFieldMap.objects.create(
+                csv_import=csv_import, original_name=field, field_name=field
+            )
+            fields.append(
+                {
+                    "original_name": field.encode(),
+                    "display_name": field,
+                    "field_type": "text",
+                    "field_format": "",
+                }
+            )
+
+        response = {
+            "import_id": csv_import.pk,
+            "fields": fields,
+        }
+        return Response(response)

@@ -146,7 +146,12 @@ class CsvFieldMap(models.Model):
     """
 
     table = models.ForeignKey(
-        "Table", on_delete=models.CASCADE, related_name="csv_field_mapping"
+        "Table", on_delete=models.CASCADE, related_name="csv_field_mapping",
+        null=True, blank=True
+    )
+    csv_import = models.ForeignKey(
+        "CsvImport", on_delete=models.CASCADE, related_name="csv_field_mapping",
+        null=True, blank=True
     )
     original_name = models.CharField(max_length=100)
     field_name = models.CharField(max_length=100)
@@ -165,9 +170,13 @@ class CsvImport(models.Model):
     """
 
     file = models.FileField(upload_to="csvs/")
-    delimiter = models.CharField(max_length=2, null=True, blank=True)
+    delimiter = models.CharField(
+        max_length=2, default=';',
+        null=True, blank=True
+    )
     table = models.ForeignKey(
-        "Table", related_name="csv_imports", on_delete=models.CASCADE
+        "Table", related_name="csv_imports", on_delete=models.CASCADE,
+        null=True, blank=True
     )
 
     errors = models.JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)

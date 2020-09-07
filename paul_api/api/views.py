@@ -222,7 +222,7 @@ class TableViewSet(viewsets.ModelViewSet):
         filter_dict = {}
         for key in request.GET:
             if key and key.split("__")[0] in table_fields.keys():
-                value = request.GET.getlist(key)
+                value = request.GET.get(key).split(',')
                 if len(value) == 1:
                     value = value[0]
                 else:
@@ -391,7 +391,7 @@ class EntryViewSet(viewsets.ModelViewSet):
         filter_dict = {}
         for key in request.GET:
             if key and key.split("__")[0] in table_fields.keys():
-                value = request.GET.getlist(key)
+                value = request.GET.get(key).split(',')
                 if len(value) == 1:
                     value = value[0]
                 else:
@@ -412,7 +412,7 @@ class EntryViewSet(viewsets.ModelViewSet):
             else:
                 queryset = table.entries.filter(**filter_dict).order_by('data__{}'.format(str_order))
         else:
-            queryset = table.entries.filter(**filter_dict)
+            queryset = table.entries.filter(**filter_dict).order_by('id')
         page = self.paginate_queryset(queryset)
 
         if page is not None:

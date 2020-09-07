@@ -23,6 +23,7 @@ import os
 from datetime import datetime
 
 from . import serializers, models
+from . import permissions as api_permissions
 from .permissions import BaseModelPermissions
 from . import utils
 from pprint import pprint
@@ -84,7 +85,8 @@ class MyFilterBackend(filters.DjangoFilterBackend):
 class TableViewSet(viewsets.ModelViewSet):
     queryset = models.Table.objects.all().prefetch_related('fields').select_related('database')
     pagination_class = EntriesPagination
-    permission_classes = (BaseModelPermissions, )
+    # permission_classes = (BaseModelPermissions, api_permissions.IsAuthenticatedOrGetToken )
+    permission_classes = (BaseModelPermissions,)
     filter_backends = [ObjectPermissionsFilter, filters.DjangoFilterBackend]
     filterset_fields = ["active"]
 
@@ -94,6 +96,15 @@ class TableViewSet(viewsets.ModelViewSet):
         elif self.action in ["create", "update"]:
             return serializers.TableCreateSerializer
         return serializers.TableSerializer
+
+    def get_permissions(self):
+        base_permissions = super(self.__class__, self).get_permissions()
+        print(self.action)
+        if self.action == 'csv_export':
+            # base_permissions.append(api_permissions.IsAuthenticatedOrGetToken())
+            base_permissions = (api_permissions.IsAuthenticatedOrGetToken(), )
+            print('aici=====')
+        return base_permissions
 
     @action(
         detail=True,
@@ -208,6 +219,7 @@ class TableViewSet(viewsets.ModelViewSet):
         return Response(response)
 
 
+    # @permission_classes([api_permissions.IsAuthenticatedOrGetToken])
     @action(
         detail=True,
         methods=["get"],
@@ -215,7 +227,7 @@ class TableViewSet(viewsets.ModelViewSet):
         url_path="csv-export",
     )
     def csv_export(self, request, pk):
-        table = self.get_object()
+        table = models.Table.objects.get(pk=pk)
         table_fields = {x.name: x for x in table.fields.all()}
 
         

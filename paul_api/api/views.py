@@ -4,12 +4,12 @@ from django.contrib.auth.models import User
 from django.http import HttpResponse
 
 from rest_framework import viewsets
+from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action, permission_classes
 from rest_framework.response import Response
 from rest_framework import permissions
 from rest_framework import status
-
 from rest_framework_guardian.filters import ObjectPermissionsFilter
 
 from rest_framework import filters as drf_filters
@@ -38,6 +38,24 @@ class UserViewSet(viewsets.ModelViewSet):
             return serializers.UserCreateSerializer
         return serializers.UserSerializer
 
+
+class UserView(APIView):
+    """
+    View to list all users in the system.
+
+    * Requires token authentication.
+    * Only admin users are able to access this view.
+    """
+
+    def get(self, request, format=None):
+        """
+        Return a list of all users.
+        """
+        user = request.user
+        response = {
+            'username': user.username
+        }
+        return Response(response)
 
 class DatabaseViewSet(viewsets.ModelViewSet):
     queryset = models.Database.objects.all()

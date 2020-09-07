@@ -13,6 +13,7 @@ from django.views.generic import TemplateView
 # app_name = 'api'
 
 router = routers.DefaultRouter()
+
 router.register(r"users", views.UserViewSet)
 router.register(r"databases", views.DatabaseViewSet)
 router.register(r"filters", views.FilterViewSet)
@@ -40,6 +41,7 @@ urlpatterns = [
         ),
         name="swagger-ui",
     ),
+    path('user/', views.UserView.as_view()),
     path("", include(router.urls)),
     path("", include(tables_router.urls)),
 ]

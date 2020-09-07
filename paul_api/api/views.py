@@ -231,14 +231,14 @@ class TableViewSet(viewsets.ModelViewSet):
             csv_field_map = models.CsvFieldMap.objects.create(
                 table=table,
                 original_name=field["original_name"],
-                field_name=field["field_name"],
+                field_name=field["display_name"],
                 field_type=field["field_type"],
                 field_format=field["field_format"],
             )
             table_column, _ = models.TableColumn.objects.get_or_create(
                 table=table,
-                name=utils.snake_case(field["field_name"]),
-                display_name=field["field_name"],
+                name=utils.snake_case(field["display_name"]),
+                display_name=field["display_name"],
                 field_type=field["field_type"],
             )
 

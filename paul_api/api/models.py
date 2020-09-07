@@ -118,7 +118,7 @@ class TableColumn(models.Model):
     table = models.ForeignKey(
         "Table", on_delete=models.CASCADE, related_name="fields"
     )
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=50, null=True, blank=True)
     display_name = models.CharField(max_length=50, null=True, blank=True)
     slug = models.SlugField(max_length=50, null=True, blank=True)
     field_type = models.CharField(max_length=20, choices=datatypes)

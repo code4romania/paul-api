@@ -7,7 +7,7 @@ from django.contrib.auth.models import Group
 from rest_framework import serializers
 from rest_framework_guardian.serializers import ObjectPermissionsAssignmentMixin
 
-from . import models
+from . import models, utils
 
 from datetime import datetime
 from dateutil.parser import isoparse
@@ -183,6 +183,12 @@ class TableCreateSerializer(
 
         new_table = models.Table.objects.create(**validated_data)
         for i in temp_fields:
+            if 'display_name' not in i.keys():
+                i['display_name'] = i['name']
+                i['name'] = utils.snake_case(i['name'])
+            if 'name' not in i.keys():
+                i['name'] = utils.snake_case(i['display_name'])
+
             models.TableColumn.objects.create(table=new_table, **i)
 
         return new_table

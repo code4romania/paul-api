@@ -106,6 +106,7 @@ class OwnerSerializer(serializers.HyperlinkedModelSerializer):
 
 class TableColumnSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
+    choices = serializers.SerializerMethodField()
 
     class Meta:
         model = models.TableColumn
@@ -119,6 +120,11 @@ class TableColumnSerializer(serializers.ModelSerializer):
             "unique",
             "choices",
         ]
+
+    def get_choices(self, obj):
+        if type(obj.choices) == list:
+            return sorted(obj.choices)
+        return []
 
 
 class TableDatabaseSerializer(serializers.HyperlinkedModelSerializer):

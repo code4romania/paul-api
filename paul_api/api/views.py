@@ -206,8 +206,8 @@ class TableViewSet(viewsets.ModelViewSet):
 
 
     def create(self, request):
-        fields = request.data.get("csv_fields")
-        csv_import_pk = request.data.get("csv_import")
+        fields = request.data.get("fields")
+        csv_import_pk = request.data.get("import_id")
         data = request.data
 
         serializer = serializers.TableCreateSerializer(

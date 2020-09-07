@@ -456,7 +456,6 @@ class EntryViewSet(viewsets.ModelViewSet):
     def create(self, request, table_pk):
         table = models.Table.objects.get(pk=table_pk)
         data = request.data
-        data["table"] = table.pk
         fields = table.fields.values_list("name", flat=True).order_by("name")
 
         serializer = serializers.EntrySerializer(
@@ -464,8 +463,7 @@ class EntryViewSet(viewsets.ModelViewSet):
             context={"fields": fields, "table": table, "request": request},
         )
         serializer.is_valid(raise_exception=True)
-        print('S is valid')
-        print('====')
+
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(

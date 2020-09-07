@@ -360,11 +360,9 @@ class EntrySerializer(serializers.ModelSerializer):
         if unknown:
             errors['non_field_errors'] = "Unknown field(s): {}".format(", ".join(unknown))
 
-        pprint(self.initial_data)
         for field_name, field_value in self.initial_data.items():
             if field_name in table_fields.keys():
                 field = table_fields[field_name]
-                print(field_name, field_value, field.field_type)
 
                 if field.field_type == 'int':
                     try:
@@ -404,11 +402,6 @@ class EntrySerializer(serializers.ModelSerializer):
         self.fields["data"].context.update({"table": table, "fields": fields})
 
     def create(self, validated_data):
-        print('----')
-        print('----')
-        print('----')
-        print('----')
-        print('----')
         validated_data['data'] = self.initial_data
         validated_data["table"] = self.context["table"]
         return models.Entry.objects.create(**validated_data)

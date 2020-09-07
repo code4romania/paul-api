@@ -337,7 +337,7 @@ class TableViewSet(viewsets.ModelViewSet):
 
 class FilterViewSet(viewsets.ModelViewSet):
     queryset = models.Filter.objects.all()
-    pagination_class = EntriesPagination
+    # pagination_class = EntriesPagination
 
     def get_serializer_class(self):
         if self.action == "list":

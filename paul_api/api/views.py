@@ -224,9 +224,6 @@ class TableViewSet(viewsets.ModelViewSet):
                 serializer.data, status=status.HTTP_201_CREATED, headers=headers
             )
 
-
-        pprint(serializer.data)
-        print('-------')
         table = models.Table.objects.get(pk=serializer.data['id'])
         csv_import = models.CsvImport.objects.get(pk=csv_import_pk)
 

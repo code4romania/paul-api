@@ -176,12 +176,13 @@ class TableCreateSerializer(
         return data
 
     def create(self, validated_data):
-
+        print('table create')
         temp_fields = []
         if "fields" in validated_data.keys():
             temp_fields = validated_data.pop("fields")
 
         new_table = models.Table.objects.create(**validated_data)
+        pprint(temp_fields)
         for i in temp_fields:
             if 'display_name' not in i.keys():
                 i['display_name'] = i['name']
@@ -218,12 +219,12 @@ class TableCreateSerializer(
                     field_obj = models.TableColumn.objects.get(pk=field["id"])
                     old_name = field_obj.name
                     new_name = field["name"]
-                    # if old_name != new_name:
+                    if old_name != new_name:
 
-                        # for entry in instance.entries.all():
-                        #     entry.data[new_name] = entry.data[old_name]
-                        #     del entry.data[old_name]
-                        #     entry.save()
+                        for entry in instance.entries.all():
+                            entry.data[new_name] = entry.data[old_name]
+                            del entry.data[old_name]
+                            entry.save()
                     field_obj.__dict__.update(field)
                     field_obj.save()
                 else:

@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0013_auto_20200831_2035'),
+        ("api", "0013_auto_20200831_2035"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='csvimport',
-            name='imports_count',
+            model_name="csvimport",
+            name="imports_count",
             field=models.IntegerField(default=0),
         ),
     ]

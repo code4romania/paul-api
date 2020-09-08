@@ -52,10 +52,9 @@ class UserView(APIView):
         Return a list of all users.
         """
         user = request.user
-        response = {
-            'username': user.username
-        }
+        response = {"username": user.username}
         return Response(response)
+
 
 class DatabaseViewSet(viewsets.ModelViewSet):
     queryset = models.Database.objects.all()
@@ -68,15 +67,18 @@ class EntriesPagination(PageNumberPagination):
     max_page_size = 1000
 
     def get_paginated_response(self, data):
-        return Response({
-            'links': {
-               'next': self.get_next_link(),
-               'previous': self.get_previous_link()
-            },
-            'count': self.page.paginator.count,
-            'total_pages': self.page.paginator.num_pages,
-            'results': data
-        })
+        return Response(
+            {
+                "links": {
+                    "next": self.get_next_link(),
+                    "previous": self.get_previous_link(),
+                },
+                "count": self.page.paginator.count,
+                "total_pages": self.page.paginator.num_pages,
+                "results": data,
+            }
+        )
+
 
 class CanView(permissions.BasePermission):
     """
@@ -101,7 +103,11 @@ class MyFilterBackend(filters.DjangoFilterBackend):
 
 
 class TableViewSet(viewsets.ModelViewSet):
-    queryset = models.Table.objects.all().prefetch_related('fields').select_related('database')
+    queryset = (
+        models.Table.objects.all()
+        .prefetch_related("fields")
+        .select_related("database")
+    )
     pagination_class = EntriesPagination
     # permission_classes = (BaseModelPermissions, api_permissions.IsAuthenticatedOrGetToken )
     permission_classes = (BaseModelPermissions,)
@@ -117,7 +123,7 @@ class TableViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         base_permissions = super(self.__class__, self).get_permissions()
-        if self.action == 'csv_export':
+        if self.action == "csv_export":
             base_permissions = (api_permissions.IsAuthenticatedOrGetToken(),)
         return base_permissions
 
@@ -202,7 +208,6 @@ class TableViewSet(viewsets.ModelViewSet):
     #     }
     #     return Response(response)
 
-
     def create(self, request):
         fields = request.data.get("fields")
         csv_import_pk = request.data.get("import_id")
@@ -222,7 +227,7 @@ class TableViewSet(viewsets.ModelViewSet):
                 serializer.data, status=status.HTTP_201_CREATED, headers=headers
             )
 
-        table = models.Table.objects.get(pk=serializer.data['id'])
+        table = models.Table.objects.get(pk=serializer.data["id"])
         csv_import = models.CsvImport.objects.get(pk=csv_import_pk)
 
         for field in fields:
@@ -253,16 +258,15 @@ class TableViewSet(viewsets.ModelViewSet):
             "errors_count": errors_count,
             "imports_count": imports_count,
             "errors": errors,
-            "id": table.id
+            "id": table.id,
         }
         return Response(response)
-
 
     @action(
         detail=True,
         methods=["put"],
         name="CSV manual import view",
-        url_path="csv-manual-import"
+        url_path="csv-manual-import",
     )
     def csv_manual_import(self, request, pk):
         file = request.FILES["file"]
@@ -289,7 +293,6 @@ class TableViewSet(viewsets.ModelViewSet):
         }
         return Response(response)
 
-
     # @permission_classes([api_permissions.IsAuthenticatedOrGetToken])
     @action(
         detail=True,
@@ -301,15 +304,14 @@ class TableViewSet(viewsets.ModelViewSet):
         table = models.Table.objects.get(pk=pk)
         table_fields = {x.name: x for x in table.fields.all()}
 
-        
         filter_dict = {}
         for key in request.GET:
             if key and key.split("__")[0] in table_fields.keys():
-                value = request.GET.get(key).split(',')
+                value = request.GET.get(key).split(",")
                 if len(value) == 1:
                     value = value[0]
                 else:
-                    key = key + '__in'
+                    key = key + "__in"
 
                 if table_fields[key.split("__")[0]].field_type in [
                     "float",
@@ -319,18 +321,30 @@ class TableViewSet(viewsets.ModelViewSet):
                 else:
                     filter_dict["data__{}".format(key)] = value
 
-
-        file_name = '{}__{}.csv'.format(table.name, datetime.now().strftime('%d.%m.%Y'))
-        with open('/tmp/{}'.format(file_name), 'w', encoding='utf-8-sig') as  csv_export_file:
-            writer = csv.DictWriter(csv_export_file, delimiter=';', quoting=csv.QUOTE_MINIMAL, fieldnames=table.fields.values_list('name', flat=True))
+        file_name = "{}__{}.csv".format(
+            table.name, datetime.now().strftime("%d.%m.%Y")
+        )
+        with open(
+            "/tmp/{}".format(file_name), "w", encoding="utf-8-sig"
+        ) as csv_export_file:
+            writer = csv.DictWriter(
+                csv_export_file,
+                delimiter=";",
+                quoting=csv.QUOTE_MINIMAL,
+                fieldnames=table.fields.values_list("name", flat=True),
+            )
             writer.writeheader()
             for row in table.entries.filter(**filter_dict):
                 writer.writerow(row.data)
 
-        with open('/tmp/{}'.format(file_name), 'rb') as  csv_export_file:
-            response = HttpResponse(csv_export_file.read(), content_type="application/vnd.ms-excel")
-            response['Content-Disposition'] = 'attachment; filename="{}"'.format(file_name)
-        os.remove('/tmp/{}'.format(file_name))
+        with open("/tmp/{}".format(file_name), "rb") as csv_export_file:
+            response = HttpResponse(
+                csv_export_file.read(), content_type="application/vnd.ms-excel"
+            )
+            response[
+                "Content-Disposition"
+            ] = 'attachment; filename="{}"'.format(file_name)
+        os.remove("/tmp/{}".format(file_name))
         return response
 
 
@@ -352,7 +366,9 @@ class FilterViewSet(viewsets.ModelViewSet):
         methods=["get"], detail=True, url_path="entries", url_name="entries"
     )
     def entries(self, request, pk):
-        obj = models.Filter.objects.filter(pk=pk).prefetch_related('primary_table', 'join_tables')[0]
+        obj = models.Filter.objects.filter(pk=pk).prefetch_related(
+            "primary_table", "join_tables"
+        )[0]
         str_fields = request.GET.get("fields", "") if request else None
 
         fields = str_fields.split(",") if str_fields else None
@@ -364,7 +380,6 @@ class FilterViewSet(viewsets.ModelViewSet):
         secondary_table = obj.join_tables.all()[0]
         secondary_table_slug = secondary_table.table.slug
         secondary_table_join_field = secondary_table.join_field.name
-
 
         primary_table_fields = [
             "data__{}".format(x)
@@ -381,9 +396,9 @@ class FilterViewSet(viewsets.ModelViewSet):
         ]
         join_tables_fields.append("data__{}".format(secondary_table_join_field))
 
-        join_values = models.Entry.objects.filter(table=primary_table.table).values(
-            "data__{}".format(primary_table_join_field)
-        )
+        join_values = models.Entry.objects.filter(
+            table=primary_table.table
+        ).values("data__{}".format(primary_table_join_field))
 
         result_values = (
             models.Entry.objects.filter(table__slug=secondary_table_slug)
@@ -394,7 +409,8 @@ class FilterViewSet(viewsets.ModelViewSet):
                     ): join_values
                 }
             )
-            .values(*join_tables_fields).order_by('data__{}'.format(secondary_table_join_field))
+            .values(*join_tables_fields)
+            .order_by("data__{}".format(secondary_table_join_field))
         )
 
         queryset = result_values
@@ -413,23 +429,31 @@ class FilterViewSet(viewsets.ModelViewSet):
 
         if page is not None:
             final_page = []
-            page_join_values = [x['data__{}'.format(secondary_table_join_field)] for x in page]
-            q_primary_table_page = {"data__{}__in".format(primary_table_join_field): page_join_values}
+            page_join_values = [
+                x["data__{}".format(secondary_table_join_field)] for x in page
+            ]
+            q_primary_table_page = {
+                "data__{}__in".format(
+                    primary_table_join_field
+                ): page_join_values
+            }
 
             primary_table_values = {
                 x.data[primary_table_join_field]: {
-                    'data__' + key: value for key, value in x.data.items()
-                } for x in models.Entry.objects.filter(
-                    table=primary_table.table).filter(
-                    **q_primary_table_page).exclude(data=None)}
+                    "data__" + key: value for key, value in x.data.items()
+                }
+                for x in models.Entry.objects.filter(table=primary_table.table)
+                .filter(**q_primary_table_page)
+                .exclude(data=None)
+            }
 
             for entry in page:
                 final_entry = {}
                 final_entry_primary_table_values = {}
 
-                entry_primary_table_values = primary_table_values[entry[
-                                "data__{}".format(secondary_table_join_field)
-                            ]]
+                entry_primary_table_values = primary_table_values[
+                    entry["data__{}".format(secondary_table_join_field)]
+                ]
 
                 for key in entry:
                     final_entry[
@@ -453,7 +477,10 @@ class FilterViewSet(viewsets.ModelViewSet):
         serializer = serializers.FilterEntrySerializer(queryset, many=True)
         return Response(serializer.data)
 
-from collections import OrderedDict 
+
+from collections import OrderedDict
+
+
 class EntryViewSet(viewsets.ModelViewSet):
     pagination_class = EntriesPagination
     filter_backends = (drf_filters.SearchFilter,)
@@ -467,10 +494,10 @@ class EntryViewSet(viewsets.ModelViewSet):
         table = models.Table.objects.get(pk=table_pk)
         str_fields = request.GET.get("__fields", "") if request else None
         str_order = request.GET.get("__order", "") if request else None
-        table_fields = {x.name: x for x in table.fields.all().order_by('id')}
+        table_fields = {x.name: x for x in table.fields.all().order_by("id")}
 
-        if str_fields == 'ALL':
-            fields = [x for x in table_fields.keys().order_by('id')]
+        if str_fields == "ALL":
+            fields = [x for x in table_fields.keys().order_by("id")]
         else:
             fields = str_fields.split(",") if str_fields else None
             if not fields:
@@ -479,12 +506,11 @@ class EntryViewSet(viewsets.ModelViewSet):
         filter_dict = {}
         for key in request.GET:
             if key and key.split("__")[0] in table_fields.keys():
-                value = request.GET.get(key).split(',')
+                value = request.GET.get(key).split(",")
                 if len(value) == 1:
                     value = value[0]
                 else:
-                    key = key + '__in'
-
+                    key = key + "__in"
 
                 if table_fields[key.split("__")[0]].field_type in [
                     "float",
@@ -494,14 +520,18 @@ class EntryViewSet(viewsets.ModelViewSet):
                 else:
                     filter_dict["data__{}".format(key)] = value
 
-        if str_order and str_order.replace('-', '') in fields:
-            if str_order.startswith('-'):
-                queryset = table.entries.filter(**filter_dict).order_by('-data__{}'.format(str_order[1:]))
+        if str_order and str_order.replace("-", "") in fields:
+            if str_order.startswith("-"):
+                queryset = table.entries.filter(**filter_dict).order_by(
+                    "-data__{}".format(str_order[1:])
+                )
             else:
-                queryset = table.entries.filter(**filter_dict).order_by('data__{}'.format(str_order))
+                queryset = table.entries.filter(**filter_dict).order_by(
+                    "data__{}".format(str_order)
+                )
         else:
-            queryset = table.entries.filter(**filter_dict).order_by('id')
-        
+            queryset = table.entries.filter(**filter_dict).order_by("id")
+
         page = self.paginate_queryset(queryset)
 
         if page is not None:
@@ -510,7 +540,7 @@ class EntryViewSet(viewsets.ModelViewSet):
                 many=True,
                 context={"fields": fields, "table": table, "request": request},
             )
-            return self.get_paginated_response(x)
+            return self.get_paginated_response(serializer.data)
         serializer = serializers.EntrySerializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -570,7 +600,7 @@ class CsvImportViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         base_permissions = super(self.__class__, self).get_permissions()
-        if self.action == 'export_errors':
+        if self.action == "export_errors":
             base_permissions = (api_permissions.IsAuthenticatedOrGetToken(),)
         return base_permissions
 
@@ -583,18 +613,29 @@ class CsvImportViewSet(viewsets.ModelViewSet):
     def export_errors(self, request, pk):
         csv_import = self.get_object()
 
-        file_name = 'errors__' + csv_import.file.name.split('/')[-1]
-        with open('/tmp/{}'.format(file_name), 'w', encoding='utf-8-sig') as  csv_export_file:
-            writer = csv.DictWriter(csv_export_file, delimiter=';', quoting=csv.QUOTE_MINIMAL, fieldnames=csv_import.errors[0]['row'].keys())
+        file_name = "errors__" + csv_import.file.name.split("/")[-1]
+        with open(
+            "/tmp/{}".format(file_name), "w", encoding="utf-8-sig"
+        ) as csv_export_file:
+            writer = csv.DictWriter(
+                csv_export_file,
+                delimiter=";",
+                quoting=csv.QUOTE_MINIMAL,
+                fieldnames=csv_import.errors[0]["row"].keys(),
+            )
             writer.writeheader()
             for row in csv_import.errors:
-                writer.writerow(row['row'])
-            
-        with open('/tmp/{}'.format(file_name), 'rb') as  csv_export_file:
-        # response = HttpResponse(FileWrapper(csv_export_file), content_type='application/vnd.ms-excel')
-            response = HttpResponse(csv_export_file.read(), content_type="application/vnd.ms-excel")
-            response['Content-Disposition'] = 'attachment; filename="{}"'.format(file_name)
-        os.remove('/tmp/{}'.format(file_name))
+                writer.writerow(row["row"])
+
+        with open("/tmp/{}".format(file_name), "rb") as csv_export_file:
+            # response = HttpResponse(FileWrapper(csv_export_file), content_type='application/vnd.ms-excel')
+            response = HttpResponse(
+                csv_export_file.read(), content_type="application/vnd.ms-excel"
+            )
+            response[
+                "Content-Disposition"
+            ] = 'attachment; filename="{}"'.format(file_name)
+        os.remove("/tmp/{}".format(file_name))
         return response
 
     def create(self, request):
@@ -607,7 +648,6 @@ class CsvImportViewSet(viewsets.ModelViewSet):
             file=file, delimiter=delimiter
         )
         reader = csv.DictReader(decoded_file, delimiter=delimiter)
-
 
         for field in reader.fieldnames:
             csv_field_map = models.CsvFieldMap.objects.create(

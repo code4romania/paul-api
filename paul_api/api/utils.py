@@ -44,7 +44,7 @@ def import_csv(reader, table):
                         elif field.field_type == "enum":
                             value = row[key]
                             if not field_choices[field_name]:
-                                print('not')
+                                print("not")
                                 field_choices[field_name] = []
                             if value not in field_choices[field_name]:
                                 field_choices[field_name].append(value)

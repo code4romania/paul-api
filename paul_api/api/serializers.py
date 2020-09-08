@@ -182,7 +182,7 @@ class TableCreateSerializer(
         return data
 
     def create(self, validated_data):
-        print('table create')
+        print("table create")
         temp_fields = []
         if "fields" in validated_data.keys():
             temp_fields = validated_data.pop("fields")
@@ -190,11 +190,11 @@ class TableCreateSerializer(
         new_table = models.Table.objects.create(**validated_data)
         pprint(temp_fields)
         for i in temp_fields:
-            if 'display_name' not in i.keys():
-                i['display_name'] = i['name']
-                i['name'] = utils.snake_case(i['name'])
-            if 'name' not in i.keys():
-                i['name'] = utils.snake_case(i['display_name'])
+            if "display_name" not in i.keys():
+                i["display_name"] = i["name"]
+                i["name"] = utils.snake_case(i["name"])
+            if "name" not in i.keys():
+                i["name"] = utils.snake_case(i["display_name"])
 
             models.TableColumn.objects.create(table=new_table, **i)
 
@@ -279,7 +279,9 @@ class TableSerializer(serializers.ModelSerializer):
         ]
 
     def get_default_fields(self, obj):
-        return [x for x in obj.fields.values_list('name', flat=True).order_by('id')][:7]
+        return [
+            x for x in obj.fields.values_list("name", flat=True).order_by("id")
+        ][:7]
 
     def get_entries(self, obj):
         return self.context["request"].build_absolute_uri(
@@ -332,7 +334,6 @@ class DatabaseSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class EntryDataSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = models.Entry
         fields = []
@@ -357,8 +358,6 @@ class EntryDataSerializer(serializers.ModelSerializer):
                 )
 
 
-
-
 class EntrySerializer(serializers.ModelSerializer):
     url = serializers.SerializerMethodField()
     data = serializers.SerializerMethodField()
@@ -368,39 +367,47 @@ class EntrySerializer(serializers.ModelSerializer):
         fields = ["url", "id", "date_created", "data"]
 
     def validate(self, attrs):
-        table = self.context.get('table')
+        table = self.context.get("table")
         table_fields = {field.name: field for field in table.fields.all()}
         errors = {}
 
-        unknown =  set(self.initial_data) - set(self.fields) - set(table_fields.keys())
+        unknown = (
+            set(self.initial_data) - set(self.fields) - set(table_fields.keys())
+        )
 
         if unknown:
-            errors['non_field_errors'] = "Unknown field(s): {}".format(", ".join(unknown))
+            errors["non_field_errors"] = "Unknown field(s): {}".format(
+                ", ".join(unknown)
+            )
 
         for field_name, field_value in self.initial_data.items():
             if field_name in table_fields.keys():
                 field = table_fields[field_name]
 
-                if field.field_type == 'int':
+                if field.field_type == "int":
                     try:
                         int(field_value)
                     except:
                         errors[field_name] = "Integer is not valid"
-                elif field.field_type == 'float':
+                elif field.field_type == "float":
                     try:
                         float(field_value)
                     except:
                         errors[field_name] = "Float is not valid"
-                elif field.field_type == 'date':
+                elif field.field_type == "date":
                     try:
                         # datetime.strptime(field_value, "%Y-%m-%dT%H:%M:%S%z")
                         isoparse(field_value)
                     except Exception as e:
                         print(e)
                         errors[field_name] = "Invalid date format"
-                elif field.field_type == 'enum':
+                elif field.field_type == "enum":
                     if field_value not in field.choices:
-                        errors[field_name] = "{} is not a valid choice({})".format(field_value, ','.join(field.choices))
+                        errors[
+                            field_name
+                        ] = "{} is not a valid choice({})".format(
+                            field_value, ",".join(field.choices)
+                        )
 
         if errors:
             raise serializers.ValidationError(errors)
@@ -419,7 +426,7 @@ class EntrySerializer(serializers.ModelSerializer):
         self.fields["data"].context.update({"table": table, "fields": fields})
 
     def create(self, validated_data):
-        validated_data['data'] = self.initial_data
+        validated_data["data"] = self.initial_data
         validated_data["table"] = self.context["table"]
         return models.Entry.objects.create(**validated_data)
 
@@ -438,7 +445,6 @@ class EntrySerializer(serializers.ModelSerializer):
 
 
 class FilterEntrySerializer(serializers.Serializer):
-
     def __init__(self, *args, **kwargs):
         fields = kwargs.get("context", {}).get("fields")
 
@@ -451,13 +457,14 @@ class FilterEntrySerializer(serializers.Serializer):
                 except:
                     pass
 
+
 class FilterListDataSerializer(serializers.ModelSerializer):
     tables = serializers.SerializerMethodField()
     show_in_dashboard = serializers.SerializerMethodField()
     owner = OwnerSerializer()
 
     def get_show_in_dashboard(self, obj):
-        userprofile = self.context['request'].user.userprofile
+        userprofile = self.context["request"].user.userprofile
         return obj in userprofile.dashboard_filters.all()
 
     def get_tables(self, obj):
@@ -466,7 +473,7 @@ class FilterListDataSerializer(serializers.ModelSerializer):
                 obj.join_tables.values_list("table__name", flat=True)
             )
             return tables
-        return '-'
+        return "-"
 
     class Meta:
         model = models.Filter
@@ -475,7 +482,7 @@ class FilterListDataSerializer(serializers.ModelSerializer):
             "creation_date",
             "tables",
             "owner",
-            "show_in_dashboard"
+            "show_in_dashboard",
         ]
 
 
@@ -488,11 +495,7 @@ class FilterListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Filter
-        fields = [
-            "url",
-            "id",
-            "data"
-        ]
+        fields = ["url", "id", "data"]
 
 
 class FilterJoinTableListSerializer(serializers.ModelSerializer):
@@ -533,14 +536,13 @@ class FilterDetailSerializer(serializers.ModelSerializer):
             "join_tables",
         ]
 
-
     def get_entries(self, obj):
         return self.context["request"].build_absolute_uri(
             reverse("filter-entries", kwargs={"pk": obj.pk})
         )
 
-class FilterJoinTableCreateSerializer(serializers.ModelSerializer):
 
+class FilterJoinTableCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.FilterJoinTable
         fields = ["table", "fields", "join_field"]
@@ -569,41 +571,39 @@ class FilterCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         pprint(validated_data)
-        primary_table = validated_data.pop('primary_table')
-        join_tables = validated_data.pop('join_tables')
+        primary_table = validated_data.pop("primary_table")
+        join_tables = validated_data.pop("join_tables")
 
         new_filter = models.Filter.objects.create(**validated_data)
 
-        fields = primary_table.pop('fields')
+        fields = primary_table.pop("fields")
         primary_table = models.FilterJoinTable.objects.create(**primary_table)
         primary_table.fields.set(fields)
-
 
         new_filter.primary_table = primary_table
         new_filter.save()
 
         for join_table in join_tables:
-            fields = join_table.pop('fields')
+            fields = join_table.pop("fields")
             join_table = models.FilterJoinTable.objects.create(**join_table)
             join_table.fields.set(fields)
 
             new_filter.join_tables.add(join_table)
         return new_filter
 
-
     def update(self, instance, validated_data):
         pprint(validated_data)
-        instance.name = validated_data.get('name')
-        primary_table_data = validated_data.pop('primary_table')
-        join_tables = validated_data.pop('join_tables')
+        instance.name = validated_data.get("name")
+        primary_table_data = validated_data.pop("primary_table")
+        join_tables = validated_data.pop("join_tables")
 
         # new_filter = models.Filter.objects.create(**validated_data)
 
         # fields = primary_table.pop('fields')
         primary_table = instance.primary_table
-        primary_table.table = primary_table_data['table']
-        primary_table.join_field = primary_table_data['join_field']
-        primary_table.fields.set(primary_table_data['fields'])
+        primary_table.table = primary_table_data["table"]
+        primary_table.join_field = primary_table_data["join_field"]
+        primary_table.fields.set(primary_table_data["fields"])
         primary_table.save()
 
         # new_filter.primary_table = primary_table
@@ -612,7 +612,7 @@ class FilterCreateSerializer(serializers.ModelSerializer):
         for table in instance.join_tables.all():
             table.delete()
         for join_table in join_tables:
-            fields = join_table.pop('fields')
+            fields = join_table.pop("fields")
             join_table = models.FilterJoinTable.objects.create(**join_table)
             join_table.fields.set(fields)
 
@@ -620,15 +620,23 @@ class FilterCreateSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-class CsvImportListSerializer(serializers.ModelSerializer):
 
+class CsvImportListSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.CsvImport
-        fields = ["url","table", "id", "file", "errors_count", "imports_count"]
+        fields = ["url", "table", "id", "file", "errors_count", "imports_count"]
 
 
 class CsvImportSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = models.CsvImport
-        fields = ["url", "table", "id", "file", "delimiter", "errors_count", "imports_count", "errors"]
+        fields = [
+            "url",
+            "table",
+            "id",
+            "file",
+            "delimiter",
+            "errors_count",
+            "imports_count",
+            "errors",
+        ]

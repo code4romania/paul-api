@@ -7,21 +7,25 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0020_auto_20200908_2148'),
+        ("api", "0020_auto_20200908_2148"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='filter',
-            name='join_tables',
+            model_name="filter",
+            name="join_tables",
         ),
         migrations.RemoveField(
-            model_name='filterjointable',
-            name='filter',
+            model_name="filterjointable",
+            name="filter",
         ),
         migrations.AddField(
-            model_name='filter',
-            name='primary_table',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='api.filterjointable'),
+            model_name="filter",
+            name="primary_table",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                to="api.filterjointable",
+            ),
         ),
     ]

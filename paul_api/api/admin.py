@@ -172,7 +172,8 @@ class FilterJoinTableAdmin(admin.ModelAdmin):
     # extra = 0
 
     def table_fields(self, obj):
-        return ', '.join(obj.fields.values_list('name', flat=True))
+        return ", ".join(obj.fields.values_list("name", flat=True))
+
 
 @admin.register(models.Filter)
 class FilterAdmin(admin.ModelAdmin):
@@ -196,9 +197,9 @@ class FilterAdmin(admin.ModelAdmin):
         # return ', '.join([x for x in obj.join_tables])
         tables = {}
         for table in obj.join_tables.all():
-            tables['{} [{}]'.format(table.table.name, table.join_field.name)] = ", ".join(
-                table.fields.values_list("name", flat=True)
-            )
+            tables[
+                "{} [{}]".format(table.table.name, table.join_field.name)
+            ] = ", ".join(table.fields.values_list("name", flat=True))
         return ", ".join(["{} ({})".format(t, f) for t, f in tables.items()])
 
 

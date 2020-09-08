@@ -7,18 +7,30 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0017_auto_20200907_1825'),
+        ("api", "0017_auto_20200907_1825"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='csvfieldmap',
-            name='csv_import',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='csv_field_mapping', to='api.csvimport'),
+            model_name="csvfieldmap",
+            name="csv_import",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="csv_field_mapping",
+                to="api.csvimport",
+            ),
         ),
         migrations.AlterField(
-            model_name='csvfieldmap',
-            name='table',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='csv_field_mapping', to='api.table'),
+            model_name="csvfieldmap",
+            name="table",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="csv_field_mapping",
+                to="api.table",
+            ),
         ),
     ]

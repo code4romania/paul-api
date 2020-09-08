@@ -253,6 +253,7 @@ class TableViewSet(viewsets.ModelViewSet):
             "errors_count": errors_count,
             "imports_count": imports_count,
             "errors": errors,
+            "id": table.id
         }
         return Response(response)
 
@@ -452,7 +453,7 @@ class FilterViewSet(viewsets.ModelViewSet):
         serializer = serializers.FilterEntrySerializer(queryset, many=True)
         return Response(serializer.data)
 
-
+from collections import OrderedDict 
 class EntryViewSet(viewsets.ModelViewSet):
     pagination_class = EntriesPagination
     filter_backends = (drf_filters.SearchFilter,)
@@ -469,7 +470,7 @@ class EntryViewSet(viewsets.ModelViewSet):
         table_fields = {x.name: x for x in table.fields.all().order_by('id')}
 
         if str_fields == 'ALL':
-            fields = [x for x in table_fields.keys()]
+            fields = [x for x in table_fields.keys().order_by('id')]
         else:
             fields = str_fields.split(",") if str_fields else None
             if not fields:
@@ -500,6 +501,7 @@ class EntryViewSet(viewsets.ModelViewSet):
                 queryset = table.entries.filter(**filter_dict).order_by('data__{}'.format(str_order))
         else:
             queryset = table.entries.filter(**filter_dict).order_by('id')
+        
         page = self.paginate_queryset(queryset)
 
         if page is not None:
@@ -508,8 +510,7 @@ class EntryViewSet(viewsets.ModelViewSet):
                 many=True,
                 context={"fields": fields, "table": table, "request": request},
             )
-
-            return self.get_paginated_response(serializer.data)
+            return self.get_paginated_response(x)
         serializer = serializers.EntrySerializer(queryset, many=True)
         return Response(serializer.data)
 

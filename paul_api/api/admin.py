@@ -157,30 +157,34 @@ class TableAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
-class FilterJoinTableInline(admin.TabularInline):
+@admin.register(models.FilterJoinTable)
+class FilterJoinTableAdmin(admin.ModelAdmin):
     model = models.FilterJoinTable
-    fields = (
+    list_display = (
         "table",
-        "fields",
+        "table_fields",
         "join_field",
     )
-    can_delete = False
+
+    # can_delete = False
     # can_add = False
     verbose_name_plural = "Join Tables"
     # extra = 0
 
+    def table_fields(self, obj):
+        return ', '.join(obj.fields.values_list('name', flat=True))
 
 @admin.register(models.Filter)
 class FilterAdmin(admin.ModelAdmin):
     list_display = (
         "primary_table",
-        "get_primary_table_fields",
-        "join_field",
+        # "get_primary_table_fields",
+        # "join_field",
         "get_join_tables",
     )
     list_filter = ()
     search_fields = ()
-    inlines = (FilterJoinTableInline,)
+    inlines = ()
 
     def get_primary_table_fields(self, obj):
         return ", ".join(
@@ -188,12 +192,13 @@ class FilterAdmin(admin.ModelAdmin):
         )
 
     def get_join_tables(self, obj):
+        # print(obj.join_tables)
+        # return ', '.join([x for x in obj.join_tables])
         tables = {}
-        for table in obj.filter_join_tables.all():
-            tables[table.table.name] = ", ".join(
+        for table in obj.join_tables.all():
+            tables['{} [{}]'.format(table.table.name, table.join_field.name)] = ", ".join(
                 table.fields.values_list("name", flat=True)
             )
-        pprint(tables)
         return ", ".join(["{} ({})".format(t, f) for t, f in tables.items()])
 
 

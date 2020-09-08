@@ -459,10 +459,12 @@ class FilterListDataSerializer(serializers.ModelSerializer):
         return obj in userprofile.dashboard_filters.all()
 
     def get_tables(self, obj):
-        tables = [obj.primary_table.name] + list(
-            obj.join_tables.values_list("name", flat=True)
-        )
-        return tables
+        if obj.primary_table:
+            tables = [obj.primary_table.table.name] + list(
+                obj.join_tables.values_list("table__name", flat=True)
+            )
+            return tables
+        return '-'
 
     class Meta:
         model = models.Filter
@@ -498,10 +500,10 @@ class FilterJoinTableListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.FilterJoinTable
-        fields = ["table", "fields", "join_field"]
+        fields = ["table", "join_field", "fields"]
 
     def get_table(self, obj):
-        return obj.table.slug
+        return obj.table.name
 
     def get_join_field(self, obj):
         return obj.join_field.name
@@ -510,40 +512,111 @@ class FilterJoinTableListSerializer(serializers.ModelSerializer):
 class FilterDetailSerializer(serializers.ModelSerializer):
     owner = OwnerSerializer()
     last_edit_user = OwnerSerializer()
-    primary_table = serializers.SlugRelatedField(
-        queryset=models.Table.objects.all(), slug_field="slug"
-    )
-    primary_table_fields = serializers.SerializerMethodField()
-    join_field = serializers.SerializerMethodField()
-    filter_join_tables = FilterJoinTableListSerializer(many=True)
+    primary_table = FilterJoinTableListSerializer()
+
+    join_tables = FilterJoinTableListSerializer(many=True)
     entries = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Filter
         fields = [
             "url",
+            "id",
             "name",
             "entries",
             "owner",
             "last_edit_user",
             "last_edit_date",
             "primary_table",
-            "primary_table_fields",
-            "join_field",
-            "filter_join_tables",
+            "join_tables",
         ]
 
-    def get_primary_table_fields(self, obj):
-        return list(obj.primary_table_fields.values_list("name", flat=True))
-
-    def get_join_field(self, obj):
-        return obj.join_field.name
 
     def get_entries(self, obj):
         return self.context["request"].build_absolute_uri(
             reverse("filter-entries", kwargs={"pk": obj.pk})
         )
 
+class FilterJoinTableCreateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = models.FilterJoinTable
+        fields = ["table", "fields", "join_field"]
+
+
+class FilterCreateSerializer(serializers.ModelSerializer):
+    owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    last_edit_user = serializers.HiddenField(
+        default=serializers.CurrentUserDefault()
+    )
+    last_edit_date = serializers.HiddenField(default=timezone.now())
+    primary_table = FilterJoinTableCreateSerializer()
+    join_tables = FilterJoinTableCreateSerializer(many=True)
+
+    class Meta:
+        model = models.Filter
+        fields = [
+            "id",
+            "name",
+            "owner",
+            "last_edit_user",
+            "last_edit_date",
+            "primary_table",
+            "join_tables",
+        ]
+
+    def create(self, validated_data):
+        pprint(validated_data)
+        primary_table = validated_data.pop('primary_table')
+        join_tables = validated_data.pop('join_tables')
+
+        new_filter = models.Filter.objects.create(**validated_data)
+
+        fields = primary_table.pop('fields')
+        primary_table = models.FilterJoinTable.objects.create(**primary_table)
+        primary_table.fields.set(fields)
+
+
+        new_filter.primary_table = primary_table
+        new_filter.save()
+
+        for join_table in join_tables:
+            fields = join_table.pop('fields')
+            join_table = models.FilterJoinTable.objects.create(**join_table)
+            join_table.fields.set(fields)
+
+            new_filter.join_tables.add(join_table)
+        return new_filter
+
+
+    def update(self, instance, validated_data):
+        pprint(validated_data)
+        instance.name = validated_data.get('name')
+        primary_table_data = validated_data.pop('primary_table')
+        join_tables = validated_data.pop('join_tables')
+
+        # new_filter = models.Filter.objects.create(**validated_data)
+
+        # fields = primary_table.pop('fields')
+        primary_table = instance.primary_table
+        primary_table.table = primary_table_data['table']
+        primary_table.join_field = primary_table_data['join_field']
+        primary_table.fields.set(primary_table_data['fields'])
+        primary_table.save()
+
+        # new_filter.primary_table = primary_table
+        # new_filter.save()
+        instance.join_tables.set([])
+        for table in instance.join_tables.all():
+            table.delete()
+        for join_table in join_tables:
+            fields = join_table.pop('fields')
+            join_table = models.FilterJoinTable.objects.create(**join_table)
+            join_table.fields.set(fields)
+
+            instance.join_tables.add(join_table)
+        instance.save()
+        return instance
 
 class CsvImportListSerializer(serializers.ModelSerializer):
 

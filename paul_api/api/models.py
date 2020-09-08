@@ -231,9 +231,9 @@ class FilterJoinTable(models.Model):
     Description: Model Description
     """
 
-    filter = models.ForeignKey(
-        "Filter", on_delete=models.CASCADE, related_name="filter_join_tables"
-    )
+    # filter = models.ForeignKey(
+    #     "Filter", on_delete=models.CASCADE, related_name="filter_join_tables"
+    # )
     table = models.ForeignKey(Table, on_delete=models.CASCADE)
     fields = models.ManyToManyField(
         TableColumn, related_name="filter_join_table_fields"
@@ -243,25 +243,32 @@ class FilterJoinTable(models.Model):
     class Meta:
         pass
 
+    def __str__(self):
+        return '{} [{}] ({})'.format(
+            self.table.name,
+            self.join_field.name,
+            ','.join(self.fields.values_list('name', flat=True)))
+
 
 class Filter(models.Model):
     """
     Description: Model Description
     """
 
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=50, unique=True)
     slug = models.SlugField(max_length=50, null=True, blank=True)
-    primary_table = models.ForeignKey(Table, on_delete=models.CASCADE)
-    primary_table_fields = models.ManyToManyField(
-        TableColumn, related_name="filter_primary_table_field"
-    )
-    join_field = models.ForeignKey(
-        TableColumn,
-        on_delete=models.CASCADE,
-        related_name="filter_primary_table_join_field",
-    )
+    primary_table = models.ForeignKey(FilterJoinTable, null=True, on_delete=models.CASCADE)
+    # primary_table = models.ForeignKey(Table, on_delete=models.CASCADE)
+    # primary_table_fields = models.ManyToManyField(
+    #     TableColumn, related_name="filter_primary_table_field"
+    # )
+    # join_field = models.ForeignKey(
+    #     TableColumn,
+    #     on_delete=models.CASCADE,
+    #     related_name="filter_primary_table_join_field",
+    # )
     join_tables = models.ManyToManyField(
-        Table, through=FilterJoinTable, related_name="filter_join_table"
+        FilterJoinTable, related_name="filter_join_table"
     )
     creation_date = models.DateTimeField(auto_now_add=True, null=True)
 

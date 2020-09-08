@@ -348,12 +348,14 @@ class EntryDataSerializer(serializers.ModelSerializer):
 
         if fields is not None:
             for field_name in fields:
+                print(field_name)
                 MappedField = DATATYPE_SERIALIZERS[
                     table_fields[field_name].field_type
                 ]
                 self.fields[field_name] = MappedField(
                     source="data.{}".format(field_name), required=False
                 )
+
 
 
 

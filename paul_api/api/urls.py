@@ -29,7 +29,12 @@ urlpatterns = [
     path(
         "openapi",
         get_schema_view(
-            title="Paul OpenSchema", description="API for Paul", version="0.0.1"
+            title="Paul OpenSchema",
+            description="API for Paul",
+            version="0.0.1",
+            url="http://dev.api.paul.ro:8000/"
+            # urlconf='api.urls'
+
         ),
         name="openapi-schema",
     ),

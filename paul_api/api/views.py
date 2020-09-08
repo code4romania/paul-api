@@ -117,9 +117,7 @@ class TableViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         base_permissions = super(self.__class__, self).get_permissions()
-        print(self.action)
         if self.action == 'csv_export':
-            # base_permissions.append(api_permissions.IsAuthenticatedOrGetToken())
             base_permissions = (api_permissions.IsAuthenticatedOrGetToken(),)
         return base_permissions
 
@@ -563,6 +561,12 @@ class CsvImportViewSet(viewsets.ModelViewSet):
         if self.action == "list":
             return serializers.CsvImportListSerializer
         return serializers.CsvImportSerializer
+
+    def get_permissions(self):
+        base_permissions = super(self.__class__, self).get_permissions()
+        if self.action == 'export_errors':
+            base_permissions = (api_permissions.IsAuthenticatedOrGetToken(),)
+        return base_permissions
 
     @action(
         detail=True,

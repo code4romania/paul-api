@@ -335,57 +335,57 @@ class TableViewSet(viewsets.ModelViewSet):
 
 class FilterViewSet(viewsets.ModelViewSet):
     queryset = models.Filter.objects.all()
-    # pagination_class = EntriesPagination
+    pagination_class = EntriesPagination
 
     def get_serializer_class(self):
         if self.action == "list":
             return serializers.FilterListSerializer
-
         elif self.action == "retrieve":
             return serializers.FilterDetailSerializer
+        elif self.action in ["create", "update"]:
+            return serializers.FilterCreateSerializer
+
         return serializers.FilterListSerializer
 
     @action(
         methods=["get"], detail=True, url_path="entries", url_name="entries"
     )
     def entries(self, request, pk):
-        obj = self.get_object()
+        obj = models.Filter.objects.filter(pk=pk).prefetch_related('primary_table', 'join_tables')[0]
         str_fields = request.GET.get("fields", "") if request else None
 
         fields = str_fields.split(",") if str_fields else None
 
+        primary_table = obj.primary_table
+        primary_table_slug = primary_table.table.slug
+        primary_table_join_field = primary_table.join_field.name
+
+        secondary_table = obj.join_tables.all()[0]
+        secondary_table_slug = secondary_table.table.slug
+        secondary_table_join_field = secondary_table.join_field.name
+
+
         primary_table_fields = [
             "data__{}".format(x)
-            for x in obj.primary_table_fields.values_list(
+            for x in primary_table.fields.values_list(
                 "name", flat=True
             ).order_by("name")
         ]
 
-        primary_table = obj.primary_table
-        secondary_table = obj.filter_join_tables.all()[0]
-        secondary_table_name = secondary_table.table.slug
-        secondary_table_join_field = secondary_table.join_field.name
-        
-
-        join_tables_fileds = [
+        join_tables_fields = [
             "data__{}".format(x)
-            for x in obj.filter_join_tables.values_list(
+            for x in obj.join_tables.values_list(
                 "fields__name", flat=True
             ).order_by("fields__name")
         ]
-        join_tables_fileds.append("data__{}".format(secondary_table_join_field))
-        secondary_table_fields = [
-            "{}__{}".format(x[0].lower(), x[1])
-            for x in obj.filter_join_tables.values_list(
-                "table__name", "fields__name"
-            ).order_by("fields__name")
-        ]
-        join_values = models.Entry.objects.filter(table=primary_table).values(
-            "data__{}".format(obj.join_field.name)
+        join_tables_fields.append("data__{}".format(secondary_table_join_field))
+
+        join_values = models.Entry.objects.filter(table=primary_table.table).values(
+            "data__{}".format(primary_table_join_field)
         )
 
         result_values = (
-            models.Entry.objects.filter(table__slug=secondary_table_name)
+            models.Entry.objects.filter(table__slug=secondary_table_slug)
             .filter(
                 **{
                     "data__{}__in".format(
@@ -393,19 +393,19 @@ class FilterViewSet(viewsets.ModelViewSet):
                     ): join_values
                 }
             )
-            .values(*join_tables_fileds).order_by('data__{}'.format(secondary_table_join_field))
+            .values(*join_tables_fields).order_by('data__{}'.format(secondary_table_join_field))
         )
 
         queryset = result_values
 
         if not fields:
             fields = [
-                x.replace("data__", "{}__".format(primary_table.slug))
+                x.replace("data__", "{}__".format(primary_table_slug))
                 for x in primary_table_fields
             ]
             fields += [
-                x.replace("data__", "{}__".format(secondary_table_name))
-                for x in join_tables_fileds
+                x.replace("data__", "{}__".format(secondary_table_slug))
+                for x in join_tables_fields
             ]
 
         page = self.paginate_queryset(queryset)
@@ -413,9 +413,14 @@ class FilterViewSet(viewsets.ModelViewSet):
         if page is not None:
             final_page = []
             page_join_values = [x['data__{}'.format(secondary_table_join_field)] for x in page]
-            q_primary_table_page = {"data__{}__in".format(obj.join_field.name): page_join_values}
+            q_primary_table_page = {"data__{}__in".format(primary_table_join_field): page_join_values}
 
-            primary_table_values = {x.data[obj.join_field.name]: {'data__' + key: value for key, value in x.data.items()} for x in models.Entry.objects.filter(table=primary_table).filter(**q_primary_table_page).exclude(data=None)}
+            primary_table_values = {
+                x.data[primary_table_join_field]: {
+                    'data__' + key: value for key, value in x.data.items()
+                } for x in models.Entry.objects.filter(
+                    table=primary_table.table).filter(
+                    **q_primary_table_page).exclude(data=None)}
 
             for entry in page:
                 final_entry = {}
@@ -428,12 +433,12 @@ class FilterViewSet(viewsets.ModelViewSet):
                 for key in entry:
                     final_entry[
                         key.replace(
-                            "data__", "{}__".format(secondary_table_name)
+                            "data__", "{}__".format(secondary_table_slug)
                         )
                     ] = entry[key]
                 for key in entry_primary_table_values:
                     final_entry_primary_table_values[
-                        key.replace("data__", "{}__".format(primary_table.slug))
+                        key.replace("data__", "{}__".format(primary_table_slug))
                     ] = entry_primary_table_values[key]
 
                 final_entry.update(final_entry_primary_table_values)

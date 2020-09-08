@@ -55,7 +55,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "crispy_forms",
-    "silk"
+    "silk",
 ]
 
 MIDDLEWARE = [
@@ -68,7 +68,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # "api.middlewares.SqlPrintMiddleware",
-    "silk.middleware.SilkyMiddleware"
+    "silk.middleware.SilkyMiddleware",
 ]
 
 ROOT_URLCONF = "paul_api.urls"
@@ -158,7 +158,7 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend"
     ],
-    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.coreapi.AutoSchema",
 }
 
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"

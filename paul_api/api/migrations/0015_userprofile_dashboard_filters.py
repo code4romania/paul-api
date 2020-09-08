@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0014_auto_20200831_2036'),
+        ("api", "0014_auto_20200831_2036"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='userprofile',
-            name='dashboard_filters',
-            field=models.ManyToManyField(to='api.Filter'),
+            model_name="userprofile",
+            name="dashboard_filters",
+            field=models.ManyToManyField(to="api.Filter"),
         ),
     ]

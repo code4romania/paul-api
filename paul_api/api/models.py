@@ -28,7 +28,7 @@ class Userprofile(models.Model):
         User, on_delete=models.CASCADE, related_name="userprofile"
     )
 
-    dashboard_filters = models.ManyToManyField('Filter')
+    dashboard_filters = models.ManyToManyField("Filter")
     token = models.UUIDField(default=uuid.uuid4)
     avatar = models.ImageField(upload_to="avatars", null=True, blank=True)
 
@@ -146,12 +146,18 @@ class CsvFieldMap(models.Model):
     """
 
     table = models.ForeignKey(
-        "Table", on_delete=models.CASCADE, related_name="csv_field_mapping",
-        null=True, blank=True
+        "Table",
+        on_delete=models.CASCADE,
+        related_name="csv_field_mapping",
+        null=True,
+        blank=True,
     )
     csv_import = models.ForeignKey(
-        "CsvImport", on_delete=models.CASCADE, related_name="csv_field_mapping",
-        null=True, blank=True
+        "CsvImport",
+        on_delete=models.CASCADE,
+        related_name="csv_field_mapping",
+        null=True,
+        blank=True,
     )
     original_name = models.CharField(max_length=100)
     field_name = models.CharField(max_length=100)
@@ -171,12 +177,14 @@ class CsvImport(models.Model):
 
     file = models.FileField(upload_to="csvs/")
     delimiter = models.CharField(
-        max_length=2, default=';',
-        null=True, blank=True
+        max_length=2, default=";", null=True, blank=True
     )
     table = models.ForeignKey(
-        "Table", related_name="csv_imports", on_delete=models.CASCADE,
-        null=True, blank=True
+        "Table",
+        related_name="csv_imports",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
 
     errors = models.JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)
@@ -244,10 +252,11 @@ class FilterJoinTable(models.Model):
         pass
 
     def __str__(self):
-        return '{} [{}] ({})'.format(
+        return "{} [{}] ({})".format(
             self.table.name,
             self.join_field.name,
-            ','.join(self.fields.values_list('name', flat=True)))
+            ",".join(self.fields.values_list("name", flat=True)),
+        )
 
 
 class Filter(models.Model):
@@ -257,7 +266,9 @@ class Filter(models.Model):
 
     name = models.CharField(max_length=50, unique=True)
     slug = models.SlugField(max_length=50, null=True, blank=True)
-    primary_table = models.ForeignKey(FilterJoinTable, null=True, on_delete=models.CASCADE)
+    primary_table = models.ForeignKey(
+        FilterJoinTable, null=True, on_delete=models.CASCADE
+    )
     # primary_table = models.ForeignKey(Table, on_delete=models.CASCADE)
     # primary_table_fields = models.ManyToManyField(
     #     TableColumn, related_name="filter_primary_table_field"

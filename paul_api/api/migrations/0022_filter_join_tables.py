@@ -6,13 +6,15 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0021_auto_20200908_2152'),
+        ("api", "0021_auto_20200908_2152"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='filter',
-            name='join_tables',
-            field=models.ManyToManyField(related_name='filter_join_table', to='api.FilterJoinTable'),
+            model_name="filter",
+            name="join_tables",
+            field=models.ManyToManyField(
+                related_name="filter_join_table", to="api.FilterJoinTable"
+            ),
         ),
     ]

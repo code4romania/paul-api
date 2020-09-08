@@ -34,7 +34,6 @@ urlpatterns = [
             version="0.0.1",
             url="http://dev.api.paul.ro:8000/"
             # urlconf='api.urls'
-
         ),
         name="openapi-schema",
     ),
@@ -46,7 +45,7 @@ urlpatterns = [
         ),
         name="swagger-ui",
     ),
-    path('user/', views.UserView.as_view()),
+    path("user/", views.UserView.as_view()),
     path("", include(router.urls)),
     path("", include(tables_router.urls)),
 ]

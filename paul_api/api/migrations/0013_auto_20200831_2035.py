@@ -6,13 +6,13 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0012_csvimport_errors'),
+        ("api", "0012_csvimport_errors"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='csvimport',
-            old_name='imported_count',
-            new_name='imports_count',
+            model_name="csvimport",
+            old_name="imported_count",
+            new_name="imports_count",
         ),
     ]

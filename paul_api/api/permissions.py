@@ -21,7 +21,7 @@ class IsAuthenticatedOrGetToken(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        token_str = request.GET.get('token')
+        token_str = request.GET.get("token")
         token = Token.objects.filter(key=token_str)
         if token.exists():
             return True

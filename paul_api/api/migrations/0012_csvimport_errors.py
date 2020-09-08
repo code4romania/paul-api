@@ -7,13 +7,17 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0011_auto_20200831_2033'),
+        ("api", "0011_auto_20200831_2033"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='csvimport',
-            name='errors',
-            field=models.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True),
+            model_name="csvimport",
+            name="errors",
+            field=models.JSONField(
+                blank=True,
+                encoder=django.core.serializers.json.DjangoJSONEncoder,
+                null=True,
+            ),
         ),
     ]

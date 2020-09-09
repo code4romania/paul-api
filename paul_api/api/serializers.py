@@ -202,7 +202,8 @@ class TableCreateSerializer(
         instance.name = validated_data.get("name")
         instance.active = validated_data.get("active")
         instance.database = validated_data.get("database")
-
+        instance.last_edit_user = self.context['request'].user
+        print(instance.last_edit_user)
         if "fields" in validated_data.keys():
             # Check to see if we need to delete any field
             old_fields_ids = set(instance.fields.values_list("id", flat=True))
@@ -290,7 +291,8 @@ class TableSerializer(serializers.ModelSerializer):
 
 class DatabaseTableListDataSerializer(serializers.ModelSerializer):
     entries = serializers.SerializerMethodField()
-
+    # last_edit_user = serializers.ReadOnlyField(source='last_edit_user.userprofile.full_name')
+    last_edit_user = OwnerSerializer()
     def get_entries(self, obj):
         return obj.entries.count()
 
@@ -426,10 +428,17 @@ class EntrySerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data["data"] = self.initial_data
         validated_data["table"] = self.context["table"]
-        return models.Entry.objects.create(**validated_data)
+        instance = models.Entry.objects.create(**validated_data)
+        instance.table.last_edit_user = self.context['request'].user
+        instance.table.last_edit_date = datetime.now()
+        instance.table.save()
+        return instance
 
     def update(self, instance, validated_data, *args, **kwargs):
         instance.data = self.initial_data
+        instance.table.last_edit_user = self.context['request'].user
+        instance.table.last_edit_date = datetime.now()
+        instance.table.save()
         instance.save()
         return instance
 
@@ -635,6 +644,8 @@ class FilterCreateSerializer(serializers.ModelSerializer):
             models.Filter.objects.filter(pk=instance.pk).update(**validated_data)
         else:
             instance.name = validated_data.get("name")
+            instance.last_edit_user = self.request.user
+            print(instance.last_edit_user)
             instance.filters = validated_data.get("filters")
             primary_table_data = validated_data.pop("primary_table")
             join_tables = validated_data.pop("join_tables")

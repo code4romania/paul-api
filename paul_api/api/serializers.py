@@ -543,6 +543,7 @@ class FilterDetailSerializer(serializers.ModelSerializer):
         for field in primary_table.fields.all():
             fields.append({
                 "id": field.id,
+                "table_id": primary_table.id,
                 "name": "{}__{}".format(primary_table.table.slug, field.name),
                 "display_name": field.display_name,
                 "field_type": field.field_type,
@@ -551,6 +552,7 @@ class FilterDetailSerializer(serializers.ModelSerializer):
         for field in secondary_table.fields.all():
             fields.append({
                 "id": field.id,
+                "table_id": secondary_table.id,
                 "name": "{}__{}".format(secondary_table.table.slug, field.name),
                 "display_name": field.display_name,
                 "field_type": field.field_type,

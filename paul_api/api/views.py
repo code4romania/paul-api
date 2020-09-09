@@ -353,11 +353,12 @@ class FilterViewSet(viewsets.ModelViewSet):
     pagination_class = EntriesPagination
 
     def get_serializer_class(self):
+        print(self.action)
         if self.action == "list":
             return serializers.FilterListSerializer
         elif self.action == "retrieve":
             return serializers.FilterDetailSerializer
-        elif self.action in ["create", "update"]:
+        elif self.action in ["create", "update", "partial_update"]:
             return serializers.FilterCreateSerializer
 
         return serializers.FilterListSerializer

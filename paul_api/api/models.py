@@ -89,6 +89,8 @@ class Table(models.Model):
         related_name="last_table_edits",
     )
 
+    filters = models.JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)
+
     class Meta:
         permissions = (
             ("view", "View"),
@@ -269,18 +271,10 @@ class Filter(models.Model):
     primary_table = models.ForeignKey(
         FilterJoinTable, null=True, on_delete=models.CASCADE
     )
-    # primary_table = models.ForeignKey(Table, on_delete=models.CASCADE)
-    # primary_table_fields = models.ManyToManyField(
-    #     TableColumn, related_name="filter_primary_table_field"
-    # )
-    # join_field = models.ForeignKey(
-    #     TableColumn,
-    #     on_delete=models.CASCADE,
-    #     related_name="filter_primary_table_join_field",
-    # )
     join_tables = models.ManyToManyField(
         FilterJoinTable, related_name="filter_join_table"
     )
+    filters = models.JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)
     creation_date = models.DateTimeField(auto_now_add=True, null=True)
 
     owner = models.ForeignKey(User, on_delete=models.CASCADE, null=True)

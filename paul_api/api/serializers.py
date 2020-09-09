@@ -8,6 +8,7 @@ from rest_framework import serializers
 from rest_framework_guardian.serializers import ObjectPermissionsAssignmentMixin
 from guardian.models import UserObjectPermission
 from guardian.shortcuts import get_objects_for_user
+from guardian.shortcuts import assign_perm, remove_perm
 from guardian.core import ObjectPermissionChecker
 from . import models, utils
 
@@ -49,26 +50,80 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return new_user
 
 
-class TablesPermissionsSerializer(serializers.Serializer):
+class TablesPermissionsSerializer(serializers.BaseSerializer):
     id = serializers.IntegerField()
     permission = serializers.CharField()
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
-    tables_permissions = TablesPermissionsSerializer(many=True)
+    tables_permissions = serializers.SerializerMethodField()
+    avatar = serializers.ImageField(source='userprofile.avatar', allow_null=True)
 
     class Meta:
         model = User
         fields = ["email", "avatar", "first_name", "last_name", "tables_permissions"]
 
     def update(self, instance, validated_data):
-        pprint(validated_data)
+        userprofile_data = validated_data.pop('userprofile')
+        tables_permissions = self.initial_data.get('tables_permissions')
+        pprint(tables_permissions)
+        for table_permission in tables_permissions:
+
+#             ['add_table',
+# api_1  |  'change',
+# api_1  |  'change_table',
+# api_1  |  'delete',
+# api_1  |  'delete_table',
+# api_1  |  'view',
+# api_1  |  'view_table']
+            table = models.Table.objects.get(pk=table_permission['id'])
+            if table_permission['permissions'] == 'Can edit':
+                assign_perm('change_table', instance, table)
+                assign_perm('view_table', instance, table)
+                assign_perm('delete_table', instance, table)
+            elif table_permission['permissions'] == 'Can view':
+                assign_perm('view_table', instance, table)
+                remove_perm('change_table', instance, table)
+                remove_perm('delete_table', instance, table)
+            else:
+                remove_perm('view_table', instance, table)
+                remove_perm('change_table', instance, table)
+                remove_perm('delete_table', instance, table)
+
+
+        User.objects.filter(pk=instance.pk).update(**validated_data)
+        models.Userprofile.objects.filter(user=instance).update(**userprofile_data)
+        instance.refresh_from_db()
+
 
         return instance
 
+
+    def get_tables_permissions(self, obj):
+        tables = []
+
+        checker = ObjectPermissionChecker(obj)
+
+        for table in models.Table.objects.all():
+            user_perms = checker.get_perms(table)
+            print(table)
+            pprint(user_perms)
+            if 'change_table' in user_perms:
+                table_perm = 'Can edit'
+            elif 'view_table' in user_perms:
+                table_perm = 'Can view'
+            else:
+                table_perm = 'No rights'
+            tables.append({
+                'name': table.name,
+                'id': table.id,
+                'permissions': table_perm
+                })
+        return tables
+
 class UserDetailSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()
-    tables = serializers.SerializerMethodField()
+    tables_permissions = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -80,7 +135,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "avatar",
             "first_name",
             "last_name",
-            "tables"
+            "tables_permissions"
         ]
 
     def get_avatar(self, obj):
@@ -91,8 +146,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
         except:
             pass
 
-
-    def get_tables(self, obj):
+    def get_tables_permissions(self, obj):
         tables = []
 
         checker = ObjectPermissionChecker(obj)
@@ -100,9 +154,9 @@ class UserDetailSerializer(serializers.ModelSerializer):
         for table in models.Table.objects.all():
             user_perms = checker.get_perms(table)
 
-            if 'change' in user_perms:
+            if 'change_table' in user_perms:
                 table_perm = 'Can edit'
-            elif 'view' in user_perms:
+            elif 'view_table' in user_perms:
                 table_perm = 'Can view'
             else:
                 table_perm = 'No rights'
@@ -349,14 +403,22 @@ class DatabaseTableListDataSerializer(serializers.ModelSerializer):
 class DatabaseTableListSerializer(serializers.ModelSerializer):
     owner = OwnerSerializer()
     data = serializers.SerializerMethodField()
+    user_permissions = serializers.SerializerMethodField()
 
     def get_data(self, obj):
         serializer = DatabaseTableListDataSerializer(obj, context=self.context)
         return serializer.data
 
+    def get_user_permissions(self, obj):
+        user = self.context['request'].user
+        checker = ObjectPermissionChecker(user)
+
+        user_perms = checker.get_perms(obj)
+        return user_perms
+
     class Meta:
         model = models.Table
-        fields = ["url", "id", "active", "owner", "data"]
+        fields = ["url", "id", "active", "owner", "data", "user_permissions"]
 
 
 class DatabaseSerializer(serializers.HyperlinkedModelSerializer):

@@ -203,7 +203,7 @@ class TableCreateSerializer(
         instance.active = validated_data.get("active")
         instance.database = validated_data.get("database")
         instance.last_edit_user = self.context['request'].user
-        print(instance.last_edit_user)
+
         if "fields" in validated_data.keys():
             # Check to see if we need to delete any field
             old_fields_ids = set(instance.fields.values_list("id", flat=True))

@@ -28,7 +28,7 @@ class Userprofile(models.Model):
         User, on_delete=models.CASCADE, related_name="userprofile"
     )
 
-    dashboard_filters = models.ManyToManyField("Filter")
+    dashboard_filters = models.ManyToManyField("Filter", null=True, blank=True)
     token = models.UUIDField(default=uuid.uuid4)
     avatar = models.ImageField(upload_to="avatars", null=True, blank=True)
 

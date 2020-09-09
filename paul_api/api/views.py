@@ -253,6 +253,7 @@ class TableViewSet(viewsets.ModelViewSet):
         csv_import.errors = errors
         csv_import.errors_count = errors_count
         csv_import.imports_count = imports_count
+        csv_import.table = table
         csv_import.save()
         response = {
             "errors_count": errors_count,

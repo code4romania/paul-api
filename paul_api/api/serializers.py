@@ -182,13 +182,11 @@ class TableCreateSerializer(
         return data
 
     def create(self, validated_data):
-        print("table create")
         temp_fields = []
         if "fields" in validated_data.keys():
             temp_fields = validated_data.pop("fields")
 
         new_table = models.Table.objects.create(**validated_data)
-        pprint(temp_fields)
         for i in temp_fields:
             if "display_name" not in i.keys():
                 i["display_name"] = i["name"]
@@ -220,7 +218,6 @@ class TableCreateSerializer(
                     entry.save()
             # Create or update fields
             for field in validated_data.pop("fields"):
-                pprint(field)
                 if "id" in field.keys():
                     field_obj = models.TableColumn.objects.get(pk=field["id"])
                     old_name = field_obj.name
@@ -349,7 +346,6 @@ class EntryDataSerializer(serializers.ModelSerializer):
 
         if fields is not None:
             for field_name in fields:
-                print(field_name)
                 MappedField = DATATYPE_SERIALIZERS[
                     table_fields[field_name].field_type
                 ]
@@ -570,7 +566,6 @@ class FilterCreateSerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
-        pprint(validated_data)
         primary_table = validated_data.pop("primary_table")
         join_tables = validated_data.pop("join_tables")
 
@@ -592,7 +587,6 @@ class FilterCreateSerializer(serializers.ModelSerializer):
         return new_filter
 
     def update(self, instance, validated_data):
-        pprint(validated_data)
         instance.name = validated_data.get("name")
         primary_table_data = validated_data.pop("primary_table")
         join_tables = validated_data.pop("join_tables")

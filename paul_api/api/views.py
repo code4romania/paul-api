@@ -497,7 +497,7 @@ class EntryViewSet(viewsets.ModelViewSet):
         table_fields = {x.name: x for x in table.fields.all().order_by("id")}
 
         if str_fields == "ALL":
-            fields = [x for x in table_fields.keys().order_by("id")]
+            fields = [x for x in table_fields.keys()]
         else:
             fields = str_fields.split(",") if str_fields else None
             if not fields:

@@ -513,10 +513,11 @@ class FilterJoinTableListSerializer(serializers.ModelSerializer):
 class FilterDetailSerializer(serializers.ModelSerializer):
     owner = OwnerSerializer()
     last_edit_user = OwnerSerializer()
-    primary_table = FilterJoinTableListSerializer()
 
-    join_tables = FilterJoinTableListSerializer(many=True)
     entries = serializers.SerializerMethodField()
+    config = serializers.SerializerMethodField()
+    fields = serializers.SerializerMethodField(method_name='get_filter_fields')
+    default_fields = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Filter
@@ -528,9 +529,47 @@ class FilterDetailSerializer(serializers.ModelSerializer):
             "owner",
             "last_edit_user",
             "last_edit_date",
-            "primary_table",
-            "join_tables",
+            "config",
+            "fields",
+            "default_fields",
+            "filters"
         ]
+
+    def get_filter_fields(self, obj):
+        fields = []
+        primary_table = obj.primary_table
+        secondary_table = obj.join_tables.all()[0]
+
+        for field in primary_table.fields.all():
+            fields.append({
+                "id": field.id,
+                "name": "{}__{}".format(primary_table.table.slug, field.name),
+                "display_name": field.display_name,
+                "field_type": field.field_type,
+                "choices": field.choices
+                })
+        for field in secondary_table.fields.all():
+            fields.append({
+                "id": field.id,
+                "name": "{}__{}".format(secondary_table.table.slug, field.name),
+                "display_name": field.display_name,
+                "field_type": field.field_type,
+                "choices": field.choices
+                })
+        return fields
+
+    def get_default_fields(self, obj):
+        primary_table = obj.primary_table
+        secondary_table = obj.join_tables.all()[0]
+        all_fields = ['{}__{}'.format(primary_table.table.slug, x.name) for x in primary_table.fields.all().order_by('id')]
+        all_fields += ['{}__{}'.format(secondary_table.table.slug, x.name) for x in secondary_table.fields.all().order_by('id')]
+
+        return all_fields[:7]
+
+    def get_config(self, obj):
+        serializer = FilterCreateSerializer(obj, context=self.context)
+        return serializer.data
+
 
     def get_entries(self, obj):
         return self.context["request"].build_absolute_uri(
@@ -563,6 +602,7 @@ class FilterCreateSerializer(serializers.ModelSerializer):
             "last_edit_date",
             "primary_table",
             "join_tables",
+            "filters"
         ]
 
     def create(self, validated_data):
@@ -587,31 +627,31 @@ class FilterCreateSerializer(serializers.ModelSerializer):
         return new_filter
 
     def update(self, instance, validated_data):
-        instance.name = validated_data.get("name")
-        primary_table_data = validated_data.pop("primary_table")
-        join_tables = validated_data.pop("join_tables")
+        if self.partial:
+            models.Filter.objects.filter(pk=instance.pk).update(**validated_data)
+        else:
+            instance.name = validated_data.get("name")
+            instance.filters = validated_data.get("filters")
+            primary_table_data = validated_data.pop("primary_table")
+            join_tables = validated_data.pop("join_tables")
 
-        # new_filter = models.Filter.objects.create(**validated_data)
 
-        # fields = primary_table.pop('fields')
-        primary_table = instance.primary_table
-        primary_table.table = primary_table_data["table"]
-        primary_table.join_field = primary_table_data["join_field"]
-        primary_table.fields.set(primary_table_data["fields"])
-        primary_table.save()
+            primary_table = instance.primary_table
+            primary_table.table = primary_table_data["table"]
+            primary_table.join_field = primary_table_data["join_field"]
+            primary_table.fields.set(primary_table_data["fields"])
+            primary_table.save()
 
-        # new_filter.primary_table = primary_table
-        # new_filter.save()
-        instance.join_tables.set([])
-        for table in instance.join_tables.all():
-            table.delete()
-        for join_table in join_tables:
-            fields = join_table.pop("fields")
-            join_table = models.FilterJoinTable.objects.create(**join_table)
-            join_table.fields.set(fields)
+            instance.join_tables.set([])
+            for table in instance.join_tables.all():
+                table.delete()
+            for join_table in join_tables:
+                fields = join_table.pop("fields")
+                join_table = models.FilterJoinTable.objects.create(**join_table)
+                join_table.fields.set(fields)
 
-            instance.join_tables.add(join_table)
-        instance.save()
+                instance.join_tables.add(join_table)
+            instance.save()
         return instance
 
 

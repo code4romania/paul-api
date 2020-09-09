@@ -36,6 +36,8 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "create":
             return serializers.UserCreateSerializer
+        elif self.action == "retrieve":
+            return serializers.UserDetailSerializer
         return serializers.UserSerializer
 
 
@@ -111,7 +113,7 @@ class TableViewSet(viewsets.ModelViewSet):
     pagination_class = EntriesPagination
     # permission_classes = (BaseModelPermissions, api_permissions.IsAuthenticatedOrGetToken )
     permission_classes = (BaseModelPermissions,)
-    filter_backends = [ObjectPermissionsFilter, filters.DjangoFilterBackend]
+    filter_backends = [ObjectPermissionsFilter]
     filterset_fields = ["active"]
 
     def get_serializer_class(self):

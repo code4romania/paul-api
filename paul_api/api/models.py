@@ -32,6 +32,10 @@ class Userprofile(models.Model):
     token = models.UUIDField(default=uuid.uuid4)
     avatar = models.ImageField(upload_to="avatars", null=True, blank=True)
 
+
+    def full_name(self):
+        return '{} {}'.format(self.user.first_name, self.user.last_name)
+
     class Meta:
         pass
 

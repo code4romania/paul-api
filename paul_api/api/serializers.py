@@ -48,7 +48,25 @@ class UserCreateSerializer(serializers.ModelSerializer):
         print("TODO: send mail")
         return new_user
 
-class UserDetailSerializer(serializers.HyperlinkedModelSerializer):
+
+class TablesPermissionsSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    permission = serializers.CharField()
+
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    tables_permissions = TablesPermissionsSerializer(many=True)
+
+    class Meta:
+        model = User
+        fields = ["email", "avatar", "first_name", "last_name", "tables_permissions"]
+
+    def update(self, instance, validated_data):
+        pprint(validated_data)
+
+        return instance
+
+class UserDetailSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()
     tables = serializers.SerializerMethodField()
 
@@ -95,7 +113,7 @@ class UserDetailSerializer(serializers.HyperlinkedModelSerializer):
                 })
         return tables
 
-class UserSerializer(serializers.HyperlinkedModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()
 
     class Meta:

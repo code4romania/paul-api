@@ -415,7 +415,10 @@ class FilterViewSet(viewsets.ModelViewSet):
         secondary_table_fields.append("data__{}".format(secondary_table_join_field))
 
         # Create filters dict
-        filter_dict = {}
+        filter_dict = {
+            primary_table_slug: {},
+            secondary_table_slug: {},
+        }
 
         for key in request.GET:
             table_field = '__'.join(key.split("__")[:2])

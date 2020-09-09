@@ -38,6 +38,8 @@ class UserViewSet(viewsets.ModelViewSet):
             return serializers.UserCreateSerializer
         elif self.action == "retrieve":
             return serializers.UserDetailSerializer
+        elif self.action == "update":
+            return serializers.UserUpdateSerializer
         return serializers.UserSerializer
 
 

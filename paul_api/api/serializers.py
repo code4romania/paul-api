@@ -232,6 +232,8 @@ class TableCreateSerializer(
                     field_obj.save()
                 else:
                     field["table"] = instance
+                    field['name'] = utils.snake_case(field['display_name'])
+                    pprint(field)
                     models.TableColumn.objects.create(**field)
 
         instance.save()

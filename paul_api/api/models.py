@@ -56,10 +56,10 @@ class Database(models.Model):
         super().save(*args, **kwargs)
 
     def active_tables(self):
-        return self.tables.filter(active=True)
+        return self.tables.filter(active=True).order_by('id')
 
     def archived_tables(self):
-        return self.tables.filter(active=False)
+        return self.tables.filter(active=False).order_by('id')
 
     def tables_count(self):
         return self.tables.count()

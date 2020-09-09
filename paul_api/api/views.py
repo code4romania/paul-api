@@ -106,7 +106,7 @@ class TableViewSet(viewsets.ModelViewSet):
     queryset = (
         models.Table.objects.all()
         .prefetch_related("fields")
-        .select_related("database")
+        .select_related("database").order_by('id')
     )
     pagination_class = EntriesPagination
     # permission_classes = (BaseModelPermissions, api_permissions.IsAuthenticatedOrGetToken )

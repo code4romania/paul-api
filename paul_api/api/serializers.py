@@ -6,7 +6,9 @@ from django.contrib.auth.models import Group
 
 from rest_framework import serializers
 from rest_framework_guardian.serializers import ObjectPermissionsAssignmentMixin
-
+from guardian.models import UserObjectPermission
+from guardian.shortcuts import get_objects_for_user
+from guardian.core import ObjectPermissionChecker
 from . import models, utils
 
 from datetime import datetime
@@ -34,31 +36,6 @@ DATATYPE_SERIALIZERS = {
 }
 
 
-def gen_slug(value):
-    return slugify(value).replace("-", "_")
-
-
-class DynamicFieldsModelSerializer(serializers.ModelSerializer):
-    """
-    A ModelSerializer that takes an additional `fields` argument that
-    controls which fields should be displayed.
-    """
-
-    def __init__(self, *args, **kwargs):
-        # Don't pass the 'fields' arg up to the superclass
-        fields = kwargs.pop("fields", None)
-
-        # Instantiate the superclass normally
-        super(DynamicFieldsModelSerializer, self).__init__(*args, **kwargs)
-
-        if fields:
-            # Drop any fields that are not specified in the `fields` argument.
-            allowed = set(fields)
-            existing = set(self.fields.keys())
-            for field_name in existing - allowed:
-                self.fields.pop(field_name)
-
-
 class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -66,13 +43,57 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         new_user = User.objects.create(**validated_data)
-        new_user.userprofile = models.Userprofile()
-        new_user.save()
-        userprofile = new_user.userprofile
-        userprofile
+        userprofile = models.Userprofile.objects.create(user=new_user)
+
         print("TODO: send mail")
         return new_user
 
+class UserDetailSerializer(serializers.HyperlinkedModelSerializer):
+    avatar = serializers.SerializerMethodField()
+    tables = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "url",
+            "id",
+            "username",
+            "email",
+            "avatar",
+            "first_name",
+            "last_name",
+            "tables"
+        ]
+
+    def get_avatar(self, obj):
+        try:
+            request = self.context.get("request")
+            avatar_url = obj.userprofile.avatar.url
+            return request.build_absolute_uri(avatar_url)
+        except:
+            pass
+
+
+    def get_tables(self, obj):
+        tables = []
+
+        checker = ObjectPermissionChecker(obj)
+
+        for table in models.Table.objects.all():
+            user_perms = checker.get_perms(table)
+
+            if 'change' in user_perms:
+                table_perm = 'Can edit'
+            elif 'view' in user_perms:
+                table_perm = 'Can view'
+            else:
+                table_perm = 'No rights'
+            tables.append({
+                'name': table.name,
+                'id': table.id,
+                'permissions': table_perm
+                })
+        return tables
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     avatar = serializers.SerializerMethodField()
@@ -96,6 +117,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             return request.build_absolute_uri(avatar_url)
         except:
             pass
+
 
 
 class OwnerSerializer(serializers.HyperlinkedModelSerializer):

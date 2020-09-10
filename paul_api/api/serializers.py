@@ -326,6 +326,7 @@ class TableCreateSerializer(
                     field_obj.__dict__.update(field)
                     field_obj.save()
                 else:
+
                     field["table"] = instance
                     field['name'] = utils.snake_case(field['display_name'])
                     pprint(field)
@@ -449,9 +450,10 @@ class EntryDataSerializer(serializers.ModelSerializer):
             table_fields = {field.name: field for field in table.fields.all()}
 
         super(EntryDataSerializer, self).__init__(*args, **kwargs)
-
+        print(fields)
         if fields is not None:
             for field_name in fields:
+                print(field_name)
                 MappedField = DATATYPE_SERIALIZERS[
                     table_fields[field_name].field_type
                 ]

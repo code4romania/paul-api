@@ -208,3 +208,4 @@ class CsvImportAdmin(admin.ModelAdmin):
     list_display = ("table", "file", "imports_count", "errors_count", "errors")
     list_filter = ()
     search_fields = ("table__name",)
+    inlines = (CsvFieldMapInline, )

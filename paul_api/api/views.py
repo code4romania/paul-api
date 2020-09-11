@@ -383,6 +383,7 @@ class FilterViewSet(viewsets.ModelViewSet):
             "primary_table", "join_tables"
         )[0]
         str_fields = request.GET.get("__fields", "") if request else None
+        str_order = request.GET.get("__order", "") if request else None
 
         primary_table = obj.primary_table
         primary_table_slug = primary_table.table.slug
@@ -391,7 +392,6 @@ class FilterViewSet(viewsets.ModelViewSet):
         secondary_table = obj.join_tables.all()[0]
         secondary_table_slug = secondary_table.table.slug
         secondary_table_join_field = secondary_table.join_field.name
-
 
         # Get all fields and display fields
         all_fields = []
@@ -451,14 +451,34 @@ class FilterViewSet(viewsets.ModelViewSet):
                     filter_dict[table]["data__{}".format(field)] = float(value)
                 else:
                     filter_dict[table]["data__{}".format(field)] = value
+        
+        order_table = str_order.replace('-', '').split('__')[0]
+        str_order = str_order.replace(order_table + '__', '')
 
 
+        if str_order:
+            if str_order.startswith("-"):
+                order_by = '-data__{}'.format(str_order[1:])
+            else:
+                order_by = 'data__{}'.format(str_order)
+        else:
+            order_by = 'id'
+ 
+        table_order_by = 'id'
+
+        if order_table == primary_table_slug:
+            table_order_by = order_by
         join_values = models.Entry.objects.filter(
             table=primary_table.table
-        ).filter(**filter_dict[primary_table_slug]).values("data__{}".format(primary_table_join_field))
+        ).filter(**filter_dict[primary_table_slug]).values("data__{}".format(primary_table_join_field)).order_by(table_order_by)
 
 
         filter_dict[secondary_table_slug]["data__{}__in".format(secondary_table_join_field)] = join_values
+
+        table_order_by = 'id'
+        if order_table == secondary_table_slug:
+            table_order_by = order_by
+
 
         result_values = (
             models.Entry.objects.filter(table__slug=secondary_table_slug)
@@ -466,7 +486,7 @@ class FilterViewSet(viewsets.ModelViewSet):
                 **filter_dict[secondary_table_slug]
             )
             .values(*secondary_table_fields)
-            .order_by("data__{}".format(secondary_table_join_field))
+            .order_by(table_order_by)
         )
 
         queryset = result_values
@@ -727,7 +747,7 @@ class EntryViewSet(viewsets.ModelViewSet):
             fields = str_fields.split(",") if str_fields else None
             if not fields:
                 fields = [x for x in table_fields.keys()][:7]
-        print(fields)
+
         filter_dict = {}
         for key in request.GET:
             if key and key.split("__")[0] in table_fields.keys():

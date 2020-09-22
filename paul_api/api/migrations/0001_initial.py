@@ -120,9 +120,7 @@ class Migration(migrations.Migration):
                 ("token", models.UUIDField(default=uuid.uuid4)),
                 (
                     "avatar",
-                    models.ImageField(
-                        blank=True, null=True, upload_to="avatars"
-                    ),
+                    models.ImageField(blank=True, null=True, upload_to="avatars"),
                 ),
                 (
                     "user",
@@ -275,16 +273,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="filter",
             name="primary_table",
-            field=models.ForeignKey(
-                on_delete=django.db.models.deletion.CASCADE, to="api.table"
-            ),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="api.table"),
         ),
         migrations.AddField(
             model_name="filter",
             name="primary_table_fields",
-            field=models.ManyToManyField(
-                related_name="filter_primary_table_field", to="api.TableColumn"
-            ),
+            field=models.ManyToManyField(related_name="filter_primary_table_field", to="api.TableColumn"),
         ),
         migrations.CreateModel(
             name="Entry",

@@ -14,9 +14,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="csvimport",
             name="delimiter",
-            field=models.CharField(
-                blank=True, default=";", max_length=2, null=True
-            ),
+            field=models.CharField(blank=True, default=";", max_length=2, null=True),
         ),
         migrations.AlterField(
             model_name="csvimport",

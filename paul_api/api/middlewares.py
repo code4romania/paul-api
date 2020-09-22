@@ -20,10 +20,6 @@ class SqlPrintMiddleware:
             sqltime += float(query["time"])
 
         # len(connection.queries) = total number of queries
-        print(
-            "Page render: {:.2f} sec for {} queries".format(
-                sqltime, len(connection.queries)
-            )
-        )
+        print("Page render: {:.2f} sec for {} queries".format(sqltime, len(connection.queries)))
 
         return response

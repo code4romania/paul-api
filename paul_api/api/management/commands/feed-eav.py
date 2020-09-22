@@ -95,9 +95,7 @@ class Command(BaseCommand):
             entry.eav.nume = fake.name().split(" ")[1]
             entry.eav.prenume = fake.name().split(" ")[0]
             entry.eav.email = fake.email()
-            d = datetime.combine(
-                fake.date_of_birth(), datetime.min.time()
-            ) + timedelta(hours=6)
+            d = datetime.combine(fake.date_of_birth(), datetime.min.time()) + timedelta(hours=6)
             entry.eav.data_nasterii = make_aware(d)
             entry.eav.telefon = fake.phone_number()
             entry.eav.activ = random.choice([True, False])
@@ -112,31 +110,21 @@ class Command(BaseCommand):
                 abonament.eav.email = entry.eav.email
                 abonament.eav.nume = entry.eav.nume
                 abonament.eav.prenume = entry.eav.prenume
-                d = datetime.combine(
-                    fake.date_of_birth(), datetime.min.time()
-                ) + timedelta(hours=6)
+                d = datetime.combine(fake.date_of_birth(), datetime.min.time()) + timedelta(hours=6)
                 abonament.eav.data = make_aware(d)
                 abonament.eav.pret = random.choice([100, 200, 150, 120])
-                abonament.eav.tip = random.choice(
-                    ["Abonament digital", "Revista"]
-                )
+                abonament.eav.tip = random.choice(["Abonament digital", "Revista"])
                 abonament.save()
                 # entries.append(abonament)
             for iii in range(random.choice([0, 2, 3, 5])):
                 evenimente_count += 1
                 eveniment = models.Entry.objects.create(table=evenimente)
-                eveniment.eav.denumire = random.choice(
-                    ["DOR Live", "Power of Storytelling", "DOR online"]
-                )
+                eveniment.eav.denumire = random.choice(["DOR Live", "Power of Storytelling", "DOR online"])
                 eveniment.eav.email = entry.eav.email
-                d = datetime.combine(
-                    fake.date_of_birth(), datetime.min.time()
-                ) + timedelta(hours=6)
+                d = datetime.combine(fake.date_of_birth(), datetime.min.time()) + timedelta(hours=6)
                 eveniment.eav.data = make_aware(d)
                 eveniment.eav.pret = random.choice([100, 200, 150, 120])
-                eveniment.eav.oras = random.choice(
-                    ["Arad", "Timisoara", "Oradea", "Cluj", "Bucuresti"]
-                )
+                eveniment.eav.oras = random.choice(["Arad", "Timisoara", "Oradea", "Cluj", "Bucuresti"])
 
                 eveniment.save()
                 # entries.append(eveniment)

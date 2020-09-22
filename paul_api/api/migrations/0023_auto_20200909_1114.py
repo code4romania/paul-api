@@ -7,18 +7,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0022_filter_join_tables'),
+        ("api", "0022_filter_join_tables"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='filter',
-            name='filters',
+            model_name="filter",
+            name="filters",
             field=models.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True),
         ),
         migrations.AddField(
-            model_name='table',
-            name='filters',
+            model_name="table",
+            name="filters",
             field=models.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True),
         ),
     ]

@@ -118,9 +118,7 @@ class Command(BaseCommand):
             data["nume"] = fake.name().split(" ")[1]
             data["prenume"] = fake.name().split(" ")[0]
             data["email"] = fake.email()
-            d = datetime.combine(
-                fake.date_of_birth(), datetime.min.time()
-            ) + timedelta(hours=6)
+            d = datetime.combine(fake.date_of_birth(), datetime.min.time()) + timedelta(hours=9)
             data["data_nasterii"] = make_aware(d)
             data["telefon"] = fake.phone_number()
             data["activ"] = random.choice([True, False])
@@ -139,9 +137,7 @@ class Command(BaseCommand):
                 data["email"] = entry.data["email"]
                 data["nume"] = entry.data["nume"]
                 data["prenume"] = entry.data["prenume"]
-                d = datetime.combine(
-                    fake.date_of_birth(), datetime.min.time()
-                ) + timedelta(hours=6)
+                d = datetime.combine(fake.date_of_birth(), datetime.min.time()) + timedelta(hours=6)
                 data["data"] = make_aware(d)
                 data["pret"] = random.choice([100, 200, 150, 120])
                 data["tip"] = random.choice(["Abonament digital", "Revista"])
@@ -153,18 +149,12 @@ class Command(BaseCommand):
                 evenimente_count += 1
                 eveniment = models.Entry(table=evenimente)
                 data = {}
-                data["denumire"] = random.choice(
-                    ["DOR Live", "Power of Storytelling", "DOR online"]
-                )
+                data["denumire"] = random.choice(["DOR Live", "Power of Storytelling", "DOR online"])
                 data["email"] = entry.data["email"]
-                d = datetime.combine(
-                    fake.date_of_birth(), datetime.min.time()
-                ) + timedelta(hours=6)
+                d = datetime.combine(fake.date_of_birth(), datetime.min.time()) + timedelta(hours=6)
                 data["data"] = make_aware(d)
                 data["pret"] = random.choice([100, 200, 150, 120])
-                data["oras"] = random.choice(
-                    ["Arad", "Timisoara", "Oradea", "Cluj", "Bucuresti"]
-                )
+                data["oras"] = random.choice(["Arad", "Timisoara", "Oradea", "Cluj", "Bucuresti"])
                 # eveniment.data = json.loads(json.dumps(data, cls=DjangoJSONEncoder))
                 eveniment.data = data
                 # eveniment.save()

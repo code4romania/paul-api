@@ -89,16 +89,12 @@ class BaseEntityAdmin(admin.ModelAdmin):
 
         # Infer correct data from the form.
         fieldsets = self.fieldsets or [(None, {"fields": form.fields.keys()})]
-        adminform = admin.helpers.AdminForm(
-            form, fieldsets, self.prepopulated_fields
-        )
+        adminform = admin.helpers.AdminForm(form, fieldsets, self.prepopulated_fields)
         media = mark_safe(self.media + adminform.media)
 
         context.update(adminform=adminform, media=media)
 
-        return super(BaseEntityAdmin, self).render_change_form(
-            request, context, *args, **kwargs
-        )
+        return super(BaseEntityAdmin, self).render_change_form(request, context, *args, **kwargs)
 
 
 @admin.register(models.Entry)
@@ -188,18 +184,16 @@ class FilterAdmin(admin.ModelAdmin):
     inlines = ()
 
     def get_primary_table_fields(self, obj):
-        return ", ".join(
-            obj.primary_table_fields.values_list("name", flat=True)
-        )
+        return ", ".join(obj.primary_table_fields.values_list("name", flat=True))
 
     def get_join_tables(self, obj):
         # print(obj.join_tables)
         # return ', '.join([x for x in obj.join_tables])
         tables = {}
         for table in obj.join_tables.all():
-            tables[
-                "{} [{}]".format(table.table.name, table.join_field.name)
-            ] = ", ".join(table.fields.values_list("name", flat=True))
+            tables["{} [{}]".format(table.table.name, table.join_field.name)] = ", ".join(
+                table.fields.values_list("name", flat=True)
+            )
         return ", ".join(["{} ({})".format(t, f) for t, f in tables.items()])
 
 
@@ -208,4 +202,22 @@ class CsvImportAdmin(admin.ModelAdmin):
     list_display = ("table", "file", "imports_count", "errors_count", "errors")
     list_filter = ()
     search_fields = ("table__name",)
-    inlines = (CsvFieldMapInline, )
+    inlines = (CsvFieldMapInline,)
+
+
+@admin.register(models.Chart)
+class ChartAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "chart_type",
+        "table",
+        "timeline_field",
+        "timeline_period",
+        "timeline_include_nulls",
+        "x_axis_field",
+        "y_axis_field",
+        "y_axis_function",
+    )
+    list_filter = ()
+    search_fields = ()
+    inlines = ()

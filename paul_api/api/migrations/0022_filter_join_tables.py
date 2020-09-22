@@ -13,8 +13,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="filter",
             name="join_tables",
-            field=models.ManyToManyField(
-                related_name="filter_join_table", to="api.FilterJoinTable"
-            ),
+            field=models.ManyToManyField(related_name="filter_join_table", to="api.FilterJoinTable"),
         ),
     ]

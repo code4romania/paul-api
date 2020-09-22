@@ -20,9 +20,7 @@ class Command(BaseCommand):
             table_name = f.name.split("/")[-1].split(".")[0]
             admin = User.objects.get(username="admin")
             db, _ = models.Database.objects.get_or_create(name="DOR")
-            table, _ = models.Table.objects.get_or_create(
-                database=db, name=table_name.capitalize(), owner=admin
-            )
+            table, _ = models.Table.objects.get_or_create(database=db, name=table_name.capitalize(), owner=admin)
 
             print("Deleting all columns from table", table)
             print(table.fields.all().delete())

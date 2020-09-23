@@ -324,4 +324,4 @@ class Chart(models.Model):
         return self.name
 
     class Meta:
-        pass
+        ordering = ['id']

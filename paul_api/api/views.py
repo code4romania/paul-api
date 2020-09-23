@@ -42,6 +42,7 @@ DB_FUNCTIONS = {
     "Avg": Avg,
 }
 
+
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = serializers.users.UserSerializer
@@ -69,7 +70,20 @@ class UserView(APIView):
         Return a list of all users.
         """
         user = request.user
-        response = {"username": user.username}
+        charts_serializer = serializers.charts.ListSerializer(
+            user.userprofile.dashboard_charts.all(), many=True, context={'request': request})
+        filters_serializer = serializers.filters.FilterListSerializer(
+            user.userprofile.dashboard_filters.all(), many=True, context={'request': request})
+
+        pprint(charts_serializer)
+        dashboard = {
+            "charts": charts_serializer.data,
+            "filters": filters_serializer.data
+        }
+        response = {
+            "username": user.username,
+            "dashboard": dashboard
+        }
         return Response(response)
 
 
@@ -369,6 +383,23 @@ class FilterViewSet(viewsets.ModelViewSet):
         if self.action == "csv_export":
             base_permissions = (api_permissions.IsAuthenticatedOrGetToken(),)
         return base_permissions
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_name="add-to-dashboard",
+        url_path="add-to-dashboard",
+    )
+    def add_to_dashboard(self, request, pk):
+        filter = self.get_object()
+        userprofile = request.user.userprofile
+
+        if filter in userprofile.dashboard_filters.all():
+            userprofile.dashboard_filters.remove(filter)
+        else:
+            userprofile.dashboard_filters.add(filter)
+        userprofile.save()
+        return Response({'filter_in_dashboard': filter in userprofile.dashboard_filters.all()})
 
     @action(methods=["get"], detail=True, url_path="entries", url_name="entries")
     def entries(self, request, pk):
@@ -854,6 +885,23 @@ class ChartViewSet(viewsets.ModelViewSet):
     @action(
         detail=True,
         methods=["get"],
+        url_name="add-to-dashboard",
+        url_path="add-to-dashboard",
+    )
+    def add_to_dashboard(self, request, pk):
+        chart = self.get_object()
+        userprofile = request.user.userprofile
+
+        if chart in userprofile.dashboard_charts.all():
+            userprofile.dashboard_charts.remove(chart)
+        else:
+            userprofile.dashboard_charts.add(chart)
+        userprofile.save()
+        return Response({'chart_in_dashboard': chart in userprofile.dashboard_charts.all()})
+
+    @action(
+        detail=True,
+        methods=["get"],
         url_name="data",
         url_path="data",
     )
@@ -919,28 +967,101 @@ class ChartViewSet(viewsets.ModelViewSet):
         if chart.timeline_field:
             chart_data = chart_data.order_by('time')
             data = utils.prepare_chart_data(chart, chart_data, timeline=True)
-            # {    
-            #     "data":
-            #         {
-            #            "labels":["2014","2015","2016","2017","2018","2019","2020"],
-            #            "datasets":[
-            #                {
-            #                    "label":"Revista",
-            #                     "data":[65,59,80,81,56,55,40]
-            #                },
-            #                {
-            #                    "label":"Aboonament digital",
-            #                     "data":[65,59,80,81,56,55,40]
-            #                }
-            #                ]
-            #        }
-            # }
+
         else:
             chart_data = chart_data.order_by('data__' +  chart.x_axis_field.name)
             data = utils.prepare_chart_data(chart, chart_data, timeline=False)
 
         return Response(data)
 
+    @action(
+        detail=False,
+        methods=["get"],
+        url_name="preview",
+        url_path="preview",
+    )
+    def get_preview(self, request):
+        chart = models.Chart()
+        table = models.Table.objects.get(pk=request.GET.get('table', None))
+        timeline_field = models.TableColumn.objects.get(pk=int(request.GET.get('timeline_field', None))) if request.GET.get('timeline_field', None) else None
+        x_axis_field = models.TableColumn.objects.get(pk=int(request.GET.get('x_axis_field', None))) if request.GET.get('x_axis_field', None) else None
+        y_axis_field = models.TableColumn.objects.get(pk=int(request.GET.get('y_axis_field', None))) if request.GET.get('y_axis_field', None) else None
+        chart.table = table
+        chart.timeline_field = timeline_field
+        chart.x_axis_field = x_axis_field
+        chart.y_axis_field = y_axis_field
+
+        chart.chart_type = request.GET.get('chart_type', None)
+        chart.timeline_period = request.GET.get('timeline_period', None)
+        chart.timeline_include_nulls = True if request.GET.get('timeline_include_nulls', None) == 'true' else False
+        chart.y_axis_function = request.GET.get('y_axis_function', None)
+
+        y_axis_function = DB_FUNCTIONS[chart.y_axis_function]
+
+        table_fields = {x.name: x for x in table.fields.all()}
+        filter_dict = {}
+        for key in request.GET:
+            if key and key.split("__")[0] in table_fields.keys():
+                value = request.GET.get(key).split(",")
+                if len(value) == 1:
+                    value = value[0]
+                else:
+                    key = key + "__in"
+
+                if table_fields[key.split("__")[0]].field_type in [
+                    "float",
+                    "int",
+                ]:
+                    filter_dict["data__{}".format(key)] = float(value)
+                else:
+                    filter_dict["data__{}".format(key)] = value
+
+        chart_data = models.Entry.objects \
+            .filter(table=chart.table) \
+            .filter(**filter_dict)
+
+        if chart.timeline_field:
+
+            chart_data = chart_data.annotate(date_field=Cast(
+                    KeyTextTransform(chart.timeline_field.name, "data"), DateTimeField()
+                )) \
+                .annotate(time=Trunc('date_field', chart.timeline_period.lower(), is_dst=False)) \
+                .values('time')
+        else:
+            print('values', 'data__' +  chart.x_axis_field.name)
+            chart_data = chart_data \
+                .annotate(series=Cast(
+                    KeyTextTransform(chart.x_axis_field.name, "data"), CharField()))\
+                .values('series')
+
+        # if we have Y axis field
+        if chart.y_axis_field:
+            chart_data = chart_data \
+                .annotate(value=y_axis_function(Cast(
+                    KeyTextTransform(chart.y_axis_field.name, "data"), FloatField()
+                )))
+        else:
+            chart_data = chart_data.annotate(value=Count('id'))
+
+        # if we have X axis field
+        if chart.x_axis_field and chart.timeline_field:
+            chart_data = chart_data \
+                .annotate(series=Cast(
+                    KeyTextTransform(chart.x_axis_field.name, "data"), CharField()
+                )) \
+                .values('time', 'value', 'series')
+        elif chart.x_axis_field:
+            chart_data = chart_data.values('series', 'value')
+
+        if chart.timeline_field:
+            chart_data = chart_data.order_by('time')
+            data = utils.prepare_chart_data(chart, chart_data, timeline=True)
+
+        else:
+            chart_data = chart_data.order_by('data__' +  chart.x_axis_field.name)
+            data = utils.prepare_chart_data(chart, chart_data, timeline=False)
+
+        return Response(data)
 #  line chart 
 
 

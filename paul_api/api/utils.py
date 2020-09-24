@@ -81,8 +81,7 @@ def prepare_chart_data(chart, chart_data, timeline=True):
             'label': '',
             'data': []
         }],
-        'options': {},
-        'type': chart.chart_type
+        'options': {}
     }
     # colors = ["#e3713c","#b4dfe5","#303c6c","#fbe8a6","#d2fdff","#c59fc9","#dbbadd","#fffc31","#ffcb47","#fc60a8"]
     colors = ['#223E6D','#87C700','#8E0101','#FF6231','#175B1E','#A2D3E4','#4B0974','#ED1A3B','#0081BB','#9CCB98','#DF3D84','#FD7900','#589674','#C2845D','#AA44E8','#EFAD88','#8590FF','#00B3A8','#FF8DB8','#FBB138']
@@ -99,7 +98,7 @@ def prepare_chart_data(chart, chart_data, timeline=True):
             if chart.x_axis_field:
                 data['datasets'][0]['label'] = chart.x_axis_field.display_name
             data['datasets'][0]['data'].append(value)
-            if chart.chart_type == 'Pie':
+            if chart.chart_type in ['Pie', 'Doughnut']:
                 data['datasets'][0]['backgroundColor'].append(colors[i%20])
             else:
                 data['datasets'][0]['backgroundColor'] = colors[0]
@@ -174,6 +173,6 @@ def prepare_chart_data(chart, chart_data, timeline=True):
                 'labelString': x_axis_label
             }
         }]
-        }
+        } if chart.chart_type not in ['Pie', 'Doughnut'] else {}
       }
     return data

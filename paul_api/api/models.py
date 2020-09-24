@@ -20,7 +20,7 @@ datatypes = (
 
 chart_functions = (("Count", "Count"), ("Sum", "Sum"), ("Min", "Min"), ("Max", "Max"), ("Avg", "Average"))
 
-chart_types = (("Line", "Line"), ("Bar", "Bar"), ("Column", "Column"), ("Pie", "Pie"))
+chart_types = (("Line", "Line"), ("Bar", "Bar"), ("Pie", "Pie"), ("Doughnut", "Doughnut"))
 
 chart_timeline_periods = (("minute", "Minute"), ("hour", "Hour"), ("day", "Day"), ("week", "Week"), ("month", "Month"), ("year", "Year"))
 

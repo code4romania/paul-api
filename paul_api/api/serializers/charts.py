@@ -96,27 +96,6 @@ class CreateSerializer(serializers.ModelSerializer):
             models.Chart.objects.filter(pk=instance.pk).update(**validated_data)
             instance.refresh_from_db()
         else:
-            instance.name = validated_data.get("name")
-            instance.last_edit_user = self.request.user
-            print(instance.last_edit_user)
-            instance.filters = validated_data.get("filters")
-            primary_table_data = validated_data.pop("primary_table")
-            join_tables = validated_data.pop("join_tables")
-
-            primary_table = instance.primary_table
-            primary_table.table = primary_table_data["table"]
-            primary_table.join_field = primary_table_data["join_field"]
-            primary_table.fields.set(primary_table_data["fields"])
-            primary_table.save()
-
-            instance.join_tables.set([])
-            for table in instance.join_tables.all():
-                table.delete()
-            for join_table in join_tables:
-                fields = join_table.pop("fields")
-                join_table = models.ChartJoinTable.objects.create(**join_table)
-                join_table.fields.set(fields)
-
-                instance.join_tables.add(join_table)
-            instance.save()
+            models.Chart.objects.filter(pk=instance.pk).update(**validated_data)
+            instance.refresh_from_db()
         return instance

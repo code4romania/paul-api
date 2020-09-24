@@ -734,6 +734,8 @@ class EntryViewSet(viewsets.ModelViewSet):
                     filter_dict["data__{}".format(key)] = float(value)
                 else:
                     filter_dict["data__{}".format(key)] = value
+        if not filter_dict and table.filters:
+            filter_dict = table.filters
 
         if str_order and str_order.replace("-", "") in fields:
             if str_order.startswith("-"):

@@ -735,8 +735,9 @@ class EntryViewSet(viewsets.ModelViewSet):
                 else:
                     filter_dict["data__{}".format(key)] = value
         if not filter_dict and table.filters:
-            filter_dict = table.filters
-
+            for field, value in table.filters.items():
+                filter_dict['data__{}'.format(field)] = value
+        print(filter_dict)
         if str_order and str_order.replace("-", "") in fields:
             if str_order.startswith("-"):
                 queryset = table.entries.filter(**filter_dict).order_by("-data__{}".format(str_order[1:]))

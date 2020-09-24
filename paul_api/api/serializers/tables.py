@@ -98,6 +98,7 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
     def update(self, instance, validated_data):
         if self.partial:
             models.Filter.objects.filter(pk=instance.pk).update(**validated_data)
+            instance.refresh_from_db()
         else:
             instance.name = validated_data.get("name")
             instance.active = validated_data.get("active")

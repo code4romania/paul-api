@@ -85,6 +85,7 @@ def prepare_chart_data(chart, chart_data, timeline=True):
     }
     # colors = ["#e3713c","#b4dfe5","#303c6c","#fbe8a6","#d2fdff","#c59fc9","#dbbadd","#fffc31","#ffcb47","#fc60a8"]
     colors = ['#223E6D','#87C700','#8E0101','#FF6231','#175B1E','#A2D3E4','#4B0974','#ED1A3B','#0081BB','#9CCB98','#DF3D84','#FD7900','#589674','#C2845D','#AA44E8','#EFAD88','#8590FF','#00B3A8','#FF8DB8','#FBB138']
+    colors.reverse()
     if timeline == False:
         for entry in chart_data:
             data_dict.setdefault(entry['series'], 0)

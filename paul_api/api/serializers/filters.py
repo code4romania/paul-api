@@ -191,6 +191,7 @@ class FilterCreateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         if self.partial:
             models.Filter.objects.filter(pk=instance.pk).update(**validated_data)
+            instance.refresh_from_db()
         else:
             instance.name = validated_data.get("name")
             instance.last_edit_user = self.context['request'].user

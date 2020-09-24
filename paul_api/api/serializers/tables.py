@@ -96,44 +96,46 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
         return new_table
 
     def update(self, instance, validated_data):
-        instance.name = validated_data.get("name")
-        instance.active = validated_data.get("active")
-        instance.database = validated_data.get("database")
-        instance.last_edit_user = self.context["request"].user
+        if self.partial:
+            models.Filter.objects.filter(pk=instance.pk).update(**validated_data)
+        else:
+            instance.name = validated_data.get("name")
+            instance.active = validated_data.get("active")
+            instance.database = validated_data.get("database")
+            instance.last_edit_user = self.context["request"].user
+            if "fields" in validated_data.keys():
+                # Check to see if we need to delete any field
+                old_fields_ids = set(instance.fields.values_list("id", flat=True))
+                new_fields_ids = set([x.get("id") for x in validated_data.get("fields")])
+                for id_to_remove in old_fields_ids - new_fields_ids:
+                    field = models.TableColumn.objects.get(pk=id_to_remove)
+                    field_name = field.name
+                    field.delete()
+                    for entry in instance.entries.all():
+                        del entry.data[field_name]
+                        entry.save()
+                # Create or update fields
+                for field in validated_data.pop("fields"):
+                    if "id" in field.keys():
+                        field_obj = models.TableColumn.objects.get(pk=field["id"])
+                        old_name = field_obj.name
+                        new_name = field["name"]
+                        if old_name != new_name:
 
-        if "fields" in validated_data.keys():
-            # Check to see if we need to delete any field
-            old_fields_ids = set(instance.fields.values_list("id", flat=True))
-            new_fields_ids = set([x.get("id") for x in validated_data.get("fields")])
-            for id_to_remove in old_fields_ids - new_fields_ids:
-                field = models.TableColumn.objects.get(pk=id_to_remove)
-                field_name = field.name
-                field.delete()
-                for entry in instance.entries.all():
-                    del entry.data[field_name]
-                    entry.save()
-            # Create or update fields
-            for field in validated_data.pop("fields"):
-                if "id" in field.keys():
-                    field_obj = models.TableColumn.objects.get(pk=field["id"])
-                    old_name = field_obj.name
-                    new_name = field["name"]
-                    if old_name != new_name:
+                            for entry in instance.entries.all():
+                                entry.data[new_name] = entry.data[old_name]
+                                del entry.data[old_name]
+                                entry.save()
+                        field_obj.__dict__.update(field)
+                        field_obj.save()
+                    else:
 
-                        for entry in instance.entries.all():
-                            entry.data[new_name] = entry.data[old_name]
-                            del entry.data[old_name]
-                            entry.save()
-                    field_obj.__dict__.update(field)
-                    field_obj.save()
-                else:
+                        field["table"] = instance
+                        field["name"] = utils.snake_case(field["display_name"])
+                        pprint(field)
+                        models.TableColumn.objects.create(**field)
 
-                    field["table"] = instance
-                    field["name"] = utils.snake_case(field["display_name"])
-                    pprint(field)
-                    models.TableColumn.objects.create(**field)
-
-        instance.save()
+            instance.save()
         return instance
 
     def get_permissions_map(self, created):
@@ -172,6 +174,7 @@ class TableSerializer(serializers.ModelSerializer):
             "active",
             "default_fields",
             "fields",
+            "filters"
         ]
 
     def get_default_fields(self, obj):

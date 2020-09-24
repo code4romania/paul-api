@@ -80,8 +80,11 @@ def prepare_chart_data(chart, chart_data, timeline=True):
         'datasets': [{
             'label': '',
             'data': []
-        }]
+        }],
+        'options': {}
     }
+    # colors = ["#e3713c","#b4dfe5","#303c6c","#fbe8a6","#d2fdff","#c59fc9","#dbbadd","#fffc31","#ffcb47","#fc60a8"]
+    colors = ['#223E6D','#87C700','#8E0101','#FF6231','#175B1E','#A2D3E4','#4B0974','#ED1A3B','#0081BB','#9CCB98','#DF3D84','#FD7900','#589674','#C2845D','#AA44E8','#EFAD88','#8590FF','#00B3A8','#FF8DB8','#FBB138']
     if timeline == False:
         for entry in chart_data:
             data_dict.setdefault(entry['series'], 0)
@@ -89,7 +92,11 @@ def prepare_chart_data(chart, chart_data, timeline=True):
 
         for key, value in data_dict.items():
             data['labels'].append(key)
+            if chart.x_axis_field:
+                data['datasets'][0]['label'] = chart.x_axis_field.display_name
             data['datasets'][0]['data'].append(value)
+            data['datasets'][0]['backgroundColor'] = colors[0]
+
     else:
         labels = []
         labels_dict = {}
@@ -120,10 +127,46 @@ def prepare_chart_data(chart, chart_data, timeline=True):
                 labels_dict.setdefault(label, [])
                 labels_dict[label].append(value.get(label, 0))
         data['datasets'] = []
+        i = 0
         for label, label_values in labels_dict.items():
+            i += 1
             data['datasets'].append(
                 {
                     'label': label,
-                    'data': label_values
+                    'data': label_values,
+                    'backgroundColor': colors[i%10]
                 })
+
+    if chart.y_axis_field:
+        y_axis_label = '{} ({})'.format(chart.y_axis_function, chart.y_axis_field.display_name)
+    else:
+        y_axis_label = chart.y_axis_function
+    if chart.x_axis_field:
+        if chart.timeline_field:
+            x_axis_label = '{} ({})'.format(chart.x_axis_field.display_name, chart.timeline_field.display_name)
+        else:
+            x_axis_label = chart.x_axis_field.display_name
+    else:
+        if chart.timeline_field:
+            x_axis_label = '{} ({})'.format(chart.timeline_field.display_name, chart.timeline_period.capitalize())
+        else:
+            x_axis_label = chart.table.name
+
+    data['options'] = {
+        'maintainAspectRatio': False,
+        'scales': {
+        'yAxes': [{
+            'scaleLabel': {
+                'display': True,
+                'labelString': y_axis_label
+            }
+        }],
+        'xAxes': [{
+            'scaleLabel': {
+                'display': True,
+                'labelString': x_axis_label
+            }
+        }]
+        }
+      }
     return data

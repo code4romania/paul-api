@@ -1,7 +1,25 @@
+from django.db.models import (
+    Count, Sum, Min, Max, Avg,
+    DateTimeField, CharField, FloatField, IntegerField)
+from django.db.models.functions import Trunc, Cast
+from django.contrib.postgres.fields.jsonb import KeyTextTransform
+
+from collections import OrderedDict
 import inflection
+
 from . import models
 
-from datetime import datetime
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
+from pprint import pprint
+
+DB_FUNCTIONS = {
+    "Count": Count,
+    "Sum": Sum,
+    "Min": Min,
+    "Max": Max,
+    "Avg": Avg,
+}
 
 
 def snake_case(text):
@@ -73,8 +91,110 @@ def import_csv(reader, table):
     return errors, errors_count, imports_count
 
 
+def get_chart_data(request, chart, table):
+    y_axis_function = DB_FUNCTIONS[chart.y_axis_function]
+
+    table_fields = {x.name: x for x in table.fields.all()}
+    filter_dict = {}
+    for key in request.GET:
+        if key and key.split("__")[0] in table_fields.keys():
+            value = request.GET.get(key).split(",")
+            if len(value) == 1:
+                value = value[0]
+            else:
+                key = key + "__in"
+
+            if table_fields[key.split("__")[0]].field_type in [
+                "float",
+                "int",
+            ]:
+                filter_dict["data__{}".format(key)] = float(value)
+            else:
+                filter_dict["data__{}".format(key)] = value
+    # filter_dict['data__modificat_la__gte'] = datetime.now() - timedelta(days=30)
+    # filter_dict['data__statut__in'] = ['cancelled']
+    chart_data = models.Entry.objects \
+        .filter(table=chart.table) \
+        .filter(**filter_dict)
+
+    if chart.timeline_field:
+
+        chart_data = chart_data.annotate(date_field=Cast(
+                KeyTextTransform(chart.timeline_field.name, "data"), DateTimeField()
+            )) \
+            .annotate(time=Trunc('date_field', chart.timeline_period.lower(), is_dst=False)) \
+            .values('time')
+    else:
+        chart_data = chart_data \
+            .annotate(series=Cast(
+                KeyTextTransform(chart.x_axis_field.name, "data"), CharField()))\
+            .values('series')
+
+    # if we have Y axis field
+    if chart.y_axis_field:
+        chart_data = chart_data \
+            .annotate(value=y_axis_function(Cast(
+                KeyTextTransform(chart.y_axis_field.name, "data"), FloatField()
+            )))
+    else:
+        chart_data = chart_data.annotate(value=Count('id'))
+
+    # if we have X axis field
+    if chart.x_axis_field and chart.timeline_field:
+        chart_data = chart_data \
+            .annotate(series=Cast(
+                KeyTextTransform(chart.x_axis_field.name, "data"), CharField()
+            )) \
+            .values('time', 'value', 'series')
+    elif chart.x_axis_field:
+        chart_data = chart_data.values('series', 'value')
+
+    if chart.timeline_field:
+        chart_data = chart_data.order_by('time')
+        data = prepare_chart_data(chart, chart_data, timeline=True)
+
+    else:
+        chart_data = chart_data.order_by('data__' +  chart.x_axis_field.name)
+        data = prepare_chart_data(chart, chart_data, timeline=False)
+
+    return data
+
+def get_strftime(date, period):
+    if period == 'year':
+        date_str = date.strftime('%Y')
+    elif period == 'month':
+        date_str = date.strftime('%Y-%m')
+    elif period == 'week':
+        date_str = date.strftime('%Y-%V')
+    elif period == 'day':
+        date_str = date.strftime('%Y-%m-%d')
+    elif period == 'hour':
+        date_str = date.strftime('%Y-%m-%d %H')
+    elif period == 'minute':
+        date_str = date.strftime('%Y-%m-%d %H:%M')
+    return date_str
+
+
+def get_strptime(date_str, period):
+    if period == 'year':
+        date = datetime.strptime(date_str, '%Y')
+    elif period == 'month':
+        date = datetime.strptime(date_str, '%Y-%m')
+    elif period == 'week':
+        date = datetime.strptime(date_str + '-1', '%G-%V-%w')
+    elif period == 'day':
+        date = datetime.strptime(date_str, '%Y-%m-%d')
+    elif period == 'hour':
+        date = datetime.strptime(date_str, '%Y-%m-%d %H')
+    elif period == 'minute':
+        date = datetime.strptime(date_str, '%Y-%m-%d %H:%M')
+    return date
+
+
 def prepare_chart_data(chart, chart_data, timeline=True):
     data_dict = {}
+    timeline_period = chart.timeline_period
+
     data = {
         'labels': [],
         'datasets': [{
@@ -100,6 +220,9 @@ def prepare_chart_data(chart, chart_data, timeline=True):
             data['datasets'][0]['data'].append(value)
             if chart.chart_type in ['Pie', 'Doughnut']:
                 data['datasets'][0]['backgroundColor'].append(colors[i%20])
+            elif chart.chart_type in ['Line']:
+                data['datasets'][0]['backgroundColor'] = 'rgba(0, 0, 0, 0)'
+                data['datasets'][0]['borderColor'] = colors[0]
             else:
                 data['datasets'][0]['backgroundColor'] = colors[0]
 
@@ -108,23 +231,27 @@ def prepare_chart_data(chart, chart_data, timeline=True):
         labels_dict = {}
 
         for entry in chart_data:
-            if chart.timeline_period == 'year':
-                time = entry['time'].year
-            elif chart.timeline_period == 'month':
-                time = entry['time'].strftime('%Y-%m')
-            elif chart.timeline_period == 'week':
-                time = entry['time'].strftime('%Y-%V')
-            elif chart.timeline_period == 'day':
-                time = entry['time'].strftime('%Y-%m-%d')
-            elif chart.timeline_period == 'hour':
-                time = entry['time'].strftime('%Y-%m-%d %H')
-            elif chart.timeline_period == 'minute':
-                time = entry['time'].strftime('%Y-%m-%d %H:%M')
+            time = get_strftime(entry['time'], timeline_period)
             data_dict.setdefault(time, {})
             data_dict[time][entry.get('series', '')] = entry['value']
             if entry.get('series', '') not in labels:
                 labels.append(entry.get('series', ''))
-        # pprint(data_dict)
+
+        if chart.timeline_include_nulls:
+            first_entry = list(data_dict)[0]
+            last_entry = get_strptime(list(data_dict)[-1], timeline_period)
+            relativetime_increment = {}
+            relativetime_increment[timeline_period + 's'] = 1
+
+            time_period = get_strptime(first_entry, timeline_period)
+
+            ordered_data_dict = OrderedDict()
+            while time_period <= last_entry:
+                time_period_str = get_strftime(time_period, timeline_period)
+                data_dict.setdefault(time_period_str, {})
+                ordered_data_dict[time_period_str] = data_dict[time_period_str]
+                time_period += relativedelta(**relativetime_increment)
+            data_dict = ordered_data_dict
 
         for key, value in data_dict.items():
             data['labels'].append(key)
@@ -132,16 +259,25 @@ def prepare_chart_data(chart, chart_data, timeline=True):
             for label in labels:
                 labels_dict.setdefault(label, [])
                 labels_dict[label].append(value.get(label, 0))
+
         data['datasets'] = []
         i = 0
         for label, label_values in labels_dict.items():
             i += 1
-            data['datasets'].append(
-                {
+            if chart.chart_type == 'Line':
+                dataset = {
                     'label': label,
                     'data': label_values,
-                    'backgroundColor': colors[i%10]
-                })
+                    'backgroundColor': 'rgba(0, 0, 0, 0)',
+                    'borderColor': colors[i % 10]
+                }
+            else:
+                dataset = {
+                    'label': label,
+                    'data': label_values,
+                    'backgroundColor': colors[i % 10]
+                }
+            data['datasets'].append(dataset)
 
     if chart.y_axis_field:
         y_axis_label = '{} ({})'.format(chart.y_axis_function, chart.y_axis_field.display_name)
@@ -154,7 +290,7 @@ def prepare_chart_data(chart, chart_data, timeline=True):
             x_axis_label = chart.x_axis_field.display_name
     else:
         if chart.timeline_field:
-            x_axis_label = '{} ({})'.format(chart.timeline_field.display_name, chart.timeline_period.capitalize())
+            x_axis_label = '{} ({})'.format(chart.timeline_field.display_name, timeline_period.capitalize())
         else:
             x_axis_label = chart.table.name
 

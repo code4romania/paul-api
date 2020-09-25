@@ -34,14 +34,6 @@ from .permissions import BaseModelPermissions
 from . import utils
 from pprint import pprint
 
-DB_FUNCTIONS = {
-    "Count": Count,
-    "Sum": Sum,
-    "Min": Min,
-    "Max": Max,
-    "Avg": Avg,
-}
-
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -75,7 +67,6 @@ class UserView(APIView):
         filters_serializer = serializers.filters.FilterListSerializer(
             user.userprofile.dashboard_filters.all(), many=True, context={'request': request})
 
-        pprint(charts_serializer)
         dashboard = {
             "charts": charts_serializer.data,
             "filters": filters_serializer.data
@@ -737,7 +728,7 @@ class EntryViewSet(viewsets.ModelViewSet):
         # if not filter_dict and table.filters:
         #     for field, value in table.filters.items():
         #         filter_dict['data__{}'.format(field)] = value
-        print(filter_dict)
+
         if str_order and str_order.replace("-", "") in fields:
             if str_order.startswith("-"):
                 queryset = table.entries.filter(**filter_dict).order_by("-data__{}".format(str_order[1:]))
@@ -910,71 +901,7 @@ class ChartViewSet(viewsets.ModelViewSet):
     )
     def get_data(self, request, pk):
         chart = self.get_object()
-        y_axis_function = DB_FUNCTIONS[chart.y_axis_function]
-
-        table_fields = {x.name: x for x in chart.table.fields.all()}
-        filter_dict = {}
-        for key in request.GET:
-            if key and key.split("__")[0] in table_fields.keys():
-                value = request.GET.get(key).split(",")
-                if len(value) == 1:
-                    value = value[0]
-                else:
-                    key = key + "__in"
-
-                if table_fields[key.split("__")[0]].field_type in [
-                    "float",
-                    "int",
-                ]:
-                    filter_dict["data__{}".format(key)] = float(value)
-                else:
-                    filter_dict["data__{}".format(key)] = value
-
-        chart_data = models.Entry.objects \
-            .filter(table=chart.table) \
-            .filter(**filter_dict)
-
-        if chart.timeline_field:
-
-            chart_data = chart_data.annotate(date_field=Cast(
-                    KeyTextTransform(chart.timeline_field.name, "data"), DateTimeField()
-                )) \
-                .annotate(time=Trunc('date_field', chart.timeline_period.lower(), is_dst=False)) \
-                .values('time')
-        else:
-            print('values', 'data__' +  chart.x_axis_field.name)
-            chart_data = chart_data \
-                .annotate(series=Cast(
-                    KeyTextTransform(chart.x_axis_field.name, "data"), CharField()))\
-                .values('series')
-
-        # if we have Y axis field
-        if chart.y_axis_field:
-            chart_data = chart_data \
-                .annotate(value=y_axis_function(Cast(
-                    KeyTextTransform(chart.y_axis_field.name, "data"), FloatField()
-                )))
-        else:
-            chart_data = chart_data.annotate(value=Count('id'))
-
-        # if we have X axis field
-        if chart.x_axis_field and chart.timeline_field:
-            chart_data = chart_data \
-                .annotate(series=Cast(
-                    KeyTextTransform(chart.x_axis_field.name, "data"), CharField()
-                )) \
-                .values('time', 'value', 'series')
-        elif chart.x_axis_field:
-            chart_data = chart_data.values('series', 'value')
-
-        if chart.timeline_field:
-            chart_data = chart_data.order_by('time')
-            data = utils.prepare_chart_data(chart, chart_data, timeline=True)
-
-        else:
-            chart_data = chart_data.order_by('data__' +  chart.x_axis_field.name)
-            data = utils.prepare_chart_data(chart, chart_data, timeline=False)
-
+        data = utils.get_chart_data(request, chart, chart.table)
         return Response(data)
 
     @action(
@@ -999,70 +926,7 @@ class ChartViewSet(viewsets.ModelViewSet):
         chart.timeline_include_nulls = True if request.GET.get('timeline_include_nulls', None) == 'true' else False
         chart.y_axis_function = request.GET.get('y_axis_function', None)
 
-        y_axis_function = DB_FUNCTIONS[chart.y_axis_function]
-
-        table_fields = {x.name: x for x in table.fields.all()}
-        filter_dict = {}
-        for key in request.GET:
-            if key and key.split("__")[0] in table_fields.keys():
-                value = request.GET.get(key).split(",")
-                if len(value) == 1:
-                    value = value[0]
-                else:
-                    key = key + "__in"
-
-                if table_fields[key.split("__")[0]].field_type in [
-                    "float",
-                    "int",
-                ]:
-                    filter_dict["data__{}".format(key)] = float(value)
-                else:
-                    filter_dict["data__{}".format(key)] = value
-
-        chart_data = models.Entry.objects \
-            .filter(table=chart.table) \
-            .filter(**filter_dict)
-
-        if chart.timeline_field:
-
-            chart_data = chart_data.annotate(date_field=Cast(
-                    KeyTextTransform(chart.timeline_field.name, "data"), DateTimeField()
-                )) \
-                .annotate(time=Trunc('date_field', chart.timeline_period.lower(), is_dst=False)) \
-                .values('time')
-        else:
-            print('values', 'data__' +  chart.x_axis_field.name)
-            chart_data = chart_data \
-                .annotate(series=Cast(
-                    KeyTextTransform(chart.x_axis_field.name, "data"), CharField()))\
-                .values('series')
-
-        # if we have Y axis field
-        if chart.y_axis_field:
-            chart_data = chart_data \
-                .annotate(value=y_axis_function(Cast(
-                    KeyTextTransform(chart.y_axis_field.name, "data"), FloatField()
-                )))
-        else:
-            chart_data = chart_data.annotate(value=Count('id'))
-
-        # if we have X axis field
-        if chart.x_axis_field and chart.timeline_field:
-            chart_data = chart_data \
-                .annotate(series=Cast(
-                    KeyTextTransform(chart.x_axis_field.name, "data"), CharField()
-                )) \
-                .values('time', 'value', 'series')
-        elif chart.x_axis_field:
-            chart_data = chart_data.values('series', 'value')
-
-        if chart.timeline_field:
-            chart_data = chart_data.order_by('time')
-            data = utils.prepare_chart_data(chart, chart_data, timeline=True)
-
-        else:
-            chart_data = chart_data.order_by('data__' +  chart.x_axis_field.name)
-            data = utils.prepare_chart_data(chart, chart_data, timeline=False)
+        data = utils.get_chart_data(request, chart, table)
 
         return Response(data)
 #  line chart 

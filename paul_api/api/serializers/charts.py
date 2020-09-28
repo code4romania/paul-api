@@ -82,7 +82,7 @@ class CreateSerializer(serializers.ModelSerializer):
         fields = [
             "id", "name", "owner", "last_edit_user", "last_edit_date",
             "chart_type", "table", "timeline_field", "timeline_period",
-            "timeline_include_nulls", "x_axis_field", "y_axis_field",
+            "timeline_include_nulls", "x_axis_field", "x_axis_field_2", "y_axis_field",
             "y_axis_function", "filters",
         ]
 

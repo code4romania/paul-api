@@ -127,8 +127,14 @@ def get_chart_data(request, chart, table):
     else:
         chart_data = chart_data \
             .annotate(series=Cast(
-                KeyTextTransform(chart.x_axis_field.name, "data"), CharField()))\
-            .values('series')
+                KeyTextTransform(chart.x_axis_field.name, "data"), CharField()))
+        if chart.x_axis_field_2:
+            chart_data = chart_data \
+                .annotate(series_group=Cast(
+                    KeyTextTransform(chart.x_axis_field_2.name, "data"), CharField()))\
+                .values('series', 'series_group')
+        else:
+            chart_data = chart_data.values('series')
 
     # if we have Y axis field
     if chart.y_axis_field:
@@ -144,10 +150,19 @@ def get_chart_data(request, chart, table):
         chart_data = chart_data \
             .annotate(series=Cast(
                 KeyTextTransform(chart.x_axis_field.name, "data"), CharField()
-            )) \
-            .values('time', 'value', 'series')
+            ))
+        if chart.x_axis_field_2:
+            chart_data = chart_data \
+                .annotate(series_group=Cast(
+                    KeyTextTransform(chart.x_axis_field_2.name, "data"), CharField()))\
+                .values('time', 'series', 'series_group', 'value')
+        else:
+            chart_data = chart_data.values('time', 'value', 'series')
     elif chart.x_axis_field:
-        chart_data = chart_data.values('series', 'value')
+        if chart.x_axis_field_2:
+            chart_data = chart_data.values('series', 'series_group', 'value')
+        else:
+            chart_data = chart_data.values('series', 'value')
 
     if chart.timeline_field:
         chart_data = chart_data.order_by('time')
@@ -194,38 +209,74 @@ def get_strptime(date_str, period):
 def prepare_chart_data(chart, chart_data, timeline=True):
     data_dict = {}
     timeline_period = chart.timeline_period
-
     data = {
         'labels': [],
         'datasets': [{
             'label': '',
             'data': []
         }],
-        'options': {}
+        # 'options': {}
     }
-    # colors = ["#e3713c","#b4dfe5","#303c6c","#fbe8a6","#d2fdff","#c59fc9","#dbbadd","#fffc31","#ffcb47","#fc60a8"]
     colors = ['#223E6D','#87C700','#8E0101','#FF6231','#175B1E','#A2D3E4','#4B0974','#ED1A3B','#0081BB','#9CCB98','#DF3D84','#FD7900','#589674','#C2845D','#AA44E8','#EFAD88','#8590FF','#00B3A8','#FF8DB8','#FBB138']
     colors.reverse()
     if timeline == False:
+        has_series_group = False
         for entry in chart_data:
-            data_dict.setdefault(entry['series'], 0)
-            data_dict[entry['series']] = entry['value']
-        i = 0
-        data['datasets'][0]['backgroundColor'] = []
-        for key, value in data_dict.items():
-            i += 1
-            data['labels'].append(key)
-            if chart.x_axis_field:
-                data['datasets'][0]['label'] = chart.x_axis_field.display_name
-            data['datasets'][0]['data'].append(value)
-            if chart.chart_type in ['Pie', 'Doughnut']:
-                data['datasets'][0]['backgroundColor'].append(colors[i%20])
-            elif chart.chart_type in ['Line']:
-                data['datasets'][0]['backgroundColor'] = 'rgba(0, 0, 0, 0)'
-                data['datasets'][0]['borderColor'] = colors[0]
+            if 'series_group' in entry.keys():
+                has_series_group = True
+                data_dict.setdefault(entry['series'], {})
+                data_dict[entry['series']].setdefault(entry['series_group'], 0)
+                data_dict[entry['series']][entry['series_group']] = entry['value']
             else:
-                data['datasets'][0]['backgroundColor'] = colors[0]
+                data_dict.setdefault(entry['series'], 0)
+                data_dict[entry['series']] = entry['value']
+        if not has_series_group:
+            i = 0
+            data['datasets'][0]['backgroundColor'] = []
+            for key, value in data_dict.items():
+                i += 1
+                data['labels'].append(key)
+                if chart.x_axis_field:
+                    data['datasets'][0]['label'] = chart.x_axis_field.display_name
+                data['datasets'][0]['data'].append(value)
+                if chart.chart_type in ['Pie', 'Doughnut']:
+                    data['datasets'][0]['backgroundColor'].append(colors[i%20])
+                elif chart.chart_type in ['Line']:
+                    data['datasets'][0]['backgroundColor'] = 'rgba(0, 0, 0, 0)'
+                    data['datasets'][0]['borderColor'] = colors[0]
+                else:
+                    data['datasets'][0]['backgroundColor'] = colors[0]
+        else:
+            data['datasets'] = []
+            labels = []
+            labels_dict = {}
+            for serie, group in data_dict.items():
+                data['labels'].append(serie)
+                for group_name in group:
+                    if group_name not in labels:
+                        labels.append(group_name)
+            for serie, group in data_dict.items():
+                for label in labels:
+                    labels_dict.setdefault(label, [])
+                    labels_dict[label].append(group.get(label, 0))
 
+            i = 0
+            for label, label_values in labels_dict.items():
+                i += 1
+                if chart.chart_type == 'Line':
+                    dataset = {
+                        'label': label,
+                        'data': label_values,
+                        'backgroundColor': 'rgba(0, 0, 0, 0)',
+                        'borderColor': colors[i % 10]
+                    }
+                else:
+                    dataset = {
+                        'label': label,
+                        'data': label_values,
+                        'backgroundColor': colors[i % 10]
+                    }
+                data['datasets'].append(dataset)
     else:
         labels = []
         labels_dict = {}
@@ -311,4 +362,5 @@ def prepare_chart_data(chart, chart_data, timeline=True):
         }]
         } if chart.chart_type not in ['Pie', 'Doughnut'] else {}
       }
+    # pprint(data)
     return data

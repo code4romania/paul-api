@@ -302,6 +302,9 @@ class Chart(models.Model):
     x_axis_field = models.ForeignKey(
         TableColumn, null=True, blank=True, on_delete=models.SET_NULL, related_name="charts_x_axis_fields"
     )
+    x_axis_field_2 = models.ForeignKey(
+        TableColumn, null=True, blank=True, on_delete=models.SET_NULL, related_name="charts_x_axis_fields_group"
+    )
     y_axis_field = models.ForeignKey(
         TableColumn, null=True, blank=True, on_delete=models.SET_NULL, related_name="charts_y_axis_fields"
     )

@@ -348,7 +348,8 @@ def prepare_chart_data(chart, chart_data, timeline=True):
     data['options'] = {
         'maintainAspectRatio': False,
         'tooltips': {
-            'mode': 'index'
+            'mode': 'index',
+            'position': 'nearest'
         },
         'scales': {
             'yAxes': [{

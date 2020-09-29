@@ -91,7 +91,7 @@ def import_csv(reader, table):
     return errors, errors_count, imports_count
 
 
-def get_chart_data(request, chart, table):
+def get_chart_data(request, chart, table, preview=False):
     y_axis_function = DB_FUNCTIONS[chart.y_axis_function]
 
     table_fields = {x.name: x for x in table.fields.all()}
@@ -116,7 +116,9 @@ def get_chart_data(request, chart, table):
     chart_data = models.Entry.objects \
         .filter(table=chart.table) \
         .filter(**filter_dict)
-
+    if preview:
+        chart_data = chart_data[:100]
+ 
     if chart.timeline_field:
 
         chart_data = chart_data.annotate(date_field=Cast(

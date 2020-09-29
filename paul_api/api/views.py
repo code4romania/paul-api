@@ -1,5 +1,5 @@
 from django.db.models import (
-    Count, Sum, Min, Max, Avg,
+    Count, Sum, Min, Max, Avg, StdDev,
     DateTimeField, CharField, FloatField, IntegerField)
 from django.db.models.functions import Trunc, Cast
 from django.contrib.auth.models import User

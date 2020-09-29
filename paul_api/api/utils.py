@@ -347,19 +347,22 @@ def prepare_chart_data(chart, chart_data, timeline=True):
 
     data['options'] = {
         'maintainAspectRatio': False,
+        'tooltips': {
+            'mode': 'index'
+        },
         'scales': {
-        'yAxes': [{
-            'scaleLabel': {
-                'display': True,
-                'labelString': y_axis_label
-            }
-        }],
-        'xAxes': [{
-            'scaleLabel': {
-                'display': True,
-                'labelString': x_axis_label
-            }
-        }]
+            'yAxes': [{
+                'scaleLabel': {
+                    'display': True,
+                    'labelString': y_axis_label
+                }
+            }],
+            'xAxes': [{
+                'scaleLabel': {
+                    'display': True,
+                    'labelString': x_axis_label
+                }
+            }]
         } if chart.chart_type not in ['Pie', 'Doughnut'] else {}
       }
     # pprint(data)

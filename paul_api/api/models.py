@@ -18,7 +18,7 @@ datatypes = (
     ("enum", "enum"),
 )
 
-chart_functions = (("Count", "Count"), ("Sum", "Sum"), ("Min", "Min"), ("Max", "Max"), ("Avg", "Average"))
+chart_functions = (("Count", "Count"), ("Sum", "Sum"), ("Min", "Min"), ("Max", "Max"), ("Avg", "Average"), ('StdDev', "Standard Deviation"))
 
 chart_types = (("Line", "Line"), ("Bar", "Bar"), ("Pie", "Pie"), ("Doughnut", "Doughnut"))
 

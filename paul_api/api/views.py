@@ -2,7 +2,7 @@ from django.db.models import (
     Count, Sum, Min, Max, Avg, StdDev,
     DateTimeField, CharField, FloatField, IntegerField)
 from django.db.models.functions import Trunc, Cast
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from django.http import HttpResponse
 from django.core.paginator import Paginator
 from django.core.serializers.json import DjangoJSONEncoder
@@ -38,54 +38,6 @@ from . import utils
 from pprint import pprint
 
 
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = serializers.users.UserSerializer
-
-    def get_serializer_class(self):
-        if self.action == "create":
-            return serializers.users.UserCreateSerializer
-        elif self.action == "retrieve":
-            return serializers.users.UserDetailSerializer
-        elif self.action == "update":
-            return serializers.users.UserUpdateSerializer
-        return serializers.users.UserSerializer
-
-
-class UserView(APIView):
-    """
-    View to list all users in the system.
-
-    * Requires token authentication.
-    * Only admin users are able to access this view.
-    """
-
-    def get(self, request, format=None):
-        """
-        Return a list of all users.
-        """
-        user = request.user
-        charts_serializer = serializers.charts.ListSerializer(
-            user.userprofile.dashboard_charts.all(), many=True, context={'request': request})
-        filters_serializer = serializers.filters.FilterListSerializer(
-            user.userprofile.dashboard_filters.all(), many=True, context={'request': request})
-
-        dashboard = {
-            "charts": charts_serializer.data,
-            "filters": filters_serializer.data
-        }
-        response = {
-            "username": user.username,
-            "dashboard": dashboard
-        }
-        return Response(response)
-
-
-class DatabaseViewSet(viewsets.ModelViewSet):
-    queryset = models.Database.objects.all()
-    serializer_class = serializers.databases.DatabaseSerializer
-
-
 class EntriesPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = "perPage"
@@ -103,6 +55,58 @@ class EntriesPagination(PageNumberPagination):
                 "results": data,
             }
         )
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = serializers.users.UserListSerializer
+    pagination_class = EntriesPagination
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return serializers.users.UserCreateSerializer
+        elif self.action == "retrieve":
+            return serializers.users.UserDetailSerializer
+        elif self.action == "update":
+            return serializers.users.UserUpdateSerializer
+        return serializers.users.UserListSerializer
+
+
+class UserView(APIView):
+    """
+    View to list all users in the system.
+
+    * Requires token authentication.
+    * Only admin users are able to access this view.
+    """
+
+    def get(self, request, format=None):
+        """
+        Return a list of all users.
+        """
+        user = request.user
+        admin_group = Group.objects.get(name='admin')
+        charts_serializer = serializers.charts.ListSerializer(
+            user.userprofile.dashboard_charts.all(), many=True, context={'request': request})
+        filters_serializer = serializers.filters.FilterListSerializer(
+            user.userprofile.dashboard_filters.all(), many=True, context={'request': request})
+
+        dashboard = {
+            "charts": charts_serializer.data,
+            "filters": filters_serializer.data
+        }
+        response = {
+            "username": user.username,
+            "dashboard": dashboard,
+            "is_admin": admin_group in user.groups.all()
+        }
+        return Response(response)
+
+
+class DatabaseViewSet(viewsets.ModelViewSet):
+    queryset = models.Database.objects.all()
+    serializer_class = serializers.databases.DatabaseSerializer
+
 
 
 class CanView(permissions.BasePermission):

@@ -110,6 +110,44 @@ class UserDetailSerializer(serializers.ModelSerializer):
         return tables
 
 
+class UserListDataSerializer(serializers.ModelSerializer):
+    avatar = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "username",
+            "email",
+            "avatar",
+            "first_name",
+            "last_name",
+        ]
+
+    def get_avatar(self, obj):
+        try:
+            request = self.context.get("request")
+            avatar_url = obj.userprofile.avatar.url
+            return request.build_absolute_uri(avatar_url)
+        except:
+            pass
+
+
+class UserListSerializer(serializers.ModelSerializer):
+    data = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "url",
+            "id",
+            "data"
+        ]
+
+    def get_data(self, obj):
+        serializer = UserListDataSerializer(obj, context=self.context)
+        return serializer.data
+
+
 class UserSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()
 

@@ -128,9 +128,9 @@ class TableViewSet(viewsets.ModelViewSet):
     queryset = models.Table.objects.all().prefetch_related("fields").select_related("database").order_by("id")
     pagination_class = EntriesPagination
     # permission_classes = (BaseModelPermissions, api_permissions.IsAuthenticatedOrGetToken )
-    permission_classes = (BaseModelPermissions,)
+    permission_classes = [BaseModelPermissions]
     filter_backends = [ObjectPermissionsFilter]
-    filterset_fields = ["active"]
+    # filterset_fields = ["active"]
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -926,7 +926,7 @@ class ChartViewSet(viewsets.ModelViewSet):
         chart.timeline_include_nulls = True if request.GET.get('timeline_include_nulls', None) == 'true' else False
         chart.y_axis_function = request.GET.get('y_axis_function', None)
 
-        data = utils.get_chart_data(request, chart, table)
+        data = utils.get_chart_data(request, chart, table, preview=True)
 
         return Response(data)
 #  line chart 

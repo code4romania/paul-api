@@ -111,14 +111,13 @@ def get_chart_data(request, chart, table, preview=False):
                 filter_dict["data__{}".format(key)] = float(value)
             else:
                 filter_dict["data__{}".format(key)] = value
-    # filter_dict['data__modificat_la__gte'] = datetime.now() - timedelta(days=30)
-    # filter_dict['data__statut__in'] = ['cancelled']
+
     chart_data = models.Entry.objects \
         .filter(table=chart.table) \
         .filter(**filter_dict)
     if preview:
         chart_data = chart_data[:100]
- 
+
     if chart.timeline_field:
 
         chart_data = chart_data.annotate(date_field=Cast(

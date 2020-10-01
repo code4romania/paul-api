@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "django_filters",
     "crispy_forms",
     "silk",
+    "djoser"
 ]
 
 MIDDLEWARE = [
@@ -171,3 +172,17 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880
 # SILKY_PYTHON_PROFILER_BINARY = True
 SILKY_AUTHENTICATION = True  # User must login
 SILKY_AUTHORISATION = True  # User must have permissions
+
+DJOSER = {
+    "USER_CREATE_PASSWORD_RETYPE": True,
+    "PASSWORD_RESET_CONFIRM_RETYPE": True,
+    "PASSWORD_RESET_SHOW_EMAIL_NOT_FOUND": True,
+    "USERNAME_RESET_SHOW_EMAIL_NOT_FOUND": True,
+    "SET_PASSWORD_RETYPE": True,
+    "SEND_ACTIVATION_EMAIL": True,
+    "ACTIVATION_URL": "#/activate/{uid}/{token}",
+    "PASSWORD_RESET_CONFIRM_URL": "#/reset-password/{uid}/{token}",
+    "SEND_CONFIRMATION_EMAIL": True,
+    "USERNAME_CHANGED_EMAIL_CONFIRMATION": True,
+}
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

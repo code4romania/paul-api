@@ -17,6 +17,9 @@ from rest_framework import permissions
 from rest_framework import status
 from rest_framework_guardian.filters import ObjectPermissionsFilter
 
+from guardian.shortcuts import get_objects_for_user
+from guardian.core import ObjectPermissionChecker
+
 from rest_framework import filters as drf_filters
 from django_filters import rest_framework as filters
 
@@ -358,6 +361,18 @@ class TableViewSet(viewsets.ModelViewSet):
 class FilterViewSet(viewsets.ModelViewSet):
     queryset = models.Filter.objects.all()
     pagination_class = EntriesPagination
+
+    def get_queryset(self):
+        queryset = self.queryset
+        user = self.request.user
+        user_view_tables = []
+
+        for table in get_objects_for_user(user, 'api.view_table'):
+            if user.has_perm('view_table', table):
+                user_view_tables.append(table)
+        return queryset.filter(
+            primary_table__table__in=user_view_tables,
+            join_tables__table__in=user_view_tables)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -867,6 +882,16 @@ class CsvImportViewSet(viewsets.ModelViewSet):
 class ChartViewSet(viewsets.ModelViewSet):
     queryset = models.Chart.objects.all()
     pagination_class = EntriesPagination
+
+    def get_queryset(self):
+        queryset = self.queryset
+        user = self.request.user
+        user_view_tables = []
+
+        for table in get_objects_for_user(user, 'api.view_table'):
+            if user.has_perm('view_table', table):
+                user_view_tables.append(table)
+        return queryset.filter(table__in=user_view_tables)
 
     def get_serializer_class(self):
         if self.action == "list":

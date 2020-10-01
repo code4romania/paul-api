@@ -28,6 +28,10 @@ class DatabaseTableListSerializer(serializers.ModelSerializer):
     data = serializers.SerializerMethodField()
     user_permissions = serializers.SerializerMethodField()
 
+    def get_user_permissions(self, obj):
+        user = self.context["request"].user
+        checker = ObjectPermissionChecker(user)
+
     def get_data(self, obj):
         serializer = DatabaseTableListDataSerializer(obj, context=self.context)
         return serializer.data

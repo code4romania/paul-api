@@ -7,7 +7,7 @@ from rest_framework_guardian.serializers import ObjectPermissionsAssignmentMixin
 
 from api.serializers.users import OwnerSerializer, UserSerializer
 from api import models, utils
-
+from pprint import pprint
 
 class TableColumnSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)

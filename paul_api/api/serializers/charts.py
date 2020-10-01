@@ -96,6 +96,7 @@ class CreateSerializer(serializers.ModelSerializer):
             models.Chart.objects.filter(pk=instance.pk).update(**validated_data)
             instance.refresh_from_db()
         else:
+            validated_data.pop('filters')
             models.Chart.objects.filter(pk=instance.pk).update(**validated_data)
             instance.refresh_from_db()
         return instance

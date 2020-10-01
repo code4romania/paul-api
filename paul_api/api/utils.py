@@ -91,7 +91,7 @@ def import_csv(reader, table):
     return errors, errors_count, imports_count
 
 
-def get_chart_data(request, chart, table):
+def get_chart_data(request, chart, table, preview=False):
     y_axis_function = DB_FUNCTIONS[chart.y_axis_function]
 
     table_fields = {x.name: x for x in table.fields.all()}
@@ -111,11 +111,12 @@ def get_chart_data(request, chart, table):
                 filter_dict["data__{}".format(key)] = float(value)
             else:
                 filter_dict["data__{}".format(key)] = value
-    # filter_dict['data__modificat_la__gte'] = datetime.now() - timedelta(days=30)
-    # filter_dict['data__statut__in'] = ['cancelled']
+
     chart_data = models.Entry.objects \
         .filter(table=chart.table) \
         .filter(**filter_dict)
+    if preview:
+        chart_data = chart_data[:100]
 
     if chart.timeline_field:
 
@@ -347,19 +348,23 @@ def prepare_chart_data(chart, chart_data, timeline=True):
 
     data['options'] = {
         'maintainAspectRatio': False,
+        'tooltips': {
+            'mode': 'index',
+            'position': 'nearest'
+        },
         'scales': {
-        'yAxes': [{
-            'scaleLabel': {
-                'display': True,
-                'labelString': y_axis_label
-            }
-        }],
-        'xAxes': [{
-            'scaleLabel': {
-                'display': True,
-                'labelString': x_axis_label
-            }
-        }]
+            'yAxes': [{
+                'scaleLabel': {
+                    'display': True,
+                    'labelString': y_axis_label
+                }
+            }],
+            'xAxes': [{
+                'scaleLabel': {
+                    'display': True,
+                    'labelString': x_axis_label
+                }
+            }]
         } if chart.chart_type not in ['Pie', 'Doughnut'] else {}
       }
     # pprint(data)

@@ -17,7 +17,7 @@ router = routers.DefaultRouter()
 router.register(r"users", views.UserViewSet)
 router.register(r"databases", views.DatabaseViewSet)
 router.register(r"filters", views.FilterViewSet)
-router.register(r"tables", views.TableViewSet)
+router.register(r"tables", views.TableViewSet, basename="table")
 router.register(r"csv-imports", views.CsvImportViewSet)
 router.register(r"charts", views.ChartViewSet)
 

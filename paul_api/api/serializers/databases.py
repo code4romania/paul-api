@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from guardian.core import ObjectPermissionChecker
+from guardian.shortcuts import get_objects_for_user
 from api.serializers.users import OwnerSerializer
 from api import models
 
@@ -44,9 +45,10 @@ class DatabaseTableListSerializer(serializers.ModelSerializer):
 
 
 class DatabaseSerializer(serializers.HyperlinkedModelSerializer):
-    active_tables = DatabaseTableListSerializer(many=True, read_only=True)
+    # active_tables = DatabaseTableListSerializer(many=True, read_only=True)
     archived_tables = DatabaseTableListSerializer(many=True, read_only=True)
 
+    active_tables = serializers.SerializerMethodField()
     class Meta:
         model = models.Database
         fields = [
@@ -56,3 +58,10 @@ class DatabaseSerializer(serializers.HyperlinkedModelSerializer):
             "active_tables",
             "archived_tables",
         ]
+
+    def get_active_tables(self, obj):
+        user = self.context['request'].user
+        queryset = obj.active_tables()
+        print(get_objects_for_user(user, 'api.view_table'))
+        serializer = DatabaseTableListSerializer(queryset, many=True, read_only=True, context=self.context)
+        return serializer.data

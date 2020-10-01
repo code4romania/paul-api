@@ -2,7 +2,6 @@ from rest_framework import permissions
 from rest_framework.authtoken.models import Token
 
 
-
 class BaseModelPermissions(permissions.DjangoObjectPermissions):
     """
     Similar to `DjangoObjectPermissions`, but adding 'view' permissions.
@@ -16,6 +15,7 @@ class BaseModelPermissions(permissions.DjangoObjectPermissions):
         'PATCH': ['%(app_label)s.change_%(model_name)s'],
         'DELETE': ['%(app_label)s.delete_%(model_name)s'],
     }
+
 
 class IsAuthenticatedOrGetToken(permissions.BasePermission):
     """

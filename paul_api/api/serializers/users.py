@@ -1,4 +1,4 @@
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from django.utils import timezone
 from django.urls import reverse
 
@@ -19,7 +19,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         new_user = User.objects.create(**validated_data)
         userprofile = models.Userprofile.objects.create(user=new_user)
-
+        user_group, _ = Group.objects.get_or_create(name="user")
+        new_user.groups.add(user_group)
         print("TODO: send mail")
         return new_user
 

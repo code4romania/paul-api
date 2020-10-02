@@ -47,6 +47,7 @@ urlpatterns = [
         name="swagger-ui",
     ),
     path("user/", views.UserView.as_view()),
+    path("woocommerce/", include('plugin_woocommerce.urls')),
     path("auth/", include('djoser.urls')),
     path("", include(router.urls)),
     path("", include(tables_router.urls)),

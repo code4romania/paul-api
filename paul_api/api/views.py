@@ -152,86 +152,6 @@ class TableViewSet(viewsets.ModelViewSet):
             base_permissions = (api_permissions.IsAuthenticatedOrGetToken(),)
         return base_permissions
 
-    # @action(
-    #     detail=True,
-    #     methods=["put"],
-    #     name="Uploader View",
-    #     url_path="csv-prepare-fields",
-    # )
-    # def csv_prepare_fields(self, request, pk):
-    #     file = request.FILES["file"]
-    #     delimiter = request.POST.get("delimiter")
-    #     fields = []
-    #     table = self.get_object()
-
-    #     decoded_file = file.read().decode("utf-8").splitlines()
-    #     csv_import = models.CsvImport.objects.create(
-    #         table=table, file=file, delimiter=delimiter
-    #     )
-    #     reader = csv.DictReader(decoded_file, delimiter=delimiter)
-
-    #     for field in reader.fieldnames:
-    #         csv_field_map = models.CsvFieldMap.objects.create(
-    #             table=table, original_name=field, field_name=field
-    #         )
-    #         fields.append(
-    #             {
-    #                 "original_name": field.encode(),
-    #                 "field_name": field,
-    #                 "field_type": "text",
-    #                 "field_format": "",
-    #             }
-    #         )
-
-    #     response = {
-    #         "table": table.name,
-    #         "import_id": csv_import.pk,
-    #         "fields": fields,
-    #     }
-    #     return Response(response)
-
-    # @action(
-    #     detail=True,
-    #     methods=["post"],
-    #     name="CSV import view",
-    #     url_path="csv-import/(?P<csv_import_pk>[^/.]+)",
-    # )
-    # def csv_import(self, request, pk, csv_import_pk):
-    #     fields = request.data.get("fields")
-    #     csv_import = models.CsvImport.objects.get(pk=csv_import_pk)
-    #     table = self.get_object()
-
-    #     table.csv_field_mapping.all().delete()
-    #     for field in fields:
-    #         csv_field_map = models.CsvFieldMap.objects.create(
-    #             table=table,
-    #             original_name=field["original_name"],
-    #             field_name=field["field_name"],
-    #             field_type=field["field_type"],
-    #             field_format=field["field_format"],
-    #         )
-    #         table_column, _ = models.TableColumn.objects.get_or_create(
-    #             table=table,
-    #             name=utils.snake_case(field["field_name"]),
-    #             display_name=field["field_name"],
-    #             field_type=field["field_type"],
-    #         )
-
-    #     reader = csv.DictReader(
-    #         StringIO(csv_import.file.read().decode("utf-8")),
-    #         delimiter=csv_import.delimiter,
-    #     )
-    #     errors, errors_count, imports_count = utils.import_csv(reader, table)
-    #     csv_import.errors = errors
-    #     csv_import.errors_count = errors_count
-    #     csv_import.imports_count = imports_count
-    #     csv_import.save()
-    #     response = {
-    #         "errors_count": errors_count,
-    #         "imports_count": imports_count,
-    #         "errors": errors,
-    #     }
-    #     return Response(response)
 
     def create(self, request):
         fields = request.data.get("fields")
@@ -360,6 +280,166 @@ class TableViewSet(viewsets.ModelViewSet):
             response["Content-Disposition"] = 'attachment; filename="{}"'.format(file_name)
         os.remove("/tmp/{}".format(file_name))
         return response
+
+    @action(
+        detail=False,
+        methods=["post"],
+        name="Create from FilterView",
+        url_path="from-filter",
+    )
+    def create_from_filter(self, request):
+
+        table_name = request.data.get('table_name')
+        filter_id = request.data.get('filter_id')
+
+        serializer = serializers.tables.TableCreateSerializer(
+            data={'database': 1, 'name': table_name},
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        table = models.Table.objects.get(pk=serializer.data["id"])
+        # table = models.Table.objects.get(name=table_name)
+
+        filter = models.Filter.objects.get(pk=filter_id)
+        filter_tables = [filter.primary_table] + [f for f in filter.join_tables.all()]
+        for join_table in filter_tables:
+            table_slug = join_table.table.slug
+            for field in join_table.fields.all():
+                print('create',table,  '{}__{}'.format(table_slug, field.name))
+                table_column, _ = models.TableColumn.objects.get_or_create(
+                    table=table,
+                    name='{}_{}'.format(table_slug, field.name),
+                    display_name=field.display_name,
+                    field_type=field.field_type,
+                    choices=field.choices,
+                )
+
+        primary_table = filter.primary_table
+        primary_table_slug = primary_table.table.slug
+        primary_table_join_field = primary_table.join_field.name
+
+        secondary_table = filter.join_tables.all()[0]
+        secondary_table_slug = secondary_table.table.slug
+        secondary_table_join_field = secondary_table.join_field.name
+
+        # Get all fields and display fields
+        all_fields = []
+        field_types = {}
+        for field in primary_table.fields.all().order_by("id"):
+            field_key = "{}__{}".format(primary_table.table.slug, field.name)
+            all_fields.append(field_key)
+            field_types[field_key] = field.field_type
+        for field in secondary_table.fields.all().order_by("id"):
+            field_key = "{}__{}".format(secondary_table.table.slug, field.name)
+            all_fields.append(field_key)
+            field_types[field_key] = field.field_type
+
+        fields = all_fields
+
+        primary_table_fields = []
+        secondary_table_fields = []
+
+        for field in fields:
+            if field.startswith(primary_table_slug):
+                primary_table_fields.append(field.replace(primary_table_slug + "__", "data__"))
+            else:
+                secondary_table_fields.append(field.replace(secondary_table_slug + "__", "data__"))
+
+        secondary_table_fields.append("data__{}".format(secondary_table_join_field))
+
+        # Create filters dict
+        filter_dict = {
+            primary_table_slug: {},
+            secondary_table_slug: {},
+        }
+
+        # for key in filter.filters:
+        #     table_field = "__".join(key.split("__")[:2])
+        #     if key and table_field in all_fields:
+        #         table = key.split("__")[0]
+        #         field = key.replace(table + "__", "")
+
+        #         filter_dict.setdefault(table, {})
+        #         value = filter.filters.get(key).split(",")
+
+        #         if len(value) == 1:
+        #             value = value[0]
+        #         else:
+        #             field = field + "__in"
+
+        #         if field_types[table_field] in [
+        #             "float",
+        #             "int",
+        #         ]:
+        #             filter_dict[table]["data__{}".format(field)] = float(value)
+        #         else:
+        #             filter_dict[table]["data__{}".format(field)] = value
+        pprint(filter_dict['utilizatori'])
+
+        join_values = (
+            models.Entry.objects.filter(table=primary_table.table)
+            .filter(**filter_dict[primary_table_slug])
+            .values("data__{}".format(primary_table_join_field))
+        )
+
+        filter_dict[secondary_table_slug]["data__{}__in".format(secondary_table_join_field)] = join_values
+
+        result_values = (
+            models.Entry.objects.filter(table__slug=secondary_table_slug)
+            .filter(**filter_dict[secondary_table_slug])
+            .values(*secondary_table_fields)
+            .order_by("data__{}".format(secondary_table_join_field))
+        )
+
+        queryset = result_values
+
+        if not fields:
+            fields = [x.replace("data__", "{}__".format(primary_table_slug)) for x in primary_table_fields]
+            fields += [x.replace("data__", "{}__".format(secondary_table_slug)) for x in secondary_table_fields]
+        queryset_count = queryset.count()
+        paginator = Paginator(queryset, 1000)  # Show 100 objects per page, you can choose any other value
+
+        
+        for i in paginator.page_range:  # A 1-based range iterator of page numbers, e.g. yielding [1, 2, 3, 4].
+            print("Writing page:", i)
+            data = paginator.get_page(i)
+            page = data.object_list
+
+            page_join_values = [x["data__{}".format(secondary_table_join_field)] for x in page]
+
+            filter_dict[primary_table_slug]["data__{}__in".format(primary_table_join_field)] = page_join_values
+            primary_table_values = {
+                x.data[primary_table_join_field]: {"data__" + key: value for key, value in x.data.items()}
+                for x in models.Entry.objects.filter(table=primary_table.table)
+                .filter(**filter_dict[primary_table_slug])
+                .exclude(data=None)
+            }
+            entries = []
+            for entry in page:
+                final_entry = {}
+                final_entry_primary_table_values = {}
+
+                entry_primary_table_values = primary_table_values[
+                    entry["data__{}".format(secondary_table_join_field)]
+                ]
+
+                for key in entry:
+                    final_entry[key.replace("data__", "{}_".format(secondary_table_slug))] = entry[key]
+                for key in entry_primary_table_values:
+                    final_entry_primary_table_values[
+                        key.replace("data__", "{}_".format(primary_table_slug))
+                    ] = entry_primary_table_values[key]
+
+                final_entry.update(final_entry_primary_table_values)
+                entry = models.Entry(table=table, data=final_entry)
+                entries.append(entry)
+            models.Entry.objects.bulk_create(entries)
+        response = {
+            'id': table.id
+        }
+        return Response(response)
 
 
 class FilterViewSet(viewsets.ModelViewSet):

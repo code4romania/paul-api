@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User, Group
 from django.utils import timezone
 from django.urls import reverse
-
+from rest_framework.response import Response
 from rest_framework import serializers
 
 from api import models, utils
@@ -33,27 +33,35 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         model = User
         fields = ["email", "avatar", "first_name", "last_name", "tables_permissions"]
 
-    def update(self, instance, validated_data):
-        userprofile_data = validated_data.pop("userprofile")
-        tables_permissions = self.initial_data.get("tables_permissions")
-        if tables_permissions:
-            for table_permission in tables_permissions:
-                table = models.Table.objects.get(pk=table_permission["id"])
-                if table_permission["permissions"] == "Can edit":
-                    assign_perm("change_table", instance, table)
-                    assign_perm("view_table", instance, table)
-                    assign_perm("delete_table", instance, table)
-                elif table_permission["permissions"] == "Can view":
-                    assign_perm("view_table", instance, table)
-                    remove_perm("change_table", instance, table)
-                    remove_perm("delete_table", instance, table)
-                else:
-                    remove_perm("view_table", instance, table)
-                    remove_perm("change_table", instance, table)
-                    remove_perm("delete_table", instance, table)
+    def partial_update(self, request, *args, **kwargs):
+        print(args)
+        print(kwargs)
+        return Response(1)
 
-        User.objects.filter(pk=instance.pk).update(**validated_data)
-        models.Userprofile.objects.filter(user=instance).update(**userprofile_data)
+    def update(self, instance, validated_data):
+
+        if self.partial:
+            tables_permissions = self.initial_data.get("tables_permissions")
+            if tables_permissions:
+                for table_permission in tables_permissions:
+                    table = models.Table.objects.get(pk=table_permission["id"])
+                    if table_permission["permissions"] == "Can edit":
+                        assign_perm("change_table", instance, table)
+                        assign_perm("view_table", instance, table)
+                        assign_perm("delete_table", instance, table)
+                    elif table_permission["permissions"] == "Can view":
+                        assign_perm("view_table", instance, table)
+                        remove_perm("change_table", instance, table)
+                        remove_perm("delete_table", instance, table)
+                    else:
+                        remove_perm("view_table", instance, table)
+                        remove_perm("change_table", instance, table)
+                        remove_perm("delete_table", instance, table)
+
+        else:
+            userprofile_data = validated_data.pop("userprofile")
+            User.objects.filter(pk=instance.pk).update(**validated_data)
+            models.Userprofile.objects.filter(user=instance).update(**userprofile_data)
         instance.refresh_from_db()
 
         return instance

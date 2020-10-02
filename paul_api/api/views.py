@@ -97,6 +97,7 @@ class UserView(APIView):
         }
         response = {
             "username": user.username,
+            "id": user.id,
             "dashboard": dashboard,
             "is_admin": admin_group in user.groups.all()
         }

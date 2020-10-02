@@ -147,7 +147,7 @@ STATICFILES_DIRS = (os.path.join(BASE_DIR, "static"),)
 
 MEDIA_URL = "/api/media/"
 # MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-MEDIA_ROOT = "/var/www/paul_api/media"
+MEDIA_ROOT = "/var/www/paul-api/media"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [

@@ -10,11 +10,13 @@ def sync_wc(request):
     ENDPOINT_URL = settings.endpoint_url
 
     success, updates, errors = utils.run_sync(ENDPOINT_URL, KEY, SECRET)
+
     task_result = models.TaskResult.objects.create(
         user=user,
         success=success,
         errors=errors,
         updates=updates)
+
     result = serializers.TaskResultSerializer(
         task_result, context={'request': request})
 

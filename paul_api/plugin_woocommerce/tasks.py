@@ -12,6 +12,7 @@ def sync_wc(request):
     success, updates, errors = utils.run_sync(ENDPOINT_URL, KEY, SECRET)
 
     task_result = models.TaskResult.objects.create(
+        name="Sync tables",
         user=user,
         success=success,
         errors=errors,

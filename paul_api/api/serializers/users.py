@@ -21,7 +21,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
         userprofile = models.Userprofile.objects.create(user=new_user)
         user_group, _ = Group.objects.get_or_create(name="user")
         new_user.groups.add(user_group)
-        print("TODO: send mail")
         return new_user
 
 
@@ -34,8 +33,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         fields = ["email", "avatar", "first_name", "last_name", "tables_permissions"]
 
     def partial_update(self, request, *args, **kwargs):
-        print(args)
-        print(kwargs)
         return Response(1)
 
     def update(self, instance, validated_data):

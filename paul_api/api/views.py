@@ -308,7 +308,6 @@ class TableViewSet(viewsets.ModelViewSet):
         for join_table in filter_tables:
             table_slug = join_table.table.slug
             for field in join_table.fields.all():
-                print('create',table,  '{}__{}'.format(table_slug, field.name))
                 table_column, _ = models.TableColumn.objects.get_or_create(
                     table=table,
                     name='{}_{}'.format(table_slug, field.name),
@@ -377,7 +376,6 @@ class TableViewSet(viewsets.ModelViewSet):
         #             filter_dict[table]["data__{}".format(field)] = float(value)
         #         else:
         #             filter_dict[table]["data__{}".format(field)] = value
-        pprint(filter_dict['utilizatori'])
 
         join_values = (
             models.Entry.objects.filter(table=primary_table.table)
@@ -974,7 +972,7 @@ class ChartViewSet(viewsets.ModelViewSet):
         user_view_tables = []
 
         for table in get_objects_for_user(user, 'api.view_table'):
-            if user.has_perm('view_table', table):
+            if user.has_perm('view_table', table) or 'admin' in user.groups.values_list('name', flat=True):
                 user_view_tables.append(table)
         return queryset.filter(table__in=user_view_tables)
 
@@ -1001,7 +999,8 @@ class ChartViewSet(viewsets.ModelViewSet):
         else:
             userprofile.dashboard_charts.add(chart)
         userprofile.save()
-        return Response({'chart_in_dashboard': chart in userprofile.dashboard_charts.all()})
+        return Response(
+            {'chart_in_dashboard': chart in userprofile.dashboard_charts.all()})
 
     @action(
         detail=True,
@@ -1039,6 +1038,3 @@ class ChartViewSet(viewsets.ModelViewSet):
         data = utils.get_chart_data(request, chart, table, preview=True)
 
         return Response(data)
-#  line chart 
-
-

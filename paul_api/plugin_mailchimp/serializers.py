@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from api.serializers.users import OwnerSerializer
 
-from plugin_woocommerce import models
+from plugin_mailchimp import models
 
 
 class SettingsSerializer(serializers.ModelSerializer):
@@ -11,8 +11,10 @@ class SettingsSerializer(serializers.ModelSerializer):
         model = models.Settings
         fields = [
             "key",
-            "secret",
-            "endpoint_url",
+            "audiences_table_name",
+            "audiences_stats_table_name",
+            "audience_segments_table_name",
+            "audience_members_table_name",
         ]
 
 
@@ -42,6 +44,5 @@ class TaskResultSerializer(serializers.ModelSerializer):
             "date",
             "user",
             "success",
-            "updates",
-            "errors"
+            "stats",
         ]

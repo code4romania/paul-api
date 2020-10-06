@@ -43,6 +43,7 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 INSTALLED_APPS = [
     "api",
     "plugin_woocommerce",
+    "plugin_mailchimp",
     "rest_framework",
     "django.contrib.admin",
     "django.contrib.auth",

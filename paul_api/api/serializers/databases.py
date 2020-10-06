@@ -66,6 +66,5 @@ class DatabaseSerializer(serializers.HyperlinkedModelSerializer):
     def get_active_tables(self, obj):
         user = self.context['request'].user
         queryset = obj.active_tables()
-        print(get_objects_for_user(user, 'api.view_table'))
         serializer = DatabaseTableListSerializer(queryset, many=True, read_only=True, context=self.context)
         return serializer.data

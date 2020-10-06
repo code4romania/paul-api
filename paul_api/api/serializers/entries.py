@@ -38,10 +38,13 @@ class EntryDataSerializer(serializers.ModelSerializer):
 
         super(EntryDataSerializer, self).__init__(*args, **kwargs)
 
+        entry = args[0]
+        # print(kwargs)
         if fields is not None:
             for field_name in fields:
                 MappedField = DATATYPE_SERIALIZERS[table_fields[field_name].field_type]
-                self.fields[field_name] = MappedField(source="data.{}".format(field_name), required=False)
+                if field_name in args[0].data.keys() and args[0].data[field_name] != '':
+                    self.fields[field_name] = MappedField(source="data.{}".format(field_name), required=False)
 
 
 class EntrySerializer(serializers.ModelSerializer):

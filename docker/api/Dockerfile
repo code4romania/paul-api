@@ -12,6 +12,8 @@ RUN pip3 install --upgrade pip setuptools \
 WORKDIR /opt/
 
 ENV DJANGO_SETTINGS_MODULE=paul_api.settings
+# mkdir media dir 
+RUN mkdir -p /var/www/paul-api/media
 
 # Copy just the requirements for caching
 COPY ./requirements* /opt/

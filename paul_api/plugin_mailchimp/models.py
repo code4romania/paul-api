@@ -8,8 +8,11 @@ class Settings(models.Model):
     Description: Model Description
     """
     key = models.CharField(max_length=255)
-    secret = models.CharField(max_length=255)
-    endpoint_url = models.URLField(max_length=255)
+    audiences_table_name = models.CharField(max_length=255, default="[mailchimp] Audiences")
+    audiences_stats_table_name = models.CharField(max_length=255, default="[mailchimp] Audiences Stats")
+    audience_segments_table_name = models.CharField(max_length=255, default="[mailchimp] Audience Segments")
+    audience_members_table_name = models.CharField(max_length=255, default="[mailchimp] Audiences Members")
+    segment_members_table_name = models.CharField(max_length=255, default="[mailchimp] Segments Members")
 
     class Meta:
         pass
@@ -23,12 +26,9 @@ class TaskResult(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey(
         User, null=True, on_delete=models.SET_NULL,
-        related_name="woocommerce_tasks")
+        related_name="mailchimp_tasks")
     success = models.BooleanField(default=False)
-    errors = models.JSONField(
+    stats = models.JSONField(
         encoder=DjangoJSONEncoder, null=True, blank=True)
-    updates = models.JSONField(
-        encoder=DjangoJSONEncoder, null=True, blank=True)
-
     class Meta:
         pass

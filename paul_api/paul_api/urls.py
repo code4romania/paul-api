@@ -24,6 +24,8 @@ urlpatterns = (
         path("api/api-token-auth/", include("rest_framework.urls")),
         path("api/admin/", admin.site.urls),
         path("api/silk/", include("silk.urls", namespace="silk")),
+        path("api/woocommerce/", include('plugin_woocommerce.urls')),
+        path("api/mailchimp/", include('plugin_mailchimp.urls')),
         path("api/", include("api.urls")),
     ]
     + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

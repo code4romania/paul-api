@@ -195,7 +195,7 @@ class FilterCreateSerializer(serializers.ModelSerializer):
         else:
             instance.name = validated_data.get("name")
             instance.last_edit_user = self.context['request'].user
-            print(instance.last_edit_user)
+
             instance.filters = validated_data.get("filters")
             primary_table_data = validated_data.pop("primary_table")
             join_tables = validated_data.pop("join_tables")

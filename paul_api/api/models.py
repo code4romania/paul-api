@@ -32,8 +32,8 @@ class Userprofile(models.Model):
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="userprofile")
 
-    dashboard_filters = models.ManyToManyField("Filter", null=True, blank=True)
-    dashboard_charts = models.ManyToManyField("Chart", null=True, blank=True)
+    dashboard_filters = models.ManyToManyField("Filter", blank=True)
+    dashboard_charts = models.ManyToManyField("Chart", blank=True)
 
     token = models.UUIDField(default=uuid.uuid4)
     avatar = models.ImageField(upload_to="avatars", null=True, blank=True)

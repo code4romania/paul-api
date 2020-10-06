@@ -1,7 +1,10 @@
 from django.contrib.auth.models import User
+from django.utils import timezone
 from api import models
 from mailchimp3 import MailChimp
 from pprint import pprint
+
+
 
 from . import table_fields
 
@@ -14,6 +17,8 @@ def get_or_create_table(table_type, table_name):
         name=table_name,
         database=db,
         owner=user)
+    table.last_edit_date = timezone.now()
+    table.last_edit_user = user
     table.active = True
     table.save()
 

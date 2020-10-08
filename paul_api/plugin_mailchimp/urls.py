@@ -10,8 +10,9 @@ router = routers.DefaultRouter()
 
 router.register(r"settings", views.SettingsViewSet)
 router.register(r"task-results", views.TaskResultViewSet, basename="task-results")
+router.register(r"tasks", views.TaskViewSet)
 
 urlpatterns = [
-    path("tasks/sync", views.RunSyncView.as_view()),
+    path("get-audiences", views.AudiencesView.as_view()),
     path("", include(router.urls)),
 ]

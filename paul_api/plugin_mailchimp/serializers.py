@@ -84,8 +84,8 @@ class TaskCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         task_type = validated_data['task_type']
+        segment_data = validated_data.pop('segmentation_task')
         if task_type == 'segmentation':
-            segment_data = validated_data.pop('segmentation_task')
             segmentation_task = models.SegmentationTask.objects.create(
                 **segment_data)
 

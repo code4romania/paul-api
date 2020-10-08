@@ -18,8 +18,8 @@ class SettingsSerializer(serializers.ModelSerializer):
             "audiences_stats_table_name",
             "audience_segments_table_name",
             "audience_members_table_name",
-            "segment_members_table_name ",
-            "audience_tags_table_name ",
+            "segment_members_table_name",
+            "audience_tags_table_name",
         ]
 
 

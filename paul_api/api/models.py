@@ -19,7 +19,7 @@ def user_activated_callback(sender, **kwargs):
     request = kwargs['request']
     user_group, _ = Group.objects.get_or_create(name="user")
     user.groups.add(user_group)
-    user.active = False
+    user.is_active = False
     user.save()
 
     admins = User.objects.filter(groups__name='admin')

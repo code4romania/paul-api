@@ -473,16 +473,14 @@ def run_sync(endpoint_url, key, secret):
     Return success (bool), updates(json), errors(json)
     '''
     success = True
-    updates = {
+    stats = {
         'Utilizatori': {
             'new_rows': 15,
             'updated_rows': 4555
-        }
-    }
-    errors = {
+        },
         'Abonamente': {
             'errors_number': 15,
             'errors': {}
         }
     }
-    return success, updates, errors
+    return success, stats

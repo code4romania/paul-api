@@ -98,7 +98,7 @@ AUDIENCES_STATS_FIELDS = {
     },
     'audience_name': {
         'display_name': 'Audience Name',
-        'type': 'text'
+        'type': 'enum'
     },
     'avg_sub_rate': {
         'display_name': 'Avg Sub Rate',
@@ -172,7 +172,7 @@ AUDIENCE_SEGMENTS_FIELDS = {
     },
     'audience_name': {
         'display_name': 'Audience Name',
-        'type': 'text'
+        'type': 'enum'
     },
     'name': {
         'display_name': 'Name',
@@ -211,7 +211,7 @@ AUDIENCE_MEMBERS_FIELDS = {
     },
     'audience_name': {
         'display_name': 'Audience Name',
-        'type': 'text'
+        'type': 'enum'
     },
     'id': {
         'display_name': 'ID',
@@ -319,7 +319,7 @@ SEGMENT_MEMBERS_FIELDS = {
     },
     'audience_name': {
         'display_name': 'Audience Name',
-        'type': 'text'
+        'type': 'enum'
     },
     'segment_id': {
         'display_name': 'Segment ID',

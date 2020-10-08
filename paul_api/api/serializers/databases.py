@@ -28,10 +28,6 @@ class DatabaseTableListSerializer(serializers.ModelSerializer):
     data = serializers.SerializerMethodField()
     user_permissions = serializers.SerializerMethodField()
 
-    def get_user_permissions(self, obj):
-        user = self.context["request"].user
-        checker = ObjectPermissionChecker(user)
-
     def get_data(self, obj):
         serializer = DatabaseTableListDataSerializer(obj, context=self.context)
         return serializer.data
@@ -49,10 +45,9 @@ class DatabaseTableListSerializer(serializers.ModelSerializer):
 
 
 class DatabaseSerializer(serializers.HyperlinkedModelSerializer):
-    # active_tables = DatabaseTableListSerializer(many=True, read_only=True)
-    archived_tables = DatabaseTableListSerializer(many=True, read_only=True)
-
     active_tables = serializers.SerializerMethodField()
+    archived_tables = serializers.SerializerMethodField()
+
     class Meta:
         model = models.Database
         fields = [
@@ -65,6 +60,27 @@ class DatabaseSerializer(serializers.HyperlinkedModelSerializer):
 
     def get_active_tables(self, obj):
         user = self.context['request'].user
-        queryset = obj.active_tables()
+        checker = ObjectPermissionChecker(user)
+
+        tables = obj.active_tables()
+        queryset = []
+        for table in tables:
+            user_perms = checker.get_perms(table)
+            print(table, user_perms)
+            if 'view_table' in user_perms:
+                queryset.append(table)
+        serializer = DatabaseTableListSerializer(queryset, many=True, read_only=True, context=self.context)
+        return serializer.data
+
+    def get_archived_tables(self, obj):
+        user = self.context['request'].user
+        checker = ObjectPermissionChecker(user)
+
+        tables = obj.archived_tables()
+        queryset = []
+        for table in tables:
+            user_perms = checker.get_perms(table)
+            if 'view_table' in user_perms:
+                queryset.append(table)
         serializer = DatabaseTableListSerializer(queryset, many=True, read_only=True, context=self.context)
         return serializer.data

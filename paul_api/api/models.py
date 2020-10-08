@@ -5,7 +5,32 @@ from django.contrib.auth.models import User
 from django.contrib.postgres.fields import ArrayField
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.exceptions import ValidationError
+from django.contrib.auth.models import Group
 import uuid
+from django.dispatch import receiver
+from djoser.signals import user_activated, user_registered
+from api import utils
+
+
+@receiver(user_activated)
+def user_activated_callback(sender, **kwargs):
+    user = kwargs['user']
+    Userprofile.objects.get_or_create(user=user)
+    request = kwargs['request']
+    user_group, _ = Group.objects.get_or_create(name="user")
+    user.groups.add(user_group)
+    user.active = False
+    user.save()
+
+    admins = User.objects.filter(groups__name='admin')
+    base_path = '{}://{}'.format(request.scheme, request.get_host())
+
+    for admin in admins:
+        utils.send_email(
+            template="mail/new_user.html",
+            context={"admin": admin, "user": user, "base_path": base_path},
+            subject="[PAUL] New user registered",
+            to=admin.email)
 
 
 datatypes = (

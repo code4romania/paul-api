@@ -3,14 +3,22 @@ from django.db.models import (
     DateTimeField, CharField, FloatField, IntegerField)
 from django.db.models.functions import Trunc, Cast
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
+from django.urls import reverse
+
+
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import get_template
 
 from collections import OrderedDict
 import inflection
 
+# from api.views import FilterViewSet
 from . import models
 
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+import requests
 from pprint import pprint
 
 DB_FUNCTIONS = {
@@ -20,6 +28,15 @@ DB_FUNCTIONS = {
     "Max": Max,
     "Avg": Avg,
 }
+
+def send_email(template, context, subject, to):
+    html = get_template(template)
+    html_content = html.render(context)
+
+    msg = EmailMultiAlternatives(subject, html_content, settings.NO_REPLY_EMAIL, [to])
+    msg.attach_alternative(html_content, "text/html")
+
+    return msg.send()
 
 
 def snake_case(text):

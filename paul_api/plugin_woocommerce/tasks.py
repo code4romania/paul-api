@@ -1,7 +1,7 @@
 from plugin_woocommerce import utils, models, serializers
 
 
-def sync_wc(request):
+def sync(request):
     user = request.user
     settings = models.Settings.objects.last()
 
@@ -9,16 +9,12 @@ def sync_wc(request):
     SECRET = settings.secret
     ENDPOINT_URL = settings.endpoint_url
 
-    success, updates, errors = utils.run_sync(ENDPOINT_URL, KEY, SECRET)
+    success, stats = utils.run_sync(ENDPOINT_URL, KEY, SECRET)
 
     task_result = models.TaskResult.objects.create(
         name="Sync tables",
         user=user,
         success=success,
-        errors=errors,
-        updates=updates)
+        stats=stats)
 
-    result = serializers.TaskResultSerializer(
-        task_result, context={'request': request})
-
-    return result.data
+    return task_result

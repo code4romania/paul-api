@@ -87,7 +87,10 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["url", "id", "username", "email", "avatar", "first_name", "last_name", "tables_permissions"]
+        fields = [
+            "url", "id", "username", "email", "is_active",
+            "avatar", "first_name", "last_name",
+            "tables_permissions"]
 
     def get_avatar(self, obj):
         try:
@@ -145,6 +148,7 @@ class UserListSerializer(serializers.ModelSerializer):
         fields = [
             "url",
             "id",
+            "is_active",
             "data"
         ]
 

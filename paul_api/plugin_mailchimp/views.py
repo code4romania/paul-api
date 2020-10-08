@@ -10,25 +10,7 @@ from plugin_mailchimp import (
     tasks)
 
 from api import models as api_models
-
-
-class EntriesPagination(PageNumberPagination):
-    page_size = 10
-    page_size_query_param = "perPage"
-    max_page_size = 1000
-
-    def get_paginated_response(self, data):
-        return Response(
-            {
-                "links": {
-                    "next": self.get_next_link(),
-                    "previous": self.get_previous_link(),
-                },
-                "count": self.page.paginator.count,
-                "total_pages": self.page.paginator.num_pages,
-                "results": data,
-            }
-        )
+from api.views import EntriesPagination
 
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -50,16 +32,16 @@ class TaskViewSet(viewsets.ModelViewSet):
     )
     def run(self, request, pk):
         task = self.get_object()
+
         if task.task_type == 'sync':
             task_result = tasks.sync(request)
             task_result.task = task
             task_result.save()
-
-            result = serializers.TaskResultSerializer(
-                task_result, context={'request': request})
-
         else:
-            result = {}
+            task_result = tasks.run_segmentation(request, task)
+        result = serializers.TaskResultSerializer(
+            task_result, context={'request': request})
+
         return Response(result.data)
 
 
@@ -71,6 +53,9 @@ class TaskResultViewSet(viewsets.ReadOnlyModelViewSet):
         if self.action == "list":
             return serializers.TaskResultListSerializer
         return serializers.TaskResultSerializer
+
+    def get_queryset(self):
+        return models.TaskResult.objects.filter(task=self.kwargs["task_pk"])
 
 
 class SettingsViewSet(mixins.RetrieveModelMixin,

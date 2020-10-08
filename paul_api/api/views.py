@@ -31,7 +31,7 @@ from io import StringIO
 import os
 from datetime import datetime
 
-from . import serializers, models
+from api import serializers, models
 from . import permissions as api_permissions
 from .permissions import BaseModelPermissions
 from . import utils
@@ -71,6 +71,27 @@ class UserViewSet(viewsets.ModelViewSet):
             return serializers.users.UserUpdateSerializer
         return serializers.users.UserListSerializer
 
+    def get_queryset(self):
+        user = self.request.user
+        if 'admin' in user.groups.values_list('name', flat=True):
+            return User.objects.all()
+        return User.objects.filter(pk=user.pk)
+
+    @action(
+        detail=True,
+        methods=["get"],
+        name="Toggle user activation",
+        url_path="toggle-activation"
+    )
+    def toggle_activation(self, request, pk):
+        request_user = request.user
+        user = self.get_object()
+        if 'admin' in request_user.groups.values_list('name', flat=True):
+            user.is_active = not user.is_active
+            user.save()
+        response = serializers.users.UserDetailSerializer(
+            user, context={'request': request})
+        return Response(response.data)
 
 class UserView(APIView):
     """
@@ -783,6 +804,21 @@ class FilterViewSet(viewsets.ModelViewSet):
         os.remove("/tmp/{}".format(file_name))
         return response
 
+
+def get_filtered_view_entries(request, filtered_view):
+    page = 1
+    continue_request = True
+    results = []
+    while continue_request:
+        request.GET = {'page': page}
+        r = FilterViewSet.as_view({'get': 'entries'})(request, filtered_view.pk).data
+        results += r['results']
+        if r['links']['next']:
+            page += 1
+        else:
+            continue_request = False 
+
+    return results
 
 class EntryViewSet(viewsets.ModelViewSet):
     pagination_class = EntriesPagination

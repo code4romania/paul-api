@@ -36,12 +36,34 @@ def get_or_create_table(table_type, table_name):
     return table
 
 
+def check_tag_is_present(audience_tags_table_name, audience_id, audience_name, tag):
+    user, _ = User.objects.get_or_create(username='paul-sync')
+    tags_table, created = models.Table.objects.get_or_create(
+        name=audience_tags_table_name,
+        database_id=1,
+        owner=user,
+        active=True)
+    if created:
+        models.TableColumn.objects.get_or_create(table=tags_table, name='id', display_name='ID', field_type="int")
+        models.TableColumn.objects.get_or_create(table=tags_table, name='name', display_name='Name', field_type="enum")
+        models.TableColumn.objects.get_or_create(table=tags_table, name='audience_id', display_name='Audience ID', field_type="text")
+        models.TableColumn.objects.get_or_create(table=tags_table, name='audience_name', display_name='Audience Name', field_type="text")
+    tag_exists = models.Entry.objects.filter(table=tags_table, data__id=tag['id']).exists()
+    if not tag_exists:
+        tag['audience_id'] = audience_id
+        tag['audience_name'] = audience_name
+        models.Entry.objects.create(table=tags_table, data=tag)
+        return 'created'
+    return 'updated'
+
+
 def run_sync(key,
              audiences_table_name,
              audiences_stats_table_name,
              audience_segments_table_name,
              audience_members_table_name,
-             segment_members_table_name):
+             segment_members_table_name,
+             audience_tags_table_name):
     '''
     Do the actual sync.
 
@@ -66,6 +88,10 @@ def run_sync(key,
             'updated': 0,
         },
         'segment_members': {
+            'created': 0,
+            'updated': 0,
+        },
+        'tags': {
             'created': 0,
             'updated': 0,
         }
@@ -233,15 +259,20 @@ def run_sync(key,
                             table_column.choices = []
                         if 'is_list' in field_def.keys():
                             for item in member[field]:
-                                if item not in table_column.choices:
-                                    table_column.choices.append(item)
+                                if item['name'] not in table_column.choices:
+                                    table_column.choices.append(item['name'])
                                     table_column.save()
                         else:
                             if member[field] not in table_column.choices:
                                 table_column.choices.append(member[field])
                                 table_column.save()
                     if 'is_list' in field_def.keys():
-                        audience_members_entry.data[field] = ','.join(member[field])
+                        items = []
+                        for item in member[field]:
+                            tag_status = check_tag_is_present(audience_tags_table_name, list['id'], list['name'], item)
+                            items.append(item['name'])
+                            stats['tags'][tag_status] += 1
+                        audience_members_entry.data[field] = ','.join(items)
                     else:
                         audience_members_entry.data[field] = member[field]
                 else:
@@ -252,3 +283,51 @@ def run_sync(key,
 
             audience_members_entry.save()
     return success, stats
+
+
+def add_list_to_segment(settings,
+             email_list,
+             audience_id,
+             tag):
+    '''
+    Do the actual sync.
+
+    Return success (bool), updates(json), errors(json)
+    '''
+    success = True
+    stats = {
+        'success': 0,
+        'errors': 0,
+        'errors_details': []
+    }
+
+    client = MailChimp(settings.key)
+    data = {
+        'tags': [{'name': tag, 'status': 'active'}]
+    }
+
+    for email in email_list:
+        email_in_audience = models.Entry.objects.filter(
+            table__name=settings.audience_members_table_name,
+            data__email_address=email,
+            data__audience_id=audience_id)
+        if email_in_audience:
+            subscriber_hash = email_in_audience[0].data['id']
+            try:
+                x = client.lists.members.tags.update(list_id=audience_id, subscriber_hash=subscriber_hash, data=data)
+                stats['success'] += 1
+            except:
+                success = False
+                stats['errors'] += 1
+                stats['errors_details'].append('{} could not be updated (mailchimp error)'.format(email))
+        else:
+            success = False
+            stats['errors'] += 1
+            stats['errors_details'].append('{} is not in the list'.format(email))
+
+    return success, stats
+
+
+def get_emails_from_filtered_view(task):
+    filtered_view = task.segmentation_task.filtered_view
+    email_field = task.segmentation_task.email_field

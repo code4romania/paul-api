@@ -280,6 +280,9 @@ class Filter(models.Model):
     class Meta:
         pass
 
+    def __str__(self):
+        return self.name
+
     def save(self, *args, **kwargs):
         value = self.name
         self.slug = slugify(value, allow_unicode=True)

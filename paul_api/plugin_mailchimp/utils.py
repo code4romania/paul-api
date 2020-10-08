@@ -4,7 +4,8 @@ from api import models
 from mailchimp3 import MailChimp
 from pprint import pprint
 
-
+from api import views as api_views
+from api import models as api_models
 
 from . import table_fields
 
@@ -237,6 +238,7 @@ def run_sync(key,
 
         for member in list_members['members']:
             print('     List member:', member['email_address'])
+            member['audience_name'] = list['name']
             audience_members_exists = models.Entry.objects.filter(
                 table=audience_members_table, data__id=member['id'], data__audience_id=list['id'])
             if audience_members_exists:
@@ -250,12 +252,14 @@ def run_sync(key,
                         'audience_id': member['list_id'],
                         'audience_name': list['name']
                         })
+
             for field in audience_members_table_fields_defs:
                 field_def = audience_members_table_fields_defs[field]
                 if field in member.keys():
                     if field_def['type'] == 'enum':
                         table_column = models.TableColumn.objects.get(table=audience_members_table, name=field)
                         if not table_column.choices:
+                            print('no choices', table_column)
                             table_column.choices = []
                         if 'is_list' in field_def.keys():
                             for item in member[field]:
@@ -265,6 +269,7 @@ def run_sync(key,
                         else:
                             if member[field] not in table_column.choices:
                                 table_column.choices.append(member[field])
+                                print('append', member[field])
                                 table_column.save()
                     if 'is_list' in field_def.keys():
                         items = []
@@ -286,8 +291,7 @@ def run_sync(key,
 
 
 def add_list_to_segment(settings,
-             email_list,
-             audience_id,
+             lists_users,
              tag):
     '''
     Do the actual sync.
@@ -306,28 +310,27 @@ def add_list_to_segment(settings,
         'tags': [{'name': tag, 'status': 'active'}]
     }
 
-    for email in email_list:
-        email_in_audience = models.Entry.objects.filter(
-            table__name=settings.audience_members_table_name,
-            data__email_address=email,
-            data__audience_id=audience_id)
-        if email_in_audience:
-            subscriber_hash = email_in_audience[0].data['id']
+    for audience, subcribers in lists_users.items():
+        for subscriber_hash in subcribers:
             try:
-                x = client.lists.members.tags.update(list_id=audience_id, subscriber_hash=subscriber_hash, data=data)
+                x = client.lists.members.tags.update(list_id=audience, subscriber_hash=subscriber_hash, data=data)
                 stats['success'] += 1
             except:
                 success = False
                 stats['errors'] += 1
                 stats['errors_details'].append('{} could not be updated (mailchimp error)'.format(email))
-        else:
-            success = False
-            stats['errors'] += 1
-            stats['errors_details'].append('{} is not in the list'.format(email))
 
     return success, stats
 
-
-def get_emails_from_filtered_view(task):
-    filtered_view = task.segmentation_task.filtered_view
-    email_field = task.segmentation_task.email_field
+def get_emails_from_filtered_view(request, filtered_view, settings):
+    audience_members_table = api_models.Table.objects.get(name=settings.audience_members_table_name)
+    filter_entries = api_views.get_filtered_view_entries(request._request, filtered_view)
+    lists = {}
+    user_hash_field = '{}__{}'.format(audience_members_table.slug, 'id')
+    audience_id_field = '{}__{}'.format(audience_members_table.slug, 'audience_id')
+    for entry in filter_entries:
+        if entry[user_hash_field] not in lists.get(entry[audience_id_field], []):
+            lists.setdefault(entry[audience_id_field], [])
+            lists[entry[audience_id_field]].append(entry[user_hash_field])
+    pprint(lists)
+    return lists

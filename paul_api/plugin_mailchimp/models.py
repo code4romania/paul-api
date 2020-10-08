@@ -39,8 +39,8 @@ class SegmentationTask(models.Model):
     filtered_view = models.ForeignKey(
         api_models.Filter, null=True, blank=True,
         on_delete=models.CASCADE)
-    email_field = models.CharField(max_length=100, null=True, blank=True)
-    audience_id = models.CharField(max_length=100, null=True, blank=True)
+    # email_field = models.CharField(max_length=100, null=True, blank=True)
+    # audience_id = models.CharField(max_length=100, null=True, blank=True)
     tag = models.CharField(max_length=100, null=True, blank=True)
 
     class Meta:

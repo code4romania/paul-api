@@ -1,9 +1,11 @@
+from django.urls import reverse
+
 from rest_framework import serializers
 
+from api import models as api_models
 from api.serializers.users import OwnerSerializer
 
 from plugin_mailchimp import models
-from api import models as api_models
 
 from pprint import pprint
 
@@ -25,6 +27,8 @@ class SettingsSerializer(serializers.ModelSerializer):
 
 class TaskListSerializer(serializers.ModelSerializer):
     last_edit_user = OwnerSerializer(read_only=True)
+    last_run_date = serializers.SerializerMethodField()
+    url = serializers.HyperlinkedIdentityField(view_name="plugin_mailchimp:task-detail")
 
     class Meta:
         model = models.Task
@@ -34,8 +38,15 @@ class TaskListSerializer(serializers.ModelSerializer):
             "name",
             "task_type",
             "last_edit_date",
+            "last_run_date",
             "last_edit_user",
         ]
+
+    def get_last_run_date(self, obj):
+        if obj.task_results.exists():
+            return obj.task_results.last().date
+        else:
+            return None
 
 
 class SegmentationTaskSerializer(serializers.ModelSerializer):
@@ -44,8 +55,8 @@ class SegmentationTaskSerializer(serializers.ModelSerializer):
         model = models.SegmentationTask
         fields = [
             "filtered_view",
-            "email_field",
-            "audience_id",
+            # "email_field",
+            # "audience_id",
             "tag",
         ]
 
@@ -53,17 +64,22 @@ class SegmentationTaskSerializer(serializers.ModelSerializer):
 class TaskSerializer(serializers.ModelSerializer):
     last_edit_user = OwnerSerializer(read_only=True)
     segmentation_task = SegmentationTaskSerializer()
+    task_results = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Task
         fields = [
             "id",
             "name",
+            "task_results",
             "task_type",
             "segmentation_task",
             "last_edit_date",
             "last_edit_user",
         ]
+
+    def get_task_results(self, obj):
+        return self.context["request"].build_absolute_uri(reverse("plugin_mailchimp:task-results-list", kwargs={"task_pk": obj.pk}))
 
 
 class TaskCreateSerializer(serializers.ModelSerializer):
@@ -99,6 +115,7 @@ class TaskCreateSerializer(serializers.ModelSerializer):
 class TaskResultListSerializer(serializers.ModelSerializer):
     user = OwnerSerializer(read_only=True)
     task = serializers.ReadOnlyField(source='task.name')
+    url = serializers.SerializerMethodField()
 
     class Meta:
         model = models.TaskResult
@@ -112,6 +129,13 @@ class TaskResultListSerializer(serializers.ModelSerializer):
             "success",
         ]
 
+    def get_url(self, obj):
+        return self.context["request"].build_absolute_uri(
+            reverse(
+                "plugin_mailchimp:task-results-detail",
+                kwargs={"pk": obj.pk, "task_pk": obj.task.pk},
+            )
+        )
 
 class TaskResultSerializer(serializers.ModelSerializer):
     user = OwnerSerializer(read_only=True)

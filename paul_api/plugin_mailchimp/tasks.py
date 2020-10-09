@@ -71,6 +71,10 @@ def run_segmentation(request, task):
 
     settings = models.Settings.objects.last()
 
+    task_result = models.TaskResult.objects.create(
+        user=user,
+        task=task)
+
     filtered_view = task.segmentation_task.filtered_view
     primary_table = filtered_view.primary_table
 
@@ -109,11 +113,9 @@ def run_segmentation(request, task):
                     lists_users,
                     task.segmentation_task.tag)
 
-    task_result = models.TaskResult.objects.create(
-        name="Segmentation",
-        task=task,
-        user=user,
-        success=success,
-        stats=stats)
+    task_result.success = success
+    task_result.stats = stats
+    task_result.status = 'Finished'
+    task_result.save()
 
     return task_result

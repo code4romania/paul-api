@@ -137,6 +137,7 @@ class TaskResultListSerializer(serializers.ModelSerializer):
             "url",
             "id",
             "name",
+            "status",
             "task",
             "date",
             "user",
@@ -159,6 +160,7 @@ class TaskResultSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "status",
             "task",
             "date",
             "user",

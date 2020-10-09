@@ -71,6 +71,7 @@ class TaskResult(models.Model):
     Description: Model Description
     """
     name = models.CharField(max_length=255, null=True, blank=True)
+    status = models.CharField(max_length=20, default='In progress')
     task = models.ForeignKey(
         Task, null=True, blank=True, on_delete=models.CASCADE,
         related_name='task_results')

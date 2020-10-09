@@ -319,7 +319,7 @@ class Chart(models.Model):
     Description: Model for representing a table chart
     """
 
-    name = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=100, unique=True)
     chart_type = models.CharField(max_length=20, default=chart_types[0][0], choices=chart_types)
     table = models.ForeignKey(Table, on_delete=models.CASCADE)
     timeline_field = models.ForeignKey(

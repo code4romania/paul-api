@@ -474,13 +474,9 @@ def run_sync(endpoint_url, key, secret):
     '''
     success = True
     stats = {
-        'Utilizatori': {
-            'new_rows': 15,
-            'updated_rows': 4555
-        },
-        'Abonamente': {
-            'errors_number': 15,
-            'errors': {}
-        }
+        'success': 0,
+        'errors': 0,
+        'details': []
     }
+    stats['details'].append('TBD')
     return success, stats

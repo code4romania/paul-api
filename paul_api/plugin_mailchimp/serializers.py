@@ -112,6 +112,20 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         return task
 
 
+
+    def update(self, instance, validated_data):
+        # instance.name = validated_data['name']
+        segmentation_task_data = validated_data.pop('segmentation_task')
+        if validated_data['task_type'] == 'segmentation':
+            print(segmentation_task_data)
+            segmentation_task = instance.segmentation_task
+            models.SegmentationTask.objects.filter(pk=segmentation_task.pk).update(**segmentation_task_data)
+
+        models.Task.objects.filter(pk=instance.pk).update(**validated_data)
+        instance.refresh_from_db()
+        return instance
+
+
 class TaskResultListSerializer(serializers.ModelSerializer):
     user = OwnerSerializer(read_only=True)
     task = serializers.ReadOnlyField(source='task.name')

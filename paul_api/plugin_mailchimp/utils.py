@@ -95,7 +95,10 @@ def run_sync(key,
         'tags': {
             'created': 0,
             'updated': 0,
-        }
+        },
+        'success': 0,
+        'errors': 0,
+        'details': []
 
     }
     client = MailChimp(key)
@@ -302,7 +305,7 @@ def add_list_to_segment(settings,
     stats = {
         'success': 0,
         'errors': 0,
-        'errors_details': []
+        'details': []
     }
 
     client = MailChimp(settings.key)
@@ -315,10 +318,11 @@ def add_list_to_segment(settings,
             try:
                 x = client.lists.members.tags.update(list_id=audience, subscriber_hash=subscriber_hash, data=data)
                 stats['success'] += 1
+                stats['details'].append('Todo bien')
             except:
                 success = False
                 stats['errors'] += 1
-                stats['errors_details'].append('{} could not be updated (mailchimp error)'.format(email))
+                stats['details'].append('{} could not be updated (mailchimp error)'.format(email))
 
     return success, stats
 

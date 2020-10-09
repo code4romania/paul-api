@@ -321,13 +321,17 @@ def add_list_to_segment(settings,
             try:
                 x = client.lists.members.tags.update(list_id=audience, subscriber_hash=subscriber_hash, data=data)
                 stats['success'] += 1
-                stats['details'].append('Todo bien')
             except:
                 success = False
                 stats['errors'] += 1
                 stats['details'].append('{} could not be updated (mailchimp error)'.format(email))
 
+    if stats['success']:
+        stats['details'].append('<b>{}</b> members were updated with tag <b>{}</b>'.format(stats['success'], tag))
+    if stats['errors']:
+        stats['details'].append('<b>{}</b> members were not updated with tag <b>{}</b>'.format(stats['errors'], tag))
     return success, stats
+
 
 def get_emails_from_filtered_view(request, filtered_view, settings):
     audience_members_table = api_models.Table.objects.get(name=settings.audience_members_table_name)

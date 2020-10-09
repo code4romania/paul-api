@@ -72,37 +72,39 @@ def run_sync(key,
     '''
     success = True
     stats = {
-        'audiences': {
+        audiences_table_name: {
             'created': 0,
             'updated': 0,
         },
-        'audiences_stats': {
+        audiences_stats_table_name: {
             'created': 0,
             'updated': 0,
         },
-        'audience_segments': {
+        audience_segments_table_name: {
             'created': 0,
             'updated': 0,
         },
-        'audience_members': {
+        audience_members_table_name: {
             'created': 0,
             'updated': 0,
         },
-        'segment_members': {
+        segment_members_table_name: {
             'created': 0,
             'updated': 0,
         },
-        'tags': {
+        audience_tags_table_name: {
             'created': 0,
             'updated': 0,
-        },
-        'success': 0,
-        'errors': 0,
-        'details': []
+        }
 
     }
-    client = MailChimp(key)
-    lists = client.lists.all()
+    try:
+        client = MailChimp(key)
+        lists = client.lists.all()
+    except:
+        return False, {'details': [
+        "Could not connect to mailchimp. Check <b>KEY</b> "
+        " in settings and make sure it has all permissions."]}
 
     audiences_table = get_or_create_table('audiences', audiences_table_name)
     audiences_stats_table = get_or_create_table('audiences_stats', audiences_stats_table_name)
@@ -124,9 +126,9 @@ def run_sync(key,
 
         if audience_exists:
             audience_entry = audience_exists[0]
-            stats['audiences']['updated'] += 1
+            stats[audiences_table_name]['updated'] += 1
         else:
-            stats['audiences']['created'] += 1
+            stats[audiences_table_name]['created'] += 1
             audience_entry = models.Entry.objects.create(
                 table=audiences_table,
                 data={'id': list['id']})
@@ -145,9 +147,9 @@ def run_sync(key,
             table=audiences_stats_table, data__audience_id=list['id'])
         if audience_stats_exists:
             audience_stats_entry = audience_stats_exists[0]
-            stats['audiences_stats']['updated'] += 1
+            stats[audiences_stats_table_name]['updated'] += 1
         else:
-            stats['audiences_stats']['created'] += 1
+            stats[audiences_stats_table_name]['created'] += 1
             audience_stats_entry = models.Entry.objects.create(
                 table=audiences_stats_table,
                 data={
@@ -171,9 +173,9 @@ def run_sync(key,
                 table=audience_segments_table, data__audience_id=segment['list_id'])
             if audience_segments_exists:
                 audience_segments_entry = audience_segments_exists[0]
-                stats['audience_segments']['updated'] += 1
+                stats[audience_segments_table_name]['updated'] += 1
             else:
-                stats['audience_segments']['created'] += 1
+                stats[audience_segments_table_name]['created'] += 1
                 audience_segments_entry = models.Entry.objects.create(
                     table=audience_segments_table,
                     data={
@@ -197,9 +199,9 @@ def run_sync(key,
                     table=segment_members_table, data__id=member['id'], data__segment_id=segment['id'])
                 if segment_members_exists:
                     segment_members_entry = segment_members_exists[0]
-                    stats['segment_members']['updated'] += 1
+                    stats[segment_members_table_name]['updated'] += 1
                 else:
-                    stats['segment_members']['created'] += 1
+                    stats[segment_members_table_name]['created'] += 1
                     segment_members_entry = models.Entry.objects.create(
                         table=segment_members_table,
                         data={
@@ -212,6 +214,7 @@ def run_sync(key,
                     field_def = segment_members_table_fields_defs[field]
                     if field in member.keys():
                         if field_def['type'] == 'enum':
+                            print(segment_members_table, field)
                             table_column = models.TableColumn.objects.get(table=segment_members_table, name=field)
                             if not table_column.choices:
                                 table_column.choices = []
@@ -246,9 +249,9 @@ def run_sync(key,
                 table=audience_members_table, data__id=member['id'], data__audience_id=list['id'])
             if audience_members_exists:
                 audience_members_entry = audience_members_exists[0]
-                stats['audience_members']['updated'] += 1
+                stats[audience_members_table_name]['updated'] += 1
             else:
-                stats['audience_members']['created'] += 1
+                stats[audience_members_table_name]['created'] += 1
                 audience_members_entry = models.Entry.objects.create(
                     table=audience_members_table,
                     data={
@@ -279,7 +282,7 @@ def run_sync(key,
                         for item in member[field]:
                             tag_status = check_tag_is_present(audience_tags_table_name, list['id'], list['name'], item)
                             items.append(item['name'])
-                            stats['tags'][tag_status] += 1
+                            stats[audience_tags_table_name][tag_status] += 1
                         audience_members_entry.data[field] = ','.join(items)
                     else:
                         audience_members_entry.data[field] = member[field]

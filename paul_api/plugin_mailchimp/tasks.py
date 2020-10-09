@@ -2,17 +2,20 @@ from django.contrib.auth.models import User
 
 from api import models as api_models
 
-
-
 from plugin_mailchimp import utils, models, serializers
 from .table_fields import AUDIENCE_MEMBERS_FIELDS
 
-def sync(request):
+
+def sync(request, task):
     if hasattr(request, 'user'):
         user = request.user
     else:
         user, _ = User.objects.get_or_create(username='paul-sync')
     settings = models.Settings.objects.last()
+
+    task_result = models.TaskResult.objects.create(
+        user=user,
+        task=task)
 
     KEY = settings.key
     AUDIENCES_TABLE_NAME = settings.audiences_table_name
@@ -22,21 +25,33 @@ def sync(request):
     SEGMENT_MEMBERS_TABLE_NAME = settings.segment_members_table_name
     AUDIENCE_TAGS_TABLE_NAME = settings.audience_tags_table_name
 
-    success, stats = utils.run_sync(
-        KEY,
-        AUDIENCES_TABLE_NAME,
-        AUDIENCES_STATS_TABLE_NAME,
-        AUDIENCE_SEGMENTS_TABLE_NAME,
-        AUDIENCE_MEMBERS_TABLE_NAME,
-        SEGMENT_MEMBERS_TABLE_NAME,
-        AUDIENCE_TAGS_TABLE_NAME
-    )
+    try:
+        success, stats = utils.run_sync(
+            KEY,
+            AUDIENCES_TABLE_NAME,
+            AUDIENCES_STATS_TABLE_NAME,
+            AUDIENCE_SEGMENTS_TABLE_NAME,
+            AUDIENCE_MEMBERS_TABLE_NAME,
+            SEGMENT_MEMBERS_TABLE_NAME,
+            AUDIENCE_TAGS_TABLE_NAME
+        )
+        task_result.success = success
+        task_result.stats = stats
+        task_result.status = 'Finished'
+    except Exception as e:
+        task_result.success = False
+        task_result.status = 'Finished'
+        task_result.stats = {
+            'details': [str(e)]
+        }
 
-    task_result = models.TaskResult.objects.create(
-        name="Sync audiences",
-        user=user,
-        success=success,
-        stats=stats)
+    stats_details = []
+    if task_result.success:
+        for table, table_stats in task_result.stats.items():
+            for k, v in table_stats.items():
+                stats_details.append('<b>{}</b> {} in <b>{}</b>'.format(v, k, table))
+        task_result.stats['details'] = stats_details
+    task_result.save()
 
     return task_result
 

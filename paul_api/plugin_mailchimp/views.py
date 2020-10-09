@@ -34,7 +34,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         task = self.get_object()
 
         if task.task_type == 'sync':
-            task_result = tasks.sync(request)
+            task_result = tasks.sync(request, task)
             task_result.task = task
             task_result.save()
         else:

@@ -193,6 +193,8 @@ def get_chart_data(request, chart, table, preview=False):
     return data
 
 def get_strftime(date, period):
+    if not date:
+        return None
     if period == 'year':
         date_str = date.strftime('%Y')
     elif period == 'month':

@@ -46,7 +46,7 @@ def run_segmentation(request, task):
     stats = {
         'success': 0,
         'errors': 0,
-        'errors_details': []
+        'details': []
     }
 
     if hasattr(request, 'user'):
@@ -64,7 +64,7 @@ def run_segmentation(request, task):
     if not audience_members_table.exists():
         success = False
         stats['errors'] += 1
-        stats['errors_details'].append(
+        stats['details'].append(
             '"{}" does not exists. Run mailchimp import task first.'.format(
                 settings.audience_members_table_name
             ))
@@ -73,8 +73,8 @@ def run_segmentation(request, task):
         if primary_table.table != audience_members_table:
             success = False
             stats['errors'] += 1
-            stats['errors_details'].append(
-                '"{}" needs to be the primary table in "{}" filtered view'.format(
+            stats['details'].append(
+                '<b>{}</b> needs to be the primary table in <b>{}</b> filtered view'.format(
                     audience_members_table, filtered_view.name
                 ))
         primary_table_fields =  primary_table.fields.values_list('name', flat=True)
@@ -83,8 +83,8 @@ def run_segmentation(request, task):
             if field not in primary_table_fields:
                 success = False
                 stats['errors'] += 1
-                stats['errors_details'].append(
-                    '"{}" field needs to be selected in the primary table in "{}" filtered view'.format(
+                stats['details'].append(
+                    '<b>{}</b> field needs to be selected in the primary table in <b>{}</b> filtered view'.format(
                         AUDIENCE_MEMBERS_FIELDS[field]['display_name'], filtered_view.name
                     ))
         if success:

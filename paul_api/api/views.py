@@ -495,6 +495,16 @@ class FilterViewSet(viewsets.ModelViewSet):
         return base_permissions
 
     @action(
+        detail=False,
+        methods=["get"],
+        url_name="all-filters",
+        url_path="all",
+    )
+    def all(self, request):
+        response = serializers.filters.FilterListSerializer(self.queryset, many=True, context={'request': request})
+        return Response(response.data)
+
+    @action(
         detail=True,
         methods=["get"],
         url_name="add-to-dashboard",

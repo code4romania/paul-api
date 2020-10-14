@@ -51,10 +51,9 @@ def import_csv(reader, table):
     table_fields = {x.name: x for x in table.fields.all()}
     field_choices = {x.name: x.choices for x in table.fields.all()}
     i = 0
-
     for row in reader:
         i += 1
-        print(i)
+        # print(i)
         # if i > 100:
         #     continue
         entry_dict = {}

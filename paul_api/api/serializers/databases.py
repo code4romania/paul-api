@@ -66,7 +66,6 @@ class DatabaseSerializer(serializers.HyperlinkedModelSerializer):
         queryset = []
         for table in tables:
             user_perms = checker.get_perms(table)
-            print(table, user_perms)
             if 'view_table' in user_perms:
                 queryset.append(table)
         serializer = DatabaseTableListSerializer(queryset, many=True, read_only=True, context=self.context)

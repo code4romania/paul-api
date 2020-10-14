@@ -9,12 +9,12 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
 
 from rest_framework import viewsets
+from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action, permission_classes
 from rest_framework.response import Response
 from rest_framework import permissions
-from rest_framework import status
 from rest_framework_guardian.filters import ObjectPermissionsFilter
 
 from guardian.shortcuts import get_objects_for_user
@@ -210,10 +210,17 @@ class TableViewSet(viewsets.ModelViewSet):
                 field_type=field["field_type"],
             )
 
-        reader = csv.DictReader(
-            StringIO(csv_import.file.read().decode("utf-8")),
-            delimiter=csv_import.delimiter,
-        )
+        try:
+            reader = csv.DictReader(
+                StringIO(csv_import.file.read().decode("utf-8")),
+                delimiter=csv_import.delimiter,
+            )
+        except:
+            csv_import.file.seek(0)
+            reader = csv.DictReader(
+                StringIO(csv_import.file.read().decode("windows-1252")),
+                delimiter=csv_import.delimiter,
+            )
         errors, errors_count, imports_count = utils.import_csv(reader, table)
         csv_import.errors = errors
         csv_import.errors_count = errors_count
@@ -239,8 +246,12 @@ class TableViewSet(viewsets.ModelViewSet):
         delimiter = request.POST.get("delimiter")
         fields = []
         table = self.get_object()
-
-        decoded_file = file.read().decode("utf-8").splitlines()
+        # print(file.read())
+        try:
+            decoded_file = file.read().decode("utf-8").splitlines()
+        except:
+            file.seek(0)
+            decoded_file = str(file.read().decode("windows-1252")).splitlines()
         csv_import = models.CsvImport.objects.create(table=table, file=file, delimiter=delimiter)
         reader = csv.DictReader(decoded_file, delimiter=delimiter)
 
@@ -983,8 +994,18 @@ class CsvImportViewSet(viewsets.ModelViewSet):
         file = request.FILES["file"]
         delimiter = request.POST.get("delimiter")
         fields = []
-
-        decoded_file = file.read().decode("utf-8").splitlines()
+        try:
+            decoded_file = file.read().decode("utf-8").splitlines()
+        except:
+            try:
+                file.seek(0)
+                decoded_file = file.read().decode("windows-1252").splitlines()
+            except:
+                response = {
+                    "success": False,
+                    "error_msg": 'Could not decode file',
+                }
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
         csv_import = models.CsvImport.objects.create(file=file, delimiter=delimiter)
         reader = csv.DictReader(decoded_file, delimiter=delimiter)
 
@@ -1002,6 +1023,7 @@ class CsvImportViewSet(viewsets.ModelViewSet):
             )
 
         response = {
+            "success": True,
             "import_id": csv_import.pk,
             "fields": fields,
         }

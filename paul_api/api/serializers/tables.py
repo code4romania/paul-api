@@ -56,6 +56,8 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
             "name",
             "owner",
             "fields",
+            "default_fields",
+            "filters",
             "last_edit_user",
             "last_edit_date",
             "active",
@@ -98,7 +100,16 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
 
     def update(self, instance, validated_data):
         if self.partial:
-            models.Filter.objects.filter(pk=instance.pk).update(**validated_data)
+            filters = validated_data.pop('filters')
+            if filters:
+                models.Table.objects.filter(pk=instance.pk).update(**{'filters': filters})
+            default_fields = validated_data.pop('default_fields')
+            if default_fields:
+                for field in default_fields:
+                    print(field)
+                    instance.default_fields.add(field)
+                # models.Table.objects.filter(pk=instance.pk).update(**{'filters': filters})
+                
             instance.refresh_from_db()
         else:
             instance.name = validated_data.get("name")
@@ -179,6 +190,9 @@ class TableSerializer(serializers.ModelSerializer):
         ]
 
     def get_default_fields(self, obj):
+        print('----', obj.default_fields)
+        if obj.default_fields.all():
+            return [x for x in obj.default_fields.values_list("name", flat=True).order_by("id")]
         return [x for x in obj.fields.values_list("name", flat=True).order_by("id")]
 
     def get_entries(self, obj):

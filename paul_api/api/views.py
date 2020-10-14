@@ -164,7 +164,7 @@ class TableViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "list":
             return serializers.databases.DatabaseTableListSerializer
-        elif self.action in ["create", "update"]:
+        elif self.action in ["create", "update", "partial_update"]:
             return serializers.tables.TableCreateSerializer
         return serializers.tables.TableSerializer
 
@@ -855,14 +855,17 @@ class EntryViewSet(viewsets.ModelViewSet):
         str_fields = request.GET.get("__fields", "") if request else None
         str_order = request.GET.get("__order", "") if request else None
         table_fields = {x.name: x for x in table.fields.all().order_by("id")}
+        default_fields = {x.name: x for x in table.default_fields.all().order_by("id")}
 
         if str_fields == "ALL":
             fields = [x for x in table_fields.keys()]
         else:
             fields = str_fields.split(",") if str_fields else None
             if not fields:
-                fields = [x for x in table_fields.keys()]
-                # fields = [x for x in table_fields.keys()][:7]
+                if default_fields:
+                    fields = [x for x in default_fields.keys()]
+                else:
+                    fields = [x for x in table_fields.keys()]
 
         filter_dict = {}
         for key in request.GET:

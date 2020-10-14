@@ -110,6 +110,7 @@ class Table(models.Model):
     active = models.BooleanField(default=False)
 
     date_created = models.DateTimeField(auto_now_add=True)
+    default_fields = models.ManyToManyField('TableColumn', null=True, related_name='default_field')
 
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
     last_edit_date = models.DateTimeField(null=True, blank=True)

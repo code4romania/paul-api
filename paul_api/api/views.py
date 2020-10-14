@@ -550,12 +550,22 @@ class FilterViewSet(viewsets.ModelViewSet):
         all_fields = []
         field_types = {}
         for field in primary_table.fields.all().order_by("id"):
-            field_key = "{}__{}".format(primary_table.table.slug, field.name)
-            all_fields.append(field_key)
+            if obj.default_fields.all():
+                if field in obj.default_fields.all():
+                    field_key = "{}__{}".format(primary_table.table.slug, field.name)
+                    all_fields.append(field_key)
+            else:
+                field_key = "{}__{}".format(primary_table.table.slug, field.name)
+                all_fields.append(field_key)
             field_types[field_key] = field.field_type
         for field in secondary_table.fields.all().order_by("id"):
-            field_key = "{}__{}".format(secondary_table.table.slug, field.name)
-            all_fields.append(field_key)
+            if obj.default_fields.all():
+                if field in obj.default_fields.all():
+                    field_key = "{}__{}".format(secondary_table.table.slug, field.name)
+                    all_fields.append(field_key)
+            else:
+                field_key = "{}__{}".format(secondary_table.table.slug, field.name)
+                all_fields.append(field_key)
             field_types[field_key] = field.field_type
 
         fields = all_fields
@@ -840,6 +850,7 @@ def get_filtered_view_entries(request, filtered_view):
             continue_request = False 
 
     return results
+
 
 class EntryViewSet(viewsets.ModelViewSet):
     pagination_class = EntriesPagination

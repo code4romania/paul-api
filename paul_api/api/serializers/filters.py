@@ -133,14 +133,26 @@ class FilterDetailSerializer(serializers.ModelSerializer):
     def get_default_fields(self, obj):
         primary_table = obj.primary_table
         secondary_table = obj.join_tables.all()[0]
-        all_fields = [
-            "{}__{}".format(primary_table.table.slug, x.name) for x in primary_table.fields.all().order_by("id")
-        ]
-        all_fields += [
-            "{}__{}".format(secondary_table.table.slug, x.name) for x in secondary_table.fields.all().order_by("id")
-        ]
-
+        all_fields = []
+        if obj.default_fields.all():
+            for field in obj.default_fields.all():
+                all_fields.append('{}__{}'.format(field.table.slug, field.name))
+        else:
+            all_fields = [
+                "{}__{}".format(primary_table.table.slug, x.name) for x in primary_table.fields.all().order_by("id")
+            ]
+            all_fields += [
+                "{}__{}".format(secondary_table.table.slug, x.name) for x in secondary_table.fields.all().order_by("id")
+            ]
         return all_fields
+
+
+    # def get_default_fields(self, obj):
+    #     print('----', obj.default_fields)
+    #     if obj.default_fields.all():
+    #         return [x for x in obj.default_fields.values_list("name", flat=True).order_by("id")]
+    #     return [x for x in obj.fields.values_list("name", flat=True).order_by("id")]
+
 
     def get_config(self, obj):
         serializer = FilterCreateSerializer(obj, context=self.context)
@@ -165,7 +177,7 @@ class FilterCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Filter
-        fields = ["id", "name", "owner", "last_edit_user", "last_edit_date", "primary_table", "join_tables", "filters"]
+        fields = ["id", "name", "owner", "last_edit_user", "last_edit_date", "primary_table", "join_tables", "filters", "default_fields"]
 
     def create(self, validated_data):
         primary_table = validated_data.pop("primary_table")
@@ -190,7 +202,15 @@ class FilterCreateSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         if self.partial:
-            models.Filter.objects.filter(pk=instance.pk).update(**validated_data)
+            if validated_data.get('filters'):
+                filters = validated_data.pop('filters')
+                models.Filter.objects.filter(pk=instance.pk).update(**{'filters': filters})
+            if validated_data.get('default_fields'):
+                default_fields = validated_data.pop('default_fields')
+                if default_fields:
+                    for field in default_fields:
+                        print(field)
+                        instance.default_fields.add(field)
             instance.refresh_from_db()
         else:
             instance.name = validated_data.get("name")

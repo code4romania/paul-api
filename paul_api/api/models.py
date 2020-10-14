@@ -292,7 +292,7 @@ class Filter(models.Model):
     join_tables = models.ManyToManyField(FilterJoinTable, related_name="filter_join_table")
     filters = models.JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)
     creation_date = models.DateTimeField(auto_now_add=True, null=True)
-
+    default_fields = models.ManyToManyField(TableColumn, related_name="filter_default_field")
     owner = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     last_edit_date = models.DateTimeField(null=True, blank=True)
     last_edit_user = models.ForeignKey(

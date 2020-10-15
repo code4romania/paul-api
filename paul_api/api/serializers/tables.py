@@ -110,7 +110,6 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
                     for field in default_fields:
                         print(field)
                         instance.default_fields.add(field)
-                
             instance.refresh_from_db()
         else:
             instance.name = validated_data.get("name")

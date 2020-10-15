@@ -126,6 +126,7 @@ class FilterDetailSerializer(serializers.ModelSerializer):
                     "display_name": field.display_name,
                     "field_type": field.field_type,
                     "choices": field.choices,
+                    "sortable": False
                 }
             )
         return fields
@@ -201,6 +202,7 @@ class FilterCreateSerializer(serializers.ModelSerializer):
         return new_filter
 
     def update(self, instance, validated_data):
+
         if self.partial:
             if validated_data.get('filters'):
                 filters = validated_data.pop('filters')
@@ -235,5 +237,6 @@ class FilterCreateSerializer(serializers.ModelSerializer):
                 join_table.fields.set(fields)
 
                 instance.join_tables.add(join_table)
+            instance.default_fields.set([])
             instance.save()
         return instance

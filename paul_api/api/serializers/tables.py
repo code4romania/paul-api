@@ -100,15 +100,16 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
 
     def update(self, instance, validated_data):
         if self.partial:
-            filters = validated_data.pop('filters')
-            if filters:
-                models.Table.objects.filter(pk=instance.pk).update(**{'filters': filters})
-            default_fields = validated_data.pop('default_fields')
-            if default_fields:
-                for field in default_fields:
-                    print(field)
-                    instance.default_fields.add(field)
-                # models.Table.objects.filter(pk=instance.pk).update(**{'filters': filters})
+            if validated_data.get('filters'):
+                filters = validated_data.pop('filters')
+                if filters:
+                    models.Table.objects.filter(pk=instance.pk).update(**{'filters': filters})
+            if validated_data.get('default_fields'):
+                default_fields = validated_data.pop('default_fields')
+                if default_fields:
+                    for field in default_fields:
+                        print(field)
+                        instance.default_fields.add(field)
                 
             instance.refresh_from_db()
         else:

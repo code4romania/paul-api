@@ -115,6 +115,7 @@ class FilterDetailSerializer(serializers.ModelSerializer):
                     "display_name": field.display_name,
                     "field_type": field.field_type,
                     "choices": field.choices,
+                    "sortable": False
                 }
             )
         for field in secondary_table.fields.all():
@@ -126,7 +127,7 @@ class FilterDetailSerializer(serializers.ModelSerializer):
                     "display_name": field.display_name,
                     "field_type": field.field_type,
                     "choices": field.choices,
-                    "sortable": False
+                    "sortable": True
                 }
             )
         return fields

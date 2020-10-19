@@ -190,7 +190,6 @@ class TableSerializer(serializers.ModelSerializer):
         ]
 
     def get_default_fields(self, obj):
-        print('----', obj.default_fields)
         if obj.default_fields.all():
             return [x for x in obj.default_fields.values_list("name", flat=True).order_by("id")]
         return [x for x in obj.fields.values_list("name", flat=True).order_by("id")]

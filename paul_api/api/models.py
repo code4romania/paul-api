@@ -268,7 +268,7 @@ class FilterJoinTable(models.Model):
     # )
     table = models.ForeignKey(Table, on_delete=models.CASCADE)
     fields = models.ManyToManyField(TableColumn, related_name="filter_join_table_fields")
-    join_field = models.ForeignKey(TableColumn, on_delete=models.CASCADE)
+    join_field = models.ForeignKey(TableColumn, on_delete=models.CASCADE, null=True, blank=True)
 
     class Meta:
         pass
@@ -276,8 +276,8 @@ class FilterJoinTable(models.Model):
     def __str__(self):
         return "{} [{}] ({})".format(
             self.table.name,
-            self.join_field.name,
-            ",".join(self.fields.values_list("name", flat=True)),
+            self.join_field.name if self.join_field else None,
+            ", ".join(self.fields.values_list("name", flat=True)),
         )
 
 

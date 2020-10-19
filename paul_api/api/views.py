@@ -1,5 +1,5 @@
 from django.db.models import (
-    Count, Sum, Min, Max, Avg, StdDev,
+    Q, Count, Sum, Min, Max, Avg, StdDev,
     DateTimeField, CharField, FloatField, IntegerField)
 from django.db.models.functions import Trunc, Cast
 from django.contrib.auth.models import User, Group
@@ -485,9 +485,14 @@ class FilterViewSet(viewsets.ModelViewSet):
         for table in get_objects_for_user(user, 'api.view_table'):
             if user.has_perm('view_table', table):
                 user_view_tables.append(table)
-        return queryset.filter(
-            primary_table__table__in=user_view_tables,
-            join_tables__table__in=user_view_tables)
+        q = Q(
+                primary_table__table__in=user_view_tables,
+                join_tables__table__in=user_view_tables) | \
+            Q(
+                primary_table__table__in=user_view_tables,
+                join_tables=None
+                )
+        return queryset.filter(q)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -540,11 +545,13 @@ class FilterViewSet(viewsets.ModelViewSet):
 
         primary_table = obj.primary_table
         primary_table_slug = primary_table.table.slug
-        primary_table_join_field = primary_table.join_field.name
+        is_two_tables_filter = False
 
-        secondary_table = obj.join_tables.all()[0]
-        secondary_table_slug = secondary_table.table.slug
-        secondary_table_join_field = secondary_table.join_field.name
+        if obj.join_tables.all():
+            secondary_table = obj.join_tables.all()[0]
+            secondary_table_slug = secondary_table.table.slug
+            secondary_table_join_field = secondary_table.join_field.name
+            is_two_tables_filter = True
 
         # Get all fields and display fields
         all_fields = []
@@ -554,19 +561,23 @@ class FilterViewSet(viewsets.ModelViewSet):
                 if field in obj.default_fields.all():
                     field_key = "{}__{}".format(primary_table.table.slug, field.name)
                     all_fields.append(field_key)
+                    field_types[field_key] = field.field_type
             else:
                 field_key = "{}__{}".format(primary_table.table.slug, field.name)
                 all_fields.append(field_key)
-            field_types[field_key] = field.field_type
-        for field in secondary_table.fields.all().order_by("id"):
-            if obj.default_fields.all():
-                if field in obj.default_fields.all():
+                field_types[field_key] = field.field_type
+
+        if is_two_tables_filter:
+            for field in secondary_table.fields.all().order_by("id"):
+                if obj.default_fields.all():
+                    if field in obj.default_fields.all():
+                        field_key = "{}__{}".format(secondary_table.table.slug, field.name)
+                        all_fields.append(field_key)
+                        field_types[field_key] = field.field_type
+                else:
                     field_key = "{}__{}".format(secondary_table.table.slug, field.name)
                     all_fields.append(field_key)
-            else:
-                field_key = "{}__{}".format(secondary_table.table.slug, field.name)
-                all_fields.append(field_key)
-            field_types[field_key] = field.field_type
+                    field_types[field_key] = field.field_type
 
         fields = all_fields
         if str_fields:
@@ -584,13 +595,30 @@ class FilterViewSet(viewsets.ModelViewSet):
             else:
                 secondary_table_fields.append(field.replace(secondary_table_slug + "__", "data__"))
 
-        secondary_table_fields.append("data__{}".format(secondary_table_join_field))
+        if is_two_tables_filter:
+            secondary_table_fields.append("data__{}".format(secondary_table_join_field))
+
+        order_table = str_order.replace("-", "").split("__")[0]
+        str_order = str_order.replace(order_table + "__", "")
+
+        if str_order:
+            if str_order.startswith("-"):
+                order_by = "-data__{}".format(str_order[1:])
+            else:
+                order_by = "data__{}".format(str_order)
+        else:
+            order_by = "id"
+
+        table_order_by = "id"
+        if order_table == primary_table_slug:
+            table_order_by = order_by
 
         # Create filters dict
         filter_dict = {
             primary_table_slug: {},
-            secondary_table_slug: {},
         }
+        if is_two_tables_filter:
+            filter_dict[secondary_table_slug] = {}
 
         for key in request.GET:
             table_field = "__".join(key.split("__")[:2])
@@ -614,81 +642,98 @@ class FilterViewSet(viewsets.ModelViewSet):
                 else:
                     filter_dict[table]["data__{}".format(field)] = value
 
-        order_table = str_order.replace("-", "").split("__")[0]
-        str_order = str_order.replace(order_table + "__", "")
 
-        if str_order:
-            if str_order.startswith("-"):
-                order_by = "-data__{}".format(str_order[1:])
-            else:
-                order_by = "data__{}".format(str_order)
-        else:
-            order_by = "id"
-
-        table_order_by = "id"
-
-        if order_table == primary_table_slug:
-            table_order_by = order_by
-        join_values = (
-            models.Entry.objects.filter(table=primary_table.table)
-            .filter(**filter_dict[primary_table_slug])
-            .values("data__{}".format(primary_table_join_field))
-            .order_by(table_order_by)
-        )
-
-        filter_dict[secondary_table_slug]["data__{}__in".format(secondary_table_join_field)] = join_values
-
-        table_order_by = "id"
-        if order_table == secondary_table_slug:
-            table_order_by = order_by
-
-        result_values = (
-            models.Entry.objects.filter(table__slug=secondary_table_slug)
-            .filter(**filter_dict[secondary_table_slug])
-            .values(*secondary_table_fields)
-            .order_by(table_order_by)
-        )
-
-        queryset = result_values
-
-        if not fields:
-            fields = [x.replace("data__", "{}__".format(primary_table_slug)) for x in primary_table_fields]
-            fields += [x.replace("data__", "{}__".format(secondary_table_slug)) for x in secondary_table_fields]
-
-        page = self.paginate_queryset(queryset)
-
-        if page is not None:
-            final_page = []
-            page_join_values = [x["data__{}".format(secondary_table_join_field)] for x in page]
-
-            filter_dict[primary_table_slug]["data__{}__in".format(primary_table_join_field)] = page_join_values
-            primary_table_values = {
-                x.data[primary_table_join_field]: {"data__" + key: value for key, value in x.data.items()}
-                for x in models.Entry.objects.filter(table=primary_table.table)
+        # If filter has only primary_table
+        if not is_two_tables_filter:
+            result_values = (
+                models.Entry.objects.filter(table__slug=primary_table_slug)
                 .filter(**filter_dict[primary_table_slug])
-                .exclude(data=None)
-            }
+                .values(*primary_table_fields)
+                .order_by(table_order_by)
+            )
 
-            for entry in page:
-                final_entry = {}
-                final_entry_primary_table_values = {}
+            queryset = result_values
 
-                entry_primary_table_values = primary_table_values[entry["data__{}".format(secondary_table_join_field)]]
+            if not fields:
+                fields = [x.replace("data__", "{}__".format(primary_table_slug)) for x in primary_table_fields]
 
-                for key in entry:
-                    final_entry[key.replace("data__", "{}__".format(secondary_table_slug))] = entry[key]
-                for key in entry_primary_table_values:
-                    final_entry_primary_table_values[
-                        key.replace("data__", "{}__".format(primary_table_slug))
-                    ] = entry_primary_table_values[key]
+            page = self.paginate_queryset(queryset)
 
-                final_entry.update(final_entry_primary_table_values)
-                final_page.append(final_entry)
+            if page is not None:
+                final_page = []
 
-            # serializer = serializers.FilterEntrySerializer(page, many=True, context={"fields": ['test']})
-            serializer = serializers.filters.FilterEntrySerializer(final_page, many=True, context={"fields": fields})
-            return self.get_paginated_response(serializer.data)
-        serializer = serializers.filters.FilterEntrySerializer(queryset, many=True)
+                for entry in page:
+                    final_entry = {}
+                    for key in entry:
+                        final_entry[key.replace("data__", "{}__".format(primary_table_slug))] = entry[key]
+
+                    final_page.append(final_entry)
+
+                # serializer = serializers.FilterEntrySerializer(page, many=True, context={"fields": ['test']})
+                serializer = serializers.filters.FilterEntrySerializer(final_page, many=True, context={"fields": fields})
+                return self.get_paginated_response(serializer.data)
+        # If filter has secondary table
+        else:
+            join_values = (
+                models.Entry.objects.filter(table=primary_table.table)
+                .filter(**filter_dict[primary_table_slug])
+                .values("data__{}".format(primary_table.join_field.name))
+                .order_by(table_order_by)
+            )
+
+            filter_dict[secondary_table_slug]["data__{}__in".format(secondary_table_join_field)] = join_values
+
+            table_order_by = "id"
+            if order_table == secondary_table_slug:
+                table_order_by = order_by
+
+            result_values = (
+                models.Entry.objects.filter(table__slug=secondary_table_slug)
+                .filter(**filter_dict[secondary_table_slug])
+                .values(*secondary_table_fields)
+                .order_by(table_order_by)
+            )
+
+            queryset = result_values
+
+            if not fields:
+                fields = [x.replace("data__", "{}__".format(primary_table_slug)) for x in primary_table_fields]
+                fields += [x.replace("data__", "{}__".format(secondary_table_slug)) for x in secondary_table_fields]
+
+            page = self.paginate_queryset(queryset)
+
+            if page is not None:
+                final_page = []
+                page_join_values = [x["data__{}".format(secondary_table_join_field)] for x in page]
+
+                filter_dict[primary_table_slug]["data__{}__in".format(primary_table_join_field)] = page_join_values
+                primary_table_values = {
+                    x.data[primary_table_join_field]: {"data__" + key: value for key, value in x.data.items()}
+                    for x in models.Entry.objects.filter(table=primary_table.table)
+                    .filter(**filter_dict[primary_table_slug])
+                    .exclude(data=None)
+                }
+
+                for entry in page:
+                    final_entry = {}
+                    final_entry_primary_table_values = {}
+
+                    entry_primary_table_values = primary_table_values[entry["data__{}".format(secondary_table_join_field)]]
+
+                    for key in entry:
+                        final_entry[key.replace("data__", "{}__".format(secondary_table_slug))] = entry[key]
+                    for key in entry_primary_table_values:
+                        final_entry_primary_table_values[
+                            key.replace("data__", "{}__".format(primary_table_slug))
+                        ] = entry_primary_table_values[key]
+
+                    final_entry.update(final_entry_primary_table_values)
+                    final_page.append(final_entry)
+
+                # serializer = serializers.FilterEntrySerializer(page, many=True, context={"fields": ['test']})
+                serializer = serializers.filters.FilterEntrySerializer(final_page, many=True, context={"fields": fields})
+                return self.get_paginated_response(serializer.data)
+        
         return Response(serializer.data)
 
     @action(methods=["get"], detail=True, url_path="csv-export", url_name="csv-export")

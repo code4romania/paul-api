@@ -174,10 +174,13 @@ class FilterJoinTableAdmin(admin.ModelAdmin):
 @admin.register(models.Filter)
 class FilterAdmin(admin.ModelAdmin):
     list_display = (
+        "name",
         "primary_table",
         # "get_primary_table_fields",
         # "join_field",
         "get_join_tables",
+        "last_edit_date",
+        "last_edit_user"
     )
     list_filter = ()
     search_fields = ()
@@ -190,6 +193,7 @@ class FilterAdmin(admin.ModelAdmin):
         # print(obj.join_tables)
         # return ', '.join([x for x in obj.join_tables])
         tables = {}
+
         for table in obj.join_tables.all():
             tables["{} [{}]".format(table.table.name, table.join_field.name)] = ", ".join(
                 table.fields.values_list("name", flat=True)

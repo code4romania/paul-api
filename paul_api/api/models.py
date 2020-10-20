@@ -34,9 +34,9 @@ def user_activated_callback(sender, **kwargs):
 
 
 datatypes = (
+    ("text", "text"),
     ("int", "int"),
     ("float", "float"),
-    ("text", "text"),
     ("date", "date"),
     ("bool", "bool"),
     ("object", "object"),

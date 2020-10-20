@@ -10,10 +10,20 @@ class CsvImportListSerializer(serializers.ModelSerializer):
 
 
 class CsvFieldMapSerializer(serializers.ModelSerializer):
+    # field_type = serializers.SerializerMethodField()
+    table_field = serializers.SerializerMethodField()
+
     class Meta:
         model = models.CsvFieldMap
-        fields = ["original_name", "field_name", "field_type", "field_format", "table_column"]
+        fields = ["original_name", "field_name", "field_type", "field_format", "table_field"]
 
+    # def get_field_type(self, obj):
+    #     print(obj)
+    #     print(obj.field_type)
+    #     return obj.field_type
+
+    def get_table_field(self, obj):
+        return obj.table_column
 
 class CsvImportSerializer(serializers.ModelSerializer):
     csv_field_mapping = CsvFieldMapSerializer(many=True)

@@ -1093,7 +1093,7 @@ class CsvImportViewSet(viewsets.ModelViewSet):
                 }
                 return Response(response, status=status.HTTP_400_BAD_REQUEST)
         decoded_file = file_content.splitlines()
-        print('------------', delimiter)
+
         if delimiter == 'null':
             delimiter = None
         if not delimiter:
@@ -1102,7 +1102,7 @@ class CsvImportViewSet(viewsets.ModelViewSet):
             reader = csv.DictReader(decoded_file, delimiter=dialect.delimiter)
         else:
             reader = csv.DictReader(decoded_file, delimiter=delimiter)
-        print('aaaaaa')
+
         csv_import = models.CsvImport.objects.create(file=file, delimiter=delimiter)
 
         for field in reader.fieldnames:
@@ -1119,6 +1119,8 @@ class CsvImportViewSet(viewsets.ModelViewSet):
                         try:
                             existing_table_field = field_maps[0].table_column.pk
                             csv_field_map.table_column = field_maps[0].table_column
+                            csv_field_map.field_format = field_maps[0].field_format
+                            csv_field_map.field_type = field_maps[0].field_type
                             csv_field_map.save()
                         except:
                             # existing_table_field = models.TableColumn.objects.get(

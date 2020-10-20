@@ -217,7 +217,7 @@ class CsvFieldMap(models.Model):
     original_name = models.CharField(max_length=100)
     field_name = models.CharField(max_length=100, null=True, blank=True)
     field_type = models.CharField(
-        max_length=20, choices=datatypes, default=datatypes[0],
+        max_length=20, choices=datatypes, default=datatypes[0][0],
         null=True, blank=True)
     field_format = models.CharField(max_length=20, null=True, blank=True)
     table_column = models.ForeignKey(

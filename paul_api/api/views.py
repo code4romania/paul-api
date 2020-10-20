@@ -537,6 +537,7 @@ class FilterViewSet(viewsets.ModelViewSet):
         userprofile.save()
         return Response({'filter_in_dashboard': filter in userprofile.dashboard_filters.all()})
 
+
     @action(methods=["get"], detail=True, url_path="entries", url_name="entries")
     def entries(self, request, pk):
         obj = models.Filter.objects.filter(pk=pk).prefetch_related("primary_table", "join_tables")[0]
@@ -545,9 +546,11 @@ class FilterViewSet(viewsets.ModelViewSet):
 
         primary_table = obj.primary_table
         primary_table_slug = primary_table.table.slug
+
         is_two_tables_filter = False
 
         if obj.join_tables.all():
+            primary_table_join_field = primary_table.join_field.name
             secondary_table = obj.join_tables.all()[0]
             secondary_table_slug = secondary_table.table.slug
             secondary_table_join_field = secondary_table.join_field.name
@@ -651,25 +654,18 @@ class FilterViewSet(viewsets.ModelViewSet):
                 .values(*primary_table_fields)
                 .order_by(table_order_by)
             )
-
             queryset = result_values
-
             if not fields:
                 fields = [x.replace("data__", "{}__".format(primary_table_slug)) for x in primary_table_fields]
-
             page = self.paginate_queryset(queryset)
-
             if page is not None:
                 final_page = []
-
                 for entry in page:
                     final_entry = {}
                     for key in entry:
                         final_entry[key.replace("data__", "{}__".format(primary_table_slug))] = entry[key]
-
                     final_page.append(final_entry)
 
-                # serializer = serializers.FilterEntrySerializer(page, many=True, context={"fields": ['test']})
                 serializer = serializers.filters.FilterEntrySerializer(final_page, many=True, context={"fields": fields})
                 return self.get_paginated_response(serializer.data)
         # If filter has secondary table
@@ -719,24 +715,28 @@ class FilterViewSet(viewsets.ModelViewSet):
                     final_entry_primary_table_values = {}
 
                     entry_primary_table_values = primary_table_values[entry["data__{}".format(secondary_table_join_field)]]
-
                     for key in entry:
-                        final_entry[key.replace("data__", "{}__".format(secondary_table_slug))] = entry[key]
-                    for key in entry_primary_table_values:
+                        final_entry[key.replace("data__", "{}__".format(secondary_table_slug))] = entry.get(key, None)
+                    final_primary_table_fields = [x.replace('{}__'.format(primary_table_slug), '') for x in fields if not x.startswith('{}_'.format(secondary_table_slug))]
+                    # for key in entry_primary_table_values:
+
+                    for key in final_primary_table_fields:
                         final_entry_primary_table_values[
-                            key.replace("data__", "{}__".format(primary_table_slug))
-                        ] = entry_primary_table_values[key]
+                            "{}__{}".format(primary_table_slug, key)
+                        ] = entry_primary_table_values.get('data__' + key, None)
 
                     final_entry.update(final_entry_primary_table_values)
                     final_page.append(final_entry)
-
-                # serializer = serializers.FilterEntrySerializer(page, many=True, context={"fields": ['test']})
                 serializer = serializers.filters.FilterEntrySerializer(final_page, many=True, context={"fields": fields})
                 return self.get_paginated_response(serializer.data)
-        
+
         return Response(serializer.data)
 
-    @action(methods=["get"], detail=True, url_path="csv-export", url_name="csv-export")
+    @action(
+        methods=["get"],
+        detail=True,
+        url_path="csv-export",
+        url_name="csv-export")
     def csv_export(self, request, pk):
         obj = models.Filter.objects.filter(pk=pk).prefetch_related("primary_table", "join_tables")[0]
         str_fields = request.GET.get("__fields", "") if request else None

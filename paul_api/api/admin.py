@@ -34,7 +34,7 @@ class DatabaseAdmin(admin.ModelAdmin):
 
 class CsvFieldMapInline(admin.TabularInline):
     model = models.CsvFieldMap
-    fields = ("original_name", "field_name", "field_type", "field_format")
+    fields = ("original_name", "field_name", "field_type", "field_format", "table_column")
     can_delete = True
     can_add = False
     verbose_name_plural = "Csv File Fields Map"

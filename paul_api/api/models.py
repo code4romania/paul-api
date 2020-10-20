@@ -215,10 +215,13 @@ class CsvFieldMap(models.Model):
         blank=True,
     )
     original_name = models.CharField(max_length=100)
-    field_name = models.CharField(max_length=100)
+    field_name = models.CharField(max_length=100, null=True, blank=True)
     field_type = models.CharField(
-        max_length=20, choices=datatypes, default=datatypes[0])
+        max_length=20, choices=datatypes, default=datatypes[0],
+        null=True, blank=True)
     field_format = models.CharField(max_length=20, null=True, blank=True)
+    table_column = models.ForeignKey(
+        'TableColumn', null=True, blank=True, on_delete=models.CASCADE)
 
     class Meta:
         pass

@@ -114,7 +114,7 @@ AUDIENCES_STATS_FIELDS = {
     },
     'campaign_last_sent': {
         'display_name': 'Campaign Last Sent',
-        'type': 'int'
+        'type': 'date'
     },
     'cleaned_count': {
         'display_name': 'Cleaned Count',

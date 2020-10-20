@@ -1118,12 +1118,13 @@ class CsvImportViewSet(viewsets.ModelViewSet):
                     if field_maps:
                         try:
                             existing_table_field = field_maps[0].table_column.pk
+                            csv_field_map.table_column = field_maps[0].table_column
+                            csv_field_map.save()
                         except:
                             # existing_table_field = models.TableColumn.objects.get(
                             # table=table, name=utils.snake_case(field_maps[0].field_name)).pk
                             pass
                         existing_table_format = field_maps[0].field_format
-
             fields.append(
                 {
                     "original_name": field.encode(),

@@ -196,31 +196,34 @@ class TableViewSet(viewsets.ModelViewSet):
         csv_import = models.CsvImport.objects.get(pk=csv_import_pk)
 
         for field in fields:
-            csv_field_map = models.CsvFieldMap.objects.create(
-                table=table,
-                original_name=field["original_name"],
-                field_name=field["display_name"],
-                field_type=field["field_type"],
-                field_format=field["field_format"],
-            )
             table_column, _ = models.TableColumn.objects.get_or_create(
                 table=table,
                 name=utils.snake_case(field["display_name"]),
                 display_name=field["display_name"],
                 field_type=field["field_type"],
             )
+            csv_field_map = models.CsvFieldMap.objects.create(
+                table=table,
+                original_name=field["original_name"],
+                field_name=field["display_name"],
+                field_type=field["field_type"],
+                field_format=field["field_format"],
+                table_column=table_column
+            )
 
         try:
-            reader = csv.DictReader(
-                StringIO(csv_import.file.read().decode("utf-8")),
-                delimiter=csv_import.delimiter,
-            )
+            file_content = csv_import.file.read().decode("utf-8")
         except:
             csv_import.file.seek(0)
-            reader = csv.DictReader(
-                StringIO(csv_import.file.read().decode("windows-1252")),
-                delimiter=csv_import.delimiter,
-            )
+            file_content = csv_import.file.read().decode("windows-1252")
+        decoded_file = file_content.splitlines()
+        if not csv_import.delimiter:
+            csv_import.file.seek(0)
+            dialect = csv.Sniffer().sniff(file_content[:2000])
+            reader = csv.DictReader(decoded_file, delimiter=dialect.delimiter)
+        else:
+            reader = csv.DictReader(decoded_file, delimiter=csv_import.delimiter)
+
         errors, errors_count, imports_count = utils.import_csv(reader, table)
         csv_import.errors = errors
         csv_import.errors_count = errors_count
@@ -237,34 +240,54 @@ class TableViewSet(viewsets.ModelViewSet):
 
     @action(
         detail=True,
-        methods=["put"],
+        methods=["post"],
         name="CSV manual import view",
         url_path="csv-manual-import",
     )
     def csv_manual_import(self, request, pk):
-        file = request.FILES["file"]
-        delimiter = request.POST.get("delimiter")
-        fields = []
-        table = self.get_object()
-        # print(file.read())
-        try:
-            decoded_file = file.read().decode("utf-8").splitlines()
-        except:
-            file.seek(0)
-            decoded_file = str(file.read().decode("windows-1252")).splitlines()
-        csv_import = models.CsvImport.objects.create(table=table, file=file, delimiter=delimiter)
-        reader = csv.DictReader(decoded_file, delimiter=delimiter)
+        fields = request.data.get("fields")
+        csv_import_pk = request.data.get("import_id")
 
-        errors, errors_count, imports_count = utils.import_csv(reader, table)
+        table = self.get_object()
+        csv_import = models.CsvImport.objects.get(pk=csv_import_pk)
+
+        for field in fields:
+            csv_field_map= models.CsvFieldMap.objects.get(
+                csv_import=csv_import,
+                original_name=field["original_name"]
+            )
+            csv_field_map.field_format=field["field_format"]
+            if field["table_field"]:
+                csv_field_map.table_column_id=field["table_field"]
+            csv_field_map.save()
+
+
+        try:
+            file_content = csv_import.file.read().decode("utf-8")
+        except:
+            csv_import.file.seek(0)
+            file_content = csv_import.file.read().decode("windows-1252")
+        decoded_file = file_content.splitlines()
+        if not csv_import.delimiter:
+            csv_import.file.seek(0)
+            dialect = csv.Sniffer().sniff(file_content[:2000])
+            reader = csv.DictReader(decoded_file, delimiter=dialect.delimiter)
+        else:
+            reader = csv.DictReader(decoded_file, delimiter=csv_import.delimiter)
+
+
+        errors, errors_count, imports_count = utils.import_csv(reader, table, csv_import)
         csv_import.errors = errors
         csv_import.errors_count = errors_count
         csv_import.imports_count = imports_count
+        csv_import.table = table
         csv_import.save()
         response = {
-            "import_id": csv_import.pk,
             "errors_count": errors_count,
             "imports_count": imports_count,
             "errors": errors,
+            "id": table.id,
+            "import_id": csv_import.pk,
         }
         return Response(response)
 
@@ -1051,33 +1074,63 @@ class CsvImportViewSet(viewsets.ModelViewSet):
 
     def create(self, request):
         file = request.FILES["file"]
-        delimiter = request.POST.get("delimiter")
+        delimiter = request.POST.get("delimiter", None)
+        table_id = request.POST.get("table_id")
+        if table_id:
+            table = models.Table.objects.get(pk=table_id)
         fields = []
+
         try:
-            decoded_file = file.read().decode("utf-8").splitlines()
+            file_content = file.read().decode("utf-8")
         except:
             try:
                 file.seek(0)
-                decoded_file = file.read().decode("windows-1252").splitlines()
+                file_content = file.read().decode("windows-1252")
             except:
                 response = {
                     "success": False,
                     "error_msg": 'Could not decode file',
                 }
                 return Response(response, status=status.HTTP_400_BAD_REQUEST)
+        decoded_file = file_content.splitlines()
+        print('------------', delimiter)
+        if delimiter == 'null':
+            delimiter = None
+        if not delimiter:
+            file.seek(0)
+            dialect = csv.Sniffer().sniff(file_content[:2000])
+            reader = csv.DictReader(decoded_file, delimiter=dialect.delimiter)
+        else:
+            reader = csv.DictReader(decoded_file, delimiter=delimiter)
+        print('aaaaaa')
         csv_import = models.CsvImport.objects.create(file=file, delimiter=delimiter)
-        reader = csv.DictReader(decoded_file, delimiter=delimiter)
 
         for field in reader.fieldnames:
             csv_field_map = models.CsvFieldMap.objects.create(
                 csv_import=csv_import, original_name=field, field_name=field
             )
+            existing_table_field = None
+            existing_table_format = None
+            if table_id:
+                if table.csv_field_mapping.all():
+                    field_maps = table.csv_field_mapping.filter(
+                        original_name=field)
+                    if field_maps:
+                        try:
+                            existing_table_field = field_maps[0].table_column.pk
+                        except:
+                            # existing_table_field = models.TableColumn.objects.get(
+                            # table=table, name=utils.snake_case(field_maps[0].field_name)).pk
+                            pass
+                        existing_table_format = field_maps[0].field_format
+
             fields.append(
                 {
                     "original_name": field.encode(),
                     "display_name": field,
                     "field_type": "text",
-                    "field_format": "",
+                    "field_format": existing_table_format,
+                    "table_field": existing_table_field
                 }
             )
 

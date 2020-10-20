@@ -43,11 +43,14 @@ def snake_case(text):
     return inflection.underscore(inflection.parameterize(text))
 
 
-def import_csv(reader, table):
+def import_csv(reader, table, csv_import=None):
     errors_count = 0
     imports_count = 0
     errors = []
-    csv_field_mapping = {x.original_name: x for x in table.csv_field_mapping.all()}
+    if csv_import:
+        csv_field_mapping = {x.original_name: x for x in csv_import.csv_field_mapping.all()}
+    else:
+        csv_field_mapping = {x.original_name: x for x in table.csv_field_mapping.all()}
     table_fields = {x.name: x for x in table.fields.all()}
     field_choices = {x.name: x.choices for x in table.fields.all()}
     i = 0
@@ -61,17 +64,23 @@ def import_csv(reader, table):
         errors_in_row = {}
         try:
             for key, field in csv_field_mapping.items():
-                field_name = snake_case(field.field_name)
+                if csv_import:
+                    if field.table_column:
+                        field_name = field.table_column.name
+                        field_type = field.table_column.field_type
+                else:
+                    field_name = snake_case(field.field_name)
+                    field_type = field.field_type
                 try:
                     if row[key]:
-                        if field.field_type == "int":
+                        if field_type == "int":
                             entry_dict[field_name] = int(row[key])
-                        elif field.field_type == "float":
+                        elif field_type == "float":
                             entry_dict[field_name] = float(row[key])
-                        elif field.field_type == "date":
+                        elif field_type == "date":
                             value = datetime.strptime(row[key], field.field_format)
                             entry_dict[field_name] = value
-                        elif field.field_type == "enum":
+                        elif field_type == "enum":
                             value = row[key]
                             if not field_choices[field_name]:
                                 print("not")
@@ -100,7 +109,6 @@ def import_csv(reader, table):
                 errors_count += 1
 
         except Exception as e:
-            print("=====", e)
             errors_count += 1
 
     print("errors: {} imports: {}".format(errors_count, imports_count))

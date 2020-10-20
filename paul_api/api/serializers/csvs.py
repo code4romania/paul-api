@@ -23,7 +23,7 @@ class CsvFieldMapSerializer(serializers.ModelSerializer):
     #     return obj.field_type
 
     def get_table_field(self, obj):
-        return obj.table_column
+        return obj.table_column.pk
 
 class CsvImportSerializer(serializers.ModelSerializer):
     csv_field_mapping = CsvFieldMapSerializer(many=True)

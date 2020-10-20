@@ -12,7 +12,7 @@ class CsvImportListSerializer(serializers.ModelSerializer):
 class CsvFieldMapSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.CsvFieldMap
-        fields = ["original_name", "field_name", "field_type", "field_format"]
+        fields = ["original_name", "field_name", "field_type", "field_format", "table_column"]
 
 
 class CsvImportSerializer(serializers.ModelSerializer):

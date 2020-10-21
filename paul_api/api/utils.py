@@ -56,9 +56,6 @@ def import_csv(reader, table, csv_import=None):
     i = 0
     for row in reader:
         i += 1
-        # print(i)
-        # if i > 100:
-        #     continue
         entry_dict = {}
         error_in_row = False
         errors_in_row = {}

@@ -66,7 +66,7 @@ def import_csv(reader, table, csv_import=None):
                         field_name = field.table_column.name
                         field_type = field.table_column.field_type
                 else:
-                    field_name = snake_case(field.field_name)
+                    field_name = snake_case(field.display_name)
                     field_type = field.field_type
                 try:
                     if row[key]:

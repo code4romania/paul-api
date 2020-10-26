@@ -160,6 +160,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.coreapi.AutoSchema",
+    "ORDERING_PARAM": "__order"
 }
 
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"

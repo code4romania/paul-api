@@ -1,4 +1,4 @@
-from rest_framework import viewsets, mixins
+from rest_framework import viewsets, mixins, filters
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -14,6 +14,7 @@ from api.views import EntriesPagination
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = models.Task.objects.all()
     pagination_class = EntriesPagination
+    filter_backends = (filters.OrderingFilter,)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -30,16 +31,8 @@ class TaskViewSet(viewsets.ModelViewSet):
     )
     def run(self, request, pk):
         task = self.get_object()
-        print('*****')
-        print('*****')
-        print('*****')
-        print('*****')
-        print('*****')
-        print('run')
         if task.task_type == 'sync':
-            print('sync')
             task_result = tasks.sync(request)
-            print('response')
             task_result.task = task
             task_result.save()
 
@@ -52,6 +45,7 @@ class TaskViewSet(viewsets.ModelViewSet):
 class TaskResultViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = models.TaskResult.objects.all()
     pagination_class = EntriesPagination
+    filter_backends = (filters.OrderingFilter,)
 
     def get_serializer_class(self):
         if self.action == "list":

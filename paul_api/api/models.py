@@ -414,12 +414,13 @@ class Card(models.Model):
     name = models.CharField(max_length=100, unique=True)
 
     table = models.ForeignKey(Table, on_delete=models.CASCADE)
+    data_column_function = models.CharField(
+        max_length=10, default=chart_functions[0][0], choices=chart_functions)
+
     data_column = models.ForeignKey(
         TableColumn, null=True, blank=True, on_delete=models.SET_NULL,
         related_name="cards_column_fields"
     )
-    data_column_function = models.CharField(
-        max_length=10, default=chart_functions[0][0], choices=chart_functions)
 
     filters = models.JSONField(
         encoder=DjangoJSONEncoder, null=True, blank=True)

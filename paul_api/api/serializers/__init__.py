@@ -7,5 +7,6 @@ from . import (
     filters,
     entries,
     charts,
-    csvs
+    csvs,
+    cards
     )

@@ -81,7 +81,7 @@ class CreateSerializer(serializers.ModelSerializer):
         model = models.Card
         fields = [
             "id", "name", "owner", "last_edit_user", "last_edit_date",
-            "table","data_column", "data_column_function", "filters",
+            "table", "data_column_function", "data_column", "filters",
         ]
 
     # def create(self, validated_data):

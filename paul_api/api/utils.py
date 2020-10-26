@@ -48,7 +48,7 @@ def import_csv(reader, table, csv_import=None):
     imports_count = 0
     errors = []
     if csv_import:
-        csv_field_mapping = {x.original_name: x for x in csv_import.csv_field_mapping.all()}
+        csv_field_mapping = {x.original_name: x for x in csv_import.csv_field_mapping.exclude(table_column=None)}
     else:
         csv_field_mapping = {x.original_name: x for x in table.csv_field_mapping.all()}
     table_fields = {x.name: x for x in table.fields.all()}
@@ -56,9 +56,6 @@ def import_csv(reader, table, csv_import=None):
     i = 0
     for row in reader:
         i += 1
-        # print(i)
-        # if i > 100:
-        #     continue
         entry_dict = {}
         error_in_row = False
         errors_in_row = {}

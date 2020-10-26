@@ -205,7 +205,7 @@ class TableViewSet(viewsets.ModelViewSet):
             csv_field_map = models.CsvFieldMap.objects.create(
                 table=table,
                 original_name=field["original_name"],
-                field_name=field["display_name"],
+                display_name=field["display_name"],
                 field_type=field["field_type"],
                 field_format=field["field_format"],
                 table_column=table_column
@@ -1107,7 +1107,7 @@ class CsvImportViewSet(viewsets.ModelViewSet):
 
         for field in reader.fieldnames:
             csv_field_map = models.CsvFieldMap.objects.create(
-                csv_import=csv_import, original_name=field, field_name=field
+                csv_import=csv_import, original_name=field, display_name=field
             )
             existing_table_field = None
             existing_table_format = None

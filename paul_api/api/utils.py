@@ -390,5 +390,41 @@ def prepare_chart_data(chart, chart_data, timeline=True):
             }]
         } if chart.chart_type not in ['Pie', 'Doughnut'] else {}
       }
-    # pprint(data)
+
+    return data
+
+
+def get_card_data(request, card, table, preview=False):
+    data_column_function = DB_FUNCTIONS[card.data_column_function]
+
+    table_fields = {x.name: x for x in table.fields.all()}
+    filter_dict = {}
+    for key in request.GET:
+        if key and key.split("__")[0] in table_fields.keys():
+            value = request.GET.get(key).split(",")
+            if len(value) == 1:
+                value = value[0]
+            else:
+                key = key + "__in"
+
+            if table_fields[key.split("__")[0]].field_type in [
+                "float",
+                "int",
+            ]:
+                filter_dict["data__{}".format(key)] = float(value)
+            else:
+                filter_dict["data__{}".format(key)] = value
+
+    card_data = models.Entry.objects \
+        .filter(table=card.table) \
+        .filter(**filter_dict)
+
+    if preview:
+        card_data = card_data[:100]
+
+    data = card_data \
+        .aggregate(value=data_column_function(Cast(
+            KeyTextTransform(card.data_column.name, "data"), FloatField()
+        )))
+
     return data

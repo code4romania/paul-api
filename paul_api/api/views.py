@@ -93,6 +93,7 @@ class UserViewSet(viewsets.ModelViewSet):
             user, context={'request': request})
         return Response(response.data)
 
+
 class UserView(APIView):
     """
     View to list all users in the system.
@@ -107,12 +108,15 @@ class UserView(APIView):
         """
         user = request.user
         admin_group = Group.objects.get(name='admin')
+        cards_serializer = serializers.cards.ListSerializer(
+            user.userprofile.dashboard_cards.all(), many=True, context={'request': request})
         charts_serializer = serializers.charts.ListSerializer(
             user.userprofile.dashboard_charts.all(), many=True, context={'request': request})
         filters_serializer = serializers.filters.FilterListSerializer(
             user.userprofile.dashboard_filters.all(), many=True, context={'request': request})
 
         dashboard = {
+            "cards": cards_serializer.data,
             "charts": charts_serializer.data,
             "filters": filters_serializer.data
         }
@@ -1220,4 +1224,59 @@ class ChartViewSet(viewsets.ModelViewSet):
 
         data = utils.get_chart_data(request, chart, table, preview=True)
 
+        return Response(data)
+
+
+class CardViewSet(viewsets.ModelViewSet):
+    queryset = models.Card.objects.all()
+    pagination_class = EntriesPagination
+
+    def get_queryset(self):
+        queryset = self.queryset
+        user = self.request.user
+        user_view_tables = []
+
+        for table in get_objects_for_user(user, 'api.view_table'):
+            if user.has_perm('view_table', table) or 'admin' in user.groups.values_list('name', flat=True):
+                user_view_tables.append(table)
+        return queryset.filter(table__in=user_view_tables)
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return serializers.cards.ListSerializer
+        elif self.action == "retrieve":
+            return serializers.cards.DetailSerializer
+        elif self.action in ["create", "update", "partial_update"]:
+            return serializers.cards.CreateSerializer
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_name="add-to-dashboard",
+        url_path="add-to-dashboard",
+    )
+    def add_to_dashboard(self, request, pk):
+        card = self.get_object()
+        userprofile = request.user.userprofile
+
+        if not userprofile.dashboard_cards:
+            userprofile.dashboard_cards.set([])
+
+        if card in userprofile.dashboard_cards.all():
+            userprofile.dashboard_cards.remove(card)
+        else:
+            userprofile.dashboard_cards.add(card)
+        userprofile.save()
+        return Response(
+            {'card_in_dashboard': card in userprofile.dashboard_cards.all()})
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_name="data",
+        url_path="data",
+    )
+    def get_data(self, request, pk):
+        card = self.get_object()
+        data = utils.get_card_data(request, card, card.table)
         return Response(data)

@@ -15,7 +15,7 @@ class CsvFieldMapSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.CsvFieldMap
-        fields = ["original_name", "field_name", "field_type", "field_format", "table_field"]
+        fields = ["original_name", "display_name", "field_type", "field_format", "table_field"]
 
     # def get_field_type(self, obj):
     #     print(obj)

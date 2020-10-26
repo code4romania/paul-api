@@ -76,6 +76,7 @@ class Userprofile(models.Model):
 
     dashboard_filters = models.ManyToManyField("Filter", blank=True)
     dashboard_charts = models.ManyToManyField("Chart", blank=True)
+    dashboard_cards = models.ManyToManyField("Card", blank=True)
 
     token = models.UUIDField(default=uuid.uuid4)
     avatar = models.ImageField(upload_to="avatars", null=True, blank=True)
@@ -215,7 +216,7 @@ class CsvFieldMap(models.Model):
         blank=True,
     )
     original_name = models.CharField(max_length=100)
-    field_name = models.CharField(max_length=100, null=True, blank=True)
+    display_name = models.CharField(max_length=100, null=True, blank=True)
     field_type = models.CharField(
         max_length=20, choices=datatypes, default=datatypes[0][0],
         null=True, blank=True)
@@ -396,6 +397,42 @@ class Chart(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="last_chart_edits",
+    )
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['id']
+
+
+class Card(models.Model):
+    """
+    Description: Model for representing a table chart
+    """
+
+    name = models.CharField(max_length=100, unique=True)
+
+    table = models.ForeignKey(Table, on_delete=models.CASCADE)
+    data_column = models.ForeignKey(
+        TableColumn, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="cards_column_fields"
+    )
+    data_column_function = models.CharField(
+        max_length=10, default=chart_functions[0][0], choices=chart_functions)
+
+    filters = models.JSONField(
+        encoder=DjangoJSONEncoder, null=True, blank=True)
+
+    creation_date = models.DateTimeField(auto_now_add=True, null=True)
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    last_edit_date = models.DateTimeField(null=True, blank=True)
+    last_edit_user = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="last_card_edits",
     )
 
     def __str__(self):

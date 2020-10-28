@@ -421,10 +421,12 @@ def get_card_data(request, card, table, preview=False):
 
     if preview:
         card_data = card_data[:100]
-
-    data = card_data \
-        .aggregate(value=data_column_function(Cast(
-            KeyTextTransform(card.data_column.name, "data"), FloatField()
-        )))
-
+    if card.data_column:
+        data = card_data \
+            .aggregate(value=data_column_function(Cast(
+                KeyTextTransform(card.data_column.name, "data"), FloatField()
+            )))
+    else:
+        data = card_data \
+            .aggregate(value=data_column_function('id'))
     return data

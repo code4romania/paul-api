@@ -24,6 +24,7 @@ class ListDataSerializer(serializers.ModelSerializer):
             "table",
             "owner",
             "show_in_dashboard",
+            "filters"
         ]
 
 
@@ -66,7 +67,7 @@ class DetailSerializer(serializers.ModelSerializer):
 
     def get_data(self, obj):
         return self.context["request"].build_absolute_uri(
-            reverse("chart-data", kwargs={"pk": obj.pk}))
+            reverse("card-data", kwargs={"pk": obj.pk}))
 
 
 class CreateSerializer(serializers.ModelSerializer):

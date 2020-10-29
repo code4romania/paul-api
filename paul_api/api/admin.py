@@ -34,7 +34,7 @@ class DatabaseAdmin(admin.ModelAdmin):
 
 class CsvFieldMapInline(admin.TabularInline):
     model = models.CsvFieldMap
-    fields = ("original_name", "field_name", "field_type", "field_format", "table_column")
+    fields = ("original_name", "display_name", "field_type", "field_format", "table_column")
     can_delete = True
     can_add = False
     verbose_name_plural = "Csv File Fields Map"
@@ -102,7 +102,7 @@ class EntryAdmin(BaseEntityAdmin):
     list_display = ("table", "data")
     exclude = ()
     # readonly_fields = ('table', )
-    form = EntryAdminForm
+    # form = EntryAdminForm
     list_filter = ("table__name",)
 
     # def get_form(self, request, obj=None, **kwargs):

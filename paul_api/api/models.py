@@ -130,8 +130,7 @@ class Table(models.Model):
 
     date_created = models.DateTimeField(auto_now_add=True)
     default_fields = models.ManyToManyField(
-        'TableColumn', null=True,
-        blank=True, related_name='default_field')
+        'TableColumn', blank=True, related_name='default_field')
 
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
     last_edit_date = models.DateTimeField(null=True, blank=True)
@@ -329,8 +328,7 @@ class Filter(models.Model):
         encoder=DjangoJSONEncoder, null=True, blank=True)
     creation_date = models.DateTimeField(auto_now_add=True, null=True)
     default_fields = models.ManyToManyField(
-        TableColumn, related_name="filter_default_field",
-        null=True, blank=True)
+        TableColumn, related_name="filter_default_field", blank=True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     last_edit_date = models.DateTimeField(null=True, blank=True)
     last_edit_user = models.ForeignKey(

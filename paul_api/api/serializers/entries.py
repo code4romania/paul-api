@@ -4,6 +4,8 @@ from django.urls import reverse
 from datetime import datetime
 from dateutil.parser import isoparse
 
+from pprint import pprint
+
 datatypes = {
     "int": "int",
     "float": "float",
@@ -110,6 +112,7 @@ class EntrySerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data["data"] = self.initial_data
         validated_data["table"] = self.context["table"]
+        pprint(validated_data)
         instance = models.Entry.objects.create(**validated_data)
         instance.table.last_edit_user = self.context["request"].user
         instance.table.last_edit_date = datetime.now()

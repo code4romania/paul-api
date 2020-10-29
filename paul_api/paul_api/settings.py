@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/dev/ref/settings/
 from pathlib import Path
 import os
 import environ
-
+from celery.schedules import crontab
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
 
@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "plugin_woocommerce",
     "plugin_mailchimp",
     "rest_framework",
+    "jazzmin",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -58,7 +59,9 @@ INSTALLED_APPS = [
     "django_filters",
     "crispy_forms",
     "silk",
-    "djoser"
+    "djoser",
+    "django_celery_beat",
+    "django_celery_results",
 ]
 
 MIDDLEWARE = [
@@ -190,3 +193,9 @@ DJOSER = {
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 NO_REPLY_EMAIL = env('NO_REPLY_EMAIL')
+
+
+# Celery config
+CELERY_BROKER_URL= 'pyamqp://rabbitmq:5672'
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'

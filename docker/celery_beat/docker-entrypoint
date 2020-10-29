@@ -1,0 +1,13 @@
+#!/bin/sh
+
+
+
+
+
+echo "Checking..."
+python3 manage.py check
+python3 manage.py migrate --run-syncdb
+celery -A paul_api beat -l info -S django
+
+
+

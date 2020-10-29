@@ -2,11 +2,21 @@ from django.contrib.auth.models import User
 
 from api import models as api_models
 
+from celery import shared_task
 from plugin_mailchimp import utils, models, serializers
+
 from .table_fields import AUDIENCE_MEMBERS_FIELDS
 
 
-def sync(request, task):
+@shared_task
+def hello(a):
+    print(a)
+    return a
+
+
+@shared_task
+def sync(request, task_id):
+    task = models.Task.objects.get(pk=task_id)
     if hasattr(request, 'user'):
         user = request.user
     else:
@@ -53,10 +63,11 @@ def sync(request, task):
         task_result.stats['details'] = stats_details
     task_result.save()
 
-    return task_result
+    return task_result.id, task_result.success
 
-
-def run_segmentation(request, task):
+@shared_task
+def run_segmentation(request, task_id):
+    task = models.Task.objects.get(pk=task_id)
     success = True
     stats = {
         'success': 0,
@@ -118,4 +129,4 @@ def run_segmentation(request, task):
     task_result.status = 'Finished'
     task_result.save()
 
-    return task_result
+    return task_result.id

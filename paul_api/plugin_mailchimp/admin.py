@@ -16,3 +16,9 @@ class SettingsAdmin(admin.ModelAdmin):
 @admin.register(models.TaskResult)
 class TaskResultAdmin(admin.ModelAdmin):
     list_display = ("date", "user", "success")
+
+
+
+@admin.register(models.Task)
+class TaskAdmin(admin.ModelAdmin):
+    list_display = ("name", "task_type")

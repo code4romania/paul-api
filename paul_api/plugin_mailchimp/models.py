@@ -4,6 +4,8 @@ from django.core.serializers.json import DjangoJSONEncoder
 
 from api import models as api_models
 
+from django_celery_beat.models import CrontabSchedule, PeriodicTask
+
 TASK_TYPES = (
     ('sync', 'Import tables'),
     ('segmentation', 'Send segmentation')
@@ -61,6 +63,10 @@ class Task(models.Model):
     last_edit_user = models.ForeignKey(
         User, null=True, on_delete=models.SET_NULL,
         related_name="mailchimp_tasks")
+
+    periodic_task = models.ForeignKey(
+        PeriodicTask, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='plugin_tasks')
 
     class Meta:
         pass

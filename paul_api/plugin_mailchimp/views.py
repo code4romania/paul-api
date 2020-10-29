@@ -35,11 +35,11 @@ class TaskViewSet(viewsets.ModelViewSet):
         task = self.get_object()
 
         if task.task_type == 'sync':
-            task_result = tasks.sync(request, task)
-            task_result.task = task
-            task_result.save()
+            task_result_id, _ = tasks.sync(request, task.id)
         else:
-            task_result = tasks.run_segmentation(request, task)
+            task_result_id, _ = tasks.run_segmentation(request, task.id)
+
+        task_result = models.TaskResult.objects.get(pk=task_result_id)
         result = serializers.TaskResultSerializer(
             task_result, context={'request': request})
 

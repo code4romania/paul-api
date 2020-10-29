@@ -1,6 +1,9 @@
-version: '3'
+version: '3.4'
+
 services:
+
   api:
+    container_name: api
     stdin_open: true
     tty: true
     build:
@@ -15,7 +18,19 @@ services:
       - "8000:8000"
     volumes:
       - ./:/opt
+    hostname: api
+    image: api-image
+    networks:
+      - main
+    restart: on-failure
+    depends_on:
+      - db
+      - rabbitmq
+
+
   db:
+    container_name: db
+    hostname: db
     build:
       context: .
       dockerfile: docker/postgres/Dockerfile
@@ -25,6 +40,58 @@ services:
       - .env
     volumes:
       - database-data:/var/lib/postgresql/data/
+    restart: on-failure
+    networks:
+      - main
 
+  rabbitmq:
+    container_name: rabbitmq
+    hostname: rabbitmq
+    image: rabbitmq:latest
+    networks:
+      - main
+    ports:
+      - "5672:5672"
+    restart: on-failure
+
+  # celery_worker:
+  #   command: sh -c "wait-for rabbitmq:5672 && wait-for api:8000 -- celery -A paul_api worker -l debug"
+  #   container_name: celery_worker
+  #   depends_on:
+  #     - api
+  #     - db
+  #     - rabbitmq
+  #   deploy:
+  #     # replicas: 2
+  #     restart_policy:
+  #       condition: on-failure
+  #     resources:
+  #       limits:
+  #         cpus: '0.50'
+  #         memory: 50M
+  #       reservations:
+  #         cpus: '0.25'
+  #         memory: 20M
+  #   hostname: celery_worker
+  #   image: api-image
+  #   networks:
+  #     - main
+  #   restart: on-failure
+
+  # celery_beat:
+  #   command: sh -c "wait-for rabbitmq:5672 && wait-for api:8000 -- celery -A paul_api beat -l debug -S django"
+  #   container_name: celery_beat
+  #   depends_on:
+  #     - api
+  #     - db
+  #     - rabbitmq
+  #   hostname: celery_beat
+  #   image: api-image
+  #   networks:
+  #     - main
+  #   restart: on-failure
+
+networks:
+  main:
 volumes:
   database-data:

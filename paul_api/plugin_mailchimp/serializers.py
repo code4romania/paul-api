@@ -127,7 +127,7 @@ class TaskCreateSerializer(serializers.ModelSerializer):
     last_edit_user = serializers.HiddenField(
         default=serializers.CurrentUserDefault())
     segmentation_task = SegmentationTaskSerializer()
-    periodic_task = TaskScheduleSerializer()
+    periodic_task = TaskScheduleSerializer(required=False)
 
     class Meta:
         model = models.Task
@@ -144,7 +144,11 @@ class TaskCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         task_type = validated_data['task_type']
         segment_data = validated_data.pop('segmentation_task')
-        periodic_task = validated_data.pop('periodic_task')
+        periodic_task = None
+
+        if validated_data.get('periodic_task'):
+            periodic_task = validated_data.pop('periodic_task')
+
 
         if task_type == 'segmentation':
             segmentation_task = models.SegmentationTask.objects.create(

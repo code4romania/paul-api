@@ -1,6 +1,6 @@
 from django.db.models import (
     Q, Count, Sum, Min, Max, Avg, StdDev,
-    DateTimeField, CharField, FloatField, IntegerField)
+    DateTimeField, DateField, CharField, FloatField, IntegerField)
 from django.db.models.functions import Trunc, Cast
 from django.contrib.auth.models import User, Group
 from django.http import HttpResponse
@@ -908,10 +908,13 @@ class FilterViewSet(viewsets.ModelViewSet):
         return response
 
 
+
+
 def get_filtered_view_entries(request, filtered_view):
     page = 1
     continue_request = True
     results = []
+    
     while continue_request:
         request.GET = {'page': page}
         r = FilterViewSet.as_view({'get': 'entries'})(request, filtered_view.pk).data
@@ -971,6 +974,7 @@ class EntryViewSet(viewsets.ModelViewSet):
         #     for field, value in table.filters.items():
         #         filter_dict['data__{}'.format(field)] = value
         pprint(filter_dict)
+
         if str_order and str_order.replace("-", "") in fields:
             if str_order.startswith("-"):
                 queryset = table.entries.filter(**filter_dict).order_by("-data__{}".format(str_order[1:]))
@@ -978,6 +982,7 @@ class EntryViewSet(viewsets.ModelViewSet):
                 queryset = table.entries.filter(**filter_dict).order_by("data__{}".format(str_order))
         else:
             queryset = table.entries.filter(**filter_dict).order_by("id")
+            # queryset = table.entries.annotate(date_field=Cast(KeyTextTransform('data_iesire', "data"), DateField())).filter(date_field__exact='2020-07-21').order_by("id")
 
         page = self.paginate_queryset(queryset)
 

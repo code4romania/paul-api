@@ -79,6 +79,15 @@ def run_segmentation(request, task_id):
         user = request.user
     else:
         user, _ = User.objects.get_or_create(username='paul-sync')
+        from django.http import HttpRequest
+        from django.conf import settings
+
+        from importlib import import_module
+
+        request = HttpRequest()
+        engine = import_module(settings.SESSION_ENGINE)
+        session_key = None
+        request.session = engine.SessionStore(session_key)
 
     settings = models.Settings.objects.last()
 
@@ -129,4 +138,4 @@ def run_segmentation(request, task_id):
     task_result.status = 'Finished'
     task_result.save()
 
-    return task_result.id
+    return task_result.id, task_result.success

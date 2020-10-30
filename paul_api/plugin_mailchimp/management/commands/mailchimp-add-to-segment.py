@@ -19,27 +19,14 @@ from rest_framework.test import force_authenticate, APIRequestFactory
 from api import views
 from django.test import RequestFactory
 
-        
+import requests
+from rest_framework.authtoken.models import Token
 
 
 class Command(BaseCommand):
     def handle(self, *args, **kwargs):
-        print('add to segment mailchimp')
-
-        pprint(settings.__dict__)
-        # request = HttpRequest()
-        # request.method = 'GET'
-        # request.META['SERVER_NAME'] = 'dev.api.paul.ro'
-        # request.META['SERVER_PORT'] = '8000'
-        # task = models.Task.objects.last()
-        # view = views.FilterViewSet.as_view({'get': 'entries'})
-        # request = Request(request=HttpRequest())
-        # request = RequestFactory().request(HTTP_HOST='localhost:8001')
-        # print(request.user)
-        # # Make an authenticated request to the view...
-        # request = factory.get('/api/')
-        # response = view(request)
-        # request = None
-        # r = tasks.run_segmentation(request, task.id)
-        # response = serializers.TaskResultSerializer(r, context={'request': request})
-        # pprint(response.data)
+        # print('add to segment mailchimp')
+        url = 'http://api:8000/api/filters/58/'
+        # r = requests.get(url)
+        # print(r.json())
+        print(tasks.run_segmentation(None, 22))

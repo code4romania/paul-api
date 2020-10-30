@@ -26,19 +26,20 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         print('add to segment mailchimp')
 
+        pprint(settings.__dict__)
         # request = HttpRequest()
         # request.method = 'GET'
         # request.META['SERVER_NAME'] = 'dev.api.paul.ro'
         # request.META['SERVER_PORT'] = '8000'
-        task = models.Task.objects.last()
+        # task = models.Task.objects.last()
         # view = views.FilterViewSet.as_view({'get': 'entries'})
-        request = Request(request=HttpRequest())
-        request = RequestFactory().request(HTTP_HOST='localhost:8001')
-        print(request.user)
+        # request = Request(request=HttpRequest())
+        # request = RequestFactory().request(HTTP_HOST='localhost:8001')
+        # print(request.user)
         # # Make an authenticated request to the view...
         # request = factory.get('/api/')
         # response = view(request)
-
-        r = tasks.run_segmentation(request, task)
+        # request = None
+        # r = tasks.run_segmentation(request, task.id)
         # response = serializers.TaskResultSerializer(r, context={'request': request})
         # pprint(response.data)

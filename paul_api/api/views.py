@@ -908,25 +908,6 @@ class FilterViewSet(viewsets.ModelViewSet):
         return response
 
 
-
-
-def get_filtered_view_entries(request, filtered_view):
-    page = 1
-    continue_request = True
-    results = []
-    
-    while continue_request:
-        request.GET = {'page': page}
-        r = FilterViewSet.as_view({'get': 'entries'})(request, filtered_view.pk).data
-        results += r['results']
-        if r['links']['next']:
-            page += 1
-        else:
-            continue_request = False 
-
-    return results
-
-
 class EntryViewSet(viewsets.ModelViewSet):
     pagination_class = EntriesPagination
     filter_backends = (drf_filters.SearchFilter,)

@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from rest_framework.authtoken.models import Token
 
 from api import models as api_models
 
@@ -79,16 +80,8 @@ def run_segmentation(request, task_id):
         user = request.user
     else:
         user, _ = User.objects.get_or_create(username='paul-sync')
-        from django.http import HttpRequest
-        from django.conf import settings
 
-        from importlib import import_module
-
-        request = HttpRequest()
-        engine = import_module(settings.SESSION_ENGINE)
-        session_key = None
-        request.session = engine.SessionStore(session_key)
-
+    token, _ = Token.objects.get_or_create(user=user)
     settings = models.Settings.objects.last()
 
     task_result = models.TaskResult.objects.create(
@@ -127,7 +120,7 @@ def run_segmentation(request, task_id):
                         AUDIENCE_MEMBERS_FIELDS[field]['display_name'], filtered_view.name
                     ))
         if success:
-            lists_users = utils.get_emails_from_filtered_view(request, filtered_view, settings)
+            lists_users = utils.get_emails_from_filtered_view(token, filtered_view, settings)
             success, stats = utils.add_list_to_segment(
                     settings,
                     lists_users,

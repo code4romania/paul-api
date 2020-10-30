@@ -9,6 +9,7 @@ from api import models as api_models
 
 from . import table_fields
 
+import requests
 
 def get_or_create_table(table_type, table_name):
     db = models.Database.objects.last()
@@ -333,15 +334,31 @@ def add_list_to_segment(settings,
     return success, stats
 
 
-def get_emails_from_filtered_view(request, filtered_view, settings):
-    audience_members_table = api_models.Table.objects.get(name=settings.audience_members_table_name)
-    filter_entries = api_views.get_filtered_view_entries(request._request, filtered_view)
+def get_emails_from_filtered_view(token, filtered_view, settings):
+    print(token.key)
+    page = 1
+    continue_request = True
+    results = []
+    headers = {'Authorization': 'Token ' + token.key}
+
+    while continue_request:
+        url = 'http://api:8000/api/filters/{}/entries/?page={}'.format(filtered_view.pk, page)
+        r = requests.get(url, headers=headers).json()
+        results += r['results']
+        if r['links']['next']:
+            page += 1
+        else:
+            continue_request = False
+
+    audience_members_table = api_models.Table.objects.get(
+        name=settings.audience_members_table_name)
+
     lists = {}
     user_hash_field = '{}__{}'.format(audience_members_table.slug, 'id')
-    audience_id_field = '{}__{}'.format(audience_members_table.slug, 'audience_id')
-    for entry in filter_entries:
+    audience_id_field = '{}__{}'.format(
+        audience_members_table.slug, 'audience_id')
+    for entry in results:
         if entry[user_hash_field] not in lists.get(entry[audience_id_field], []):
             lists.setdefault(entry[audience_id_field], [])
             lists[entry[audience_id_field]].append(entry[user_hash_field])
-    pprint(lists)
     return lists

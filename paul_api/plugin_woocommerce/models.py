@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.core.serializers.json import DjangoJSONEncoder
+
+from api import models as api_models
 
 TASK_TYPES = (
     ('sync', 'Import tables'),
@@ -35,22 +36,10 @@ class Task(models.Model):
         pass
 
 
-class TaskResult(models.Model):
+class TaskResult(api_models.PluginTaskResult):
     """
     Description: Model Description
     """
-    name = models.CharField(max_length=255, null=True, blank=True)
-    status = models.CharField(max_length=20, default='In progress')
     task = models.ForeignKey(
         Task, null=True, blank=True, on_delete=models.CASCADE,
         related_name='task_results')
-    date = models.DateTimeField(auto_now_add=True)
-    user = models.ForeignKey(
-        User, null=True, on_delete=models.SET_NULL,
-        related_name="woocommerce_tasks_results")
-    success = models.BooleanField(default=False)
-    stats = models.JSONField(
-        encoder=DjangoJSONEncoder, null=True, blank=True)
-
-    class Meta:
-        ordering = ['-id']

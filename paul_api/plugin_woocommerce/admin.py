@@ -10,4 +10,4 @@ class SettingsAdmin(admin.ModelAdmin):
 
 @admin.register(models.TaskResult)
 class TaskResultAdmin(admin.ModelAdmin):
-    list_display = ("date", "user", "success")
+    list_display = ("date_start", "date_end", "duration", "user", "success")

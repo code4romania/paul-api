@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.utils import timezone
 from rest_framework.authtoken.models import Token
 
 from api import models as api_models
@@ -62,6 +63,8 @@ def sync(request, task_id):
             for k, v in table_stats.items():
                 stats_details.append('<b>{}</b> {} in <b>{}</b>'.format(v, k, table))
         task_result.stats['details'] = stats_details
+    task_result.date_end = timezone.now()
+    task_result.duration = task_result.date_end - task_result.date_start
     task_result.save()
 
     return task_result.id, task_result.success

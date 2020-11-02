@@ -3,10 +3,12 @@ from rest_framework import serializers
 from django_celery_beat.models import CrontabSchedule, PeriodicTask
 
 from api import models as api_models
+from api import utils as api_utils
 from api.serializers.users import OwnerSerializer
 
 from plugin_mailchimp import models
 
+from datetime import timedelta
 import json
 from pprint import pprint
 
@@ -47,7 +49,7 @@ class TaskListSerializer(serializers.ModelSerializer):
 
     def get_last_run_date(self, obj):
         if obj.task_results.exists():
-            return obj.task_results.last().date
+            return obj.task_results.last().date_start
         else:
             return None
 
@@ -239,6 +241,7 @@ class TaskResultListSerializer(serializers.ModelSerializer):
     user = OwnerSerializer(read_only=True)
     task = serializers.ReadOnlyField(source='task.name')
     url = serializers.SerializerMethodField()
+    duration = serializers.SerializerMethodField()
 
     class Meta:
         model = models.TaskResult
@@ -248,7 +251,8 @@ class TaskResultListSerializer(serializers.ModelSerializer):
             "name",
             "status",
             "task",
-            "date",
+            "date_start",
+            "duration",
             "user",
             "success",
         ]
@@ -261,6 +265,11 @@ class TaskResultListSerializer(serializers.ModelSerializer):
             )
         )
 
+    def get_duration(self, obj):
+        if obj.duration:
+            print(api_utils.pretty_time_delta(obj.duration.seconds))
+            return api_utils.pretty_time_delta(obj.duration.seconds)
+        return ''
 
 class TaskResultSerializer(serializers.ModelSerializer):
     user = OwnerSerializer(read_only=True)
@@ -272,7 +281,8 @@ class TaskResultSerializer(serializers.ModelSerializer):
             "name",
             "status",
             "task",
-            "date",
+            "date_start",
+            "duration",
             "user",
             "success",
             "stats",

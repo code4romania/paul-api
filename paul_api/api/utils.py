@@ -80,7 +80,6 @@ def import_csv(reader, table, csv_import=None):
                         elif field_type == "enum":
                             value = row[key]
                             if not field_choices[field_name]:
-                                print("not")
                                 field_choices[field_name] = []
                             if value not in field_choices[field_name]:
                                 field_choices[field_name].append(value)
@@ -430,3 +429,18 @@ def get_card_data(request, card, table, preview=False):
         data = card_data \
             .aggregate(value=data_column_function('id'))
     return data
+
+
+def pretty_time_delta(seconds):
+    seconds = int(seconds)
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    if days > 0:
+        return '%dd %dh %dm %ds' % (days, hours, minutes, seconds)
+    elif hours > 0:
+        return '%dh %dm %ds' % (hours, minutes, seconds)
+    elif minutes > 0:
+        return '%dm %ds' % (minutes, seconds)
+    else:
+        return '%ds' % (seconds,)

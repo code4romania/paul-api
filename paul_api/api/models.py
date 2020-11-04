@@ -439,3 +439,25 @@ class Card(models.Model):
 
     class Meta:
         ordering = ['id']
+
+
+class PluginTaskResult(models.Model):
+    """
+    Description: Model Description
+    """
+    name = models.CharField(max_length=255, null=True, blank=True)
+    status = models.CharField(max_length=20, default='In progress')
+
+    date_start = models.DateTimeField(auto_now_add=True)
+    date_end = models.DateTimeField(null=True, blank=True)
+    duration = models.DurationField(null=True, blank=True)
+    user = models.ForeignKey(
+        User, null=True, on_delete=models.SET_NULL,
+        related_name="%(app_label)s_%(class)s_tasks")
+    success = models.BooleanField(default=False)
+    stats = models.JSONField(
+        encoder=DjangoJSONEncoder, null=True, blank=True)
+
+    class Meta:
+        abstract = True
+        ordering = ['-id']

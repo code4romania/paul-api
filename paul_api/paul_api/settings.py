@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "plugin_woocommerce",
     "plugin_mailchimp",
     "rest_framework",
+    "rest_framework_tricks",
     "jazzmin",
     "django.contrib.admin",
     "django.contrib.auth",

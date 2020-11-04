@@ -1,4 +1,5 @@
-from rest_framework import viewsets, mixins, filters
+from rest_framework import viewsets, mixins
+from rest_framework_tricks import filters
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -17,6 +18,13 @@ class TaskViewSet(viewsets.ModelViewSet):
     queryset = models.Task.objects.all()
     pagination_class = EntriesPagination
     filter_backends = (filters.OrderingFilter,)
+    ordering_fields = {
+        'name': 'name',
+        'task_type': 'task_type',
+        'last_edit_date': 'last_edit_date',
+        'schedule_enabled': 'periodic_task__enabled',
+        'last_edit_user.username': 'last_edit_user__username',
+    }
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -50,6 +58,14 @@ class TaskResultViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = models.TaskResult.objects.all()
     pagination_class = EntriesPagination
     filter_backends = (filters.OrderingFilter,)
+    ordering_fields = {
+        'user.username': 'user__username',
+        'duration': 'duration',
+        'status': 'status',
+        'date_start': 'date_start',
+        'success': 'success',
+
+    }
 
     def get_serializer_class(self):
         if self.action == "list":

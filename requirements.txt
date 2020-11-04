@@ -26,3 +26,4 @@ mailchimp3>=3.0.14,<4.0.0
 celery>=4.0.1,<5.0.0
 gunicorn>=20.0.4,<21.0.0
 gevent==1.4.0
+django-rest-framework-tricks>=0.2.11,<1.0.0

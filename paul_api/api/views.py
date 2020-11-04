@@ -22,6 +22,7 @@ from guardian.core import ObjectPermissionChecker
 
 from rest_framework import filters as drf_filters
 from django_filters import rest_framework as filters
+from rest_framework_tricks.filters import OrderingFilter
 
 from silk.profiling.profiler import silk_profile
 
@@ -61,7 +62,12 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = serializers.users.UserListSerializer
     pagination_class = EntriesPagination
-
+    # filter_backends = (drf_filters.OrderingFilter,)
+    # filter_backends = (OrderingFilter,)
+    # ordering_fields = {
+    #     'username': 'username',
+    #     'first_name': 'first_name',
+    # }
     def get_serializer_class(self):
         if self.action == "create":
             return serializers.users.UserCreateSerializer
@@ -73,8 +79,10 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        ordering = self.request.GET.get('__order', 'id')
+
         if 'admin' in user.groups.values_list('name', flat=True):
-            return User.objects.all()
+            return User.objects.all().order_by(ordering)
         return User.objects.filter(pk=user.pk)
 
     @action(

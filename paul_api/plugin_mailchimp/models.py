@@ -71,6 +71,12 @@ class Task(models.Model):
     class Meta:
         pass
 
+    @property
+    def last_run_date(self):
+        if self.task_results.exists():
+            return self.task_results.last().date_start
+        else:
+            return None
 
 class TaskResult(api_models.PluginTaskResult):
     """

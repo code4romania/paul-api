@@ -267,7 +267,6 @@ class TaskResultListSerializer(serializers.ModelSerializer):
 
     def get_duration(self, obj):
         if obj.duration:
-            print(api_utils.pretty_time_delta(obj.duration.seconds))
             return api_utils.pretty_time_delta(obj.duration.seconds)
         return ''
 

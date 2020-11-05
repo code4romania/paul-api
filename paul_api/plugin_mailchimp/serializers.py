@@ -13,6 +13,22 @@ import json
 from pprint import pprint
 
 
+class WritableSerializerMethodField(serializers.SerializerMethodField):
+    def __init__(self, method_name=None, **kwargs):
+        super().__init__(**kwargs)
+
+        self.read_only = False
+
+    def get_default(self):
+        default = super().get_default()
+
+        return {
+            self.field_name: default
+        }
+
+    def to_internal_value(self, data):
+        return {self.field_name: data}
+
 class SettingsSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -85,7 +101,7 @@ class TaskScheduleCrontabSerializer(serializers.ModelSerializer):
 
 
 class TaskScheduleSerializer(serializers.ModelSerializer):
-    crontab = TaskScheduleCrontabSerializer()
+    crontab = WritableSerializerMethodField()
 
     class Meta:
         model = PeriodicTask
@@ -93,12 +109,19 @@ class TaskScheduleSerializer(serializers.ModelSerializer):
             "enabled",
             "crontab"
         ]
-        # fields = '__all__'
+
+    def get_crontab(self, obj):
+        return '{} {} {} {} {}'.format(
+            obj.crontab.minute,
+            obj.crontab.hour,
+            obj.crontab.day_of_week,
+            obj.crontab.day_of_month,
+            obj.crontab.month_of_year)
 
 
 class TaskSerializer(serializers.ModelSerializer):
     last_edit_user = OwnerSerializer(read_only=True)
-    segmentation_task = SegmentationTaskSerializer()
+    segmentation_task = SegmentationTaskSerializer(required=False)
     task_results = serializers.SerializerMethodField()
     periodic_task = TaskScheduleSerializer()
     schedule_enabled = serializers.SerializerMethodField()
@@ -125,10 +148,11 @@ class TaskSerializer(serializers.ModelSerializer):
             return obj.periodic_task.enabled
         return False
 
+
 class TaskCreateSerializer(serializers.ModelSerializer):
     last_edit_user = serializers.HiddenField(
         default=serializers.CurrentUserDefault())
-    segmentation_task = SegmentationTaskSerializer()
+    segmentation_task = SegmentationTaskSerializer(required=False, allow_null=True)
     periodic_task = TaskScheduleSerializer(required=False)
 
     class Meta:
@@ -163,8 +187,14 @@ class TaskCreateSerializer(serializers.ModelSerializer):
             task.save()
 
         if periodic_task:
-            crontab_dict = periodic_task.pop('crontab')
-            crontab, _ = CrontabSchedule.objects.get_or_create(**crontab_dict)
+            crontab_str = periodic_task.pop('crontab')
+            if crontab_str:
+                crontab, _ = CrontabSchedule.objects.get_or_create(
+                    minute=crontab_str.split(' ')[0],
+                    hour=crontab_str.split(' ')[1],
+                    day_of_week=crontab_str.split(' ')[2],
+                    day_of_month=crontab_str.split(' ')[3],
+                    month_of_year=crontab_str.split(' ')[4])
             task_kwargs = {
                 'task_id': task.id,
                 'request': None
@@ -187,7 +217,6 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         return task
 
     def update(self, instance, validated_data):
-        # instance.name = validated_data['name']
         segmentation_task_data = validated_data.pop('segmentation_task')
         periodic_task = validated_data.pop('periodic_task')
 
@@ -197,18 +226,29 @@ class TaskCreateSerializer(serializers.ModelSerializer):
             models.SegmentationTask.objects.filter(pk=segmentation_task.pk).update(**segmentation_task_data)
 
         models.Task.objects.filter(pk=instance.pk).update(**validated_data)
-        
+
         if periodic_task:
-            crontab_dict = periodic_task.pop('crontab')
+            crontab_str = periodic_task.get('crontab', None)
             if instance.task_type == 'sync':
                 task_name = 'plugin_mailchimp.tasks.sync'
             else:
                 task_name = 'plugin_mailchimp.tasks.run_segmentation'
 
             try:
-                crontab, _ = CrontabSchedule.objects.get_or_create(**crontab_dict)
+                    # crontab, _ = CrontabSchedule.objects.get_or_create(**crontab_dict)
+                crontab, _ = CrontabSchedule.objects.get_or_create(
+                    minute=crontab_str.split(' ')[0],
+                    hour=crontab_str.split(' ')[1],
+                    day_of_week=crontab_str.split(' ')[2],
+                    day_of_month=crontab_str.split(' ')[3],
+                    month_of_year=crontab_str.split(' ')[4])
             except:
-                crontab = CrontabSchedule.objects.filter(**crontab_dict)[0]
+                crontab = CrontabSchedule.objects.filter(
+                        minute=crontab_str.split(' ')[0],
+                        hour=crontab_str.split(' ')[1],
+                        day_of_week=crontab_str.split(' ')[2],
+                        day_of_month=crontab_str.split(' ')[3],
+                        month_of_year=crontab_str.split(' ')[4])[0]
 
             task_kwargs = {
                 'task_id': instance.id,

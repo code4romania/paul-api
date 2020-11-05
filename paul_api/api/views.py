@@ -62,12 +62,7 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = serializers.users.UserListSerializer
     pagination_class = EntriesPagination
-    # filter_backends = (drf_filters.OrderingFilter,)
-    # filter_backends = (OrderingFilter,)
-    # ordering_fields = {
-    #     'username': 'username',
-    #     'first_name': 'first_name',
-    # }
+
     def get_serializer_class(self):
         if self.action == "create":
             return serializers.users.UserCreateSerializer

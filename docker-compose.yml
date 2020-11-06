@@ -21,7 +21,7 @@ services:
     restart: on-failure
     depends_on:
       - db
-      - rabbitmq
+      - redis
 
 
   db:
@@ -38,23 +38,30 @@ services:
       - database-data:/var/lib/postgresql/data/
     restart: on-failure
 
-  rabbitmq:
-    container_name: rabbitmq
-    hostname: rabbitmq
-    image: rabbitmq:latest
+  # rabbitmq:
+  #   container_name: rabbitmq
+  #   hostname: rabbitmq
+  #   image: rabbitmq:latest
+  #   ports:
+  #     - "5672:5672"
+  #   restart: on-failure
+
+  redis:
+    image: redis:latest
     ports:
-      - "5672:5672"
+     - '6379:6379'
     restart: on-failure
+
 
   celery_worker:
     build:
       context: .
       dockerfile: docker/api/Dockerfile
-    command: dockerize -wait tcp://db:5432 -wait tcp://rabbitmq:5672 -timeout 90s -- celery
+    command: dockerize -wait tcp://db:5432 -wait tcp://redis:6379 -timeout 90s -- celery
     depends_on:
       - api
       - db
-      - rabbitmq
+      - redis
     deploy:
       # replicas: 2
       restart_policy:
@@ -68,13 +75,20 @@ services:
     build:
       context: .
       dockerfile: docker/api/Dockerfile
-    command: dockerize -wait tcp://db:5432 -wait tcp://rabbitmq:5672 -timeout 90s -- celerybeat
+    command: dockerize -wait tcp://db:5432 -wait tcp://redis:6379 -timeout 90s -- celerybeat
     depends_on:
       - api
       - db
-      - rabbitmq
+      - redis
     restart: on-failure
 
+  flower:  
+    image: mher/flower:0.9.5
+    command: ["flower", "--broker=redis://redis:6379/0", "--port=8888"]  
+    ports:  
+       - 8888:8888  
+    depends_on:
+      - redis
 networks:
   main:
 volumes:

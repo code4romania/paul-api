@@ -197,6 +197,6 @@ NO_REPLY_EMAIL = env('NO_REPLY_EMAIL')
 
 
 # Celery config
-CELERY_BROKER_URL= 'pyamqp://rabbitmq:5672'
+CELERY_BROKER_URL= 'redis://redis:6379/0'
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'

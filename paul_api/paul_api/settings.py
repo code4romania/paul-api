@@ -78,6 +78,8 @@ MIDDLEWARE = [
     "silk.middleware.SilkyMiddleware",
 ]
 
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
 ROOT_URLCONF = "paul_api.urls"
 
 TEMPLATES = [

@@ -1,4 +1,5 @@
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import serializers
 from django_celery_beat.models import CrontabSchedule, PeriodicTask
 
@@ -29,6 +30,7 @@ class WritableSerializerMethodField(serializers.SerializerMethodField):
     def to_internal_value(self, data):
         return {self.field_name: data}
 
+
 class SettingsSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -48,7 +50,8 @@ class TaskListSerializer(serializers.ModelSerializer):
     last_edit_user = OwnerSerializer(read_only=True)
     schedule_enabled = serializers.SerializerMethodField()
     # last_run_date = serializers.SerializerMethodField()
-    url = serializers.HyperlinkedIdentityField(view_name="plugin_mailchimp:task-detail")
+    url = serializers.HyperlinkedIdentityField(
+        view_name="plugin_mailchimp:task-detail")
 
     class Meta:
         model = models.Task
@@ -141,7 +144,10 @@ class TaskSerializer(serializers.ModelSerializer):
         ]
 
     def get_task_results(self, obj):
-        return self.context["request"].build_absolute_uri(reverse("plugin_mailchimp:task-results-list", kwargs={"task_pk": obj.pk}))
+        return self.context["request"].build_absolute_uri(
+            reverse(
+                "plugin_mailchimp:task-results-list",
+                kwargs={"task_pk": obj.pk}))
 
     def get_schedule_enabled(self, obj):
         if obj.periodic_task:
@@ -152,7 +158,9 @@ class TaskSerializer(serializers.ModelSerializer):
 class TaskCreateSerializer(serializers.ModelSerializer):
     last_edit_user = serializers.HiddenField(
         default=serializers.CurrentUserDefault())
-    segmentation_task = SegmentationTaskSerializer(required=False, allow_null=True)
+    last_edit_date = serializers.HiddenField(default=timezone.now())
+    segmentation_task = SegmentationTaskSerializer(
+        required=False, allow_null=True)
     periodic_task = TaskScheduleSerializer(required=False)
 
     class Meta:
@@ -174,7 +182,6 @@ class TaskCreateSerializer(serializers.ModelSerializer):
 
         if validated_data.get('periodic_task'):
             periodic_task = validated_data.pop('periodic_task')
-
 
         if task_type == 'segmentation':
             segmentation_task = models.SegmentationTask.objects.create(
@@ -221,9 +228,9 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         periodic_task = validated_data.pop('periodic_task')
 
         if validated_data['task_type'] == 'segmentation':
-            print(segmentation_task_data)
             segmentation_task = instance.segmentation_task
-            models.SegmentationTask.objects.filter(pk=segmentation_task.pk).update(**segmentation_task_data)
+            models.SegmentationTask.objects.filter(
+                pk=segmentation_task.pk).update(**segmentation_task_data)
 
         models.Task.objects.filter(pk=instance.pk).update(**validated_data)
 
@@ -235,7 +242,6 @@ class TaskCreateSerializer(serializers.ModelSerializer):
                 task_name = 'plugin_mailchimp.tasks.run_segmentation'
 
             try:
-                    # crontab, _ = CrontabSchedule.objects.get_or_create(**crontab_dict)
                 crontab, _ = CrontabSchedule.objects.get_or_create(
                     minute=crontab_str.split(' ')[0],
                     hour=crontab_str.split(' ')[1],
@@ -254,12 +260,13 @@ class TaskCreateSerializer(serializers.ModelSerializer):
                 'task_id': instance.id,
                 'request': None
             }
+
             if instance.periodic_task:
                 periodic_task_object = instance.periodic_task
                 periodic_task_object.enabled = periodic_task.get('enabled')
                 periodic_task_object.crontab = crontab
                 periodic_task_object.kwargs = json.dumps(task_kwargs)
-                periodic_task_object.task=task_name
+                periodic_task_object.task = task_name
                 periodic_task_object.save()
             else:
 
@@ -309,6 +316,7 @@ class TaskResultListSerializer(serializers.ModelSerializer):
         if obj.duration:
             return api_utils.pretty_time_delta(obj.duration.seconds)
         return ''
+
 
 class TaskResultSerializer(serializers.ModelSerializer):
     user = OwnerSerializer(read_only=True)

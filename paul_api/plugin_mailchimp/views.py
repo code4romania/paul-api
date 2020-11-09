@@ -73,7 +73,7 @@ class TaskResultViewSet(viewsets.ReadOnlyModelViewSet):
         return serializers.TaskResultSerializer
 
     def get_queryset(self):
-        return models.TaskResult.objects.filter(task=self.kwargs["task_pk"])
+        return models.TaskResult.objects.filter(task=self.kwargs["task_pk"]).order_by('-date_start')
 
 
 class SettingsViewSet(mixins.RetrieveModelMixin,

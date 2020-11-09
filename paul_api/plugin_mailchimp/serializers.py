@@ -47,7 +47,7 @@ class SettingsSerializer(serializers.ModelSerializer):
 class TaskListSerializer(serializers.ModelSerializer):
     last_edit_user = OwnerSerializer(read_only=True)
     schedule_enabled = serializers.SerializerMethodField()
-    # last_run_date = serializers.SerializerMethodField()
+    crontab = serializers.SerializerMethodField()
     url = serializers.HyperlinkedIdentityField(view_name="plugin_mailchimp:task-detail")
 
     class Meta:
@@ -58,16 +58,22 @@ class TaskListSerializer(serializers.ModelSerializer):
             "name",
             "schedule_enabled",
             "task_type",
+            "crontab",
             "last_edit_date",
             "last_run_date",
             "last_edit_user",
         ]
 
-    # def get_last_run_date(self, obj):
-    #     if obj.task_results.exists():
-    #         return obj.task_results.last().date_start
-    #     else:
-    #         return None
+    def get_crontab(self, obj):
+        if obj.periodic_task:
+            return '{} {} {} {} {}'.format(
+                obj.periodic_task.crontab.minute,
+                obj.periodic_task.crontab.hour,
+                obj.periodic_task.crontab.day_of_week,
+                obj.periodic_task.crontab.day_of_month,
+                obj.periodic_task.crontab.month_of_year)
+        
+        return None
 
     def get_schedule_enabled(self, obj):
         if obj.periodic_task:

@@ -17,11 +17,6 @@ class CsvFieldMapSerializer(serializers.ModelSerializer):
         model = models.CsvFieldMap
         fields = ["original_name", "display_name", "field_type", "field_format", "table_field"]
 
-    # def get_field_type(self, obj):
-    #     print(obj)
-    #     print(obj.field_type)
-    #     return obj.field_type
-
     def get_table_field(self, obj):
         if obj.table_column:
             return obj.table_column.pk
@@ -29,6 +24,7 @@ class CsvFieldMapSerializer(serializers.ModelSerializer):
 
 class CsvImportSerializer(serializers.ModelSerializer):
     csv_field_mapping = CsvFieldMapSerializer(many=True)
+    filename = serializers.SerializerMethodField()
 
     class Meta:
         model = models.CsvImport
@@ -37,9 +33,13 @@ class CsvImportSerializer(serializers.ModelSerializer):
             "table",
             "id",
             "file",
+            "filename",
             "delimiter",
             "errors_count",
             "imports_count",
             "errors",
             "csv_field_mapping",
         ]
+
+    def get_filename(self, obj):
+        return obj.file.name.split('/')[-1]

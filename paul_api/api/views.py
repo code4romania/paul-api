@@ -309,22 +309,7 @@ class TableViewSet(viewsets.ModelViewSet):
         table = models.Table.objects.get(pk=pk)
         table_fields = {x.name: x for x in table.fields.all()}
 
-        filter_dict = {}
-        for key in request.GET:
-            if key and key.split("__")[0] in table_fields.keys():
-                value = request.GET.get(key).split(",")
-                if len(value) == 1:
-                    value = value[0]
-                else:
-                    key = key + "__in"
-
-                if table_fields[key.split("__")[0]].field_type in [
-                    "float",
-                    "int",
-                ]:
-                    filter_dict["data__{}".format(key)] = float(value)
-                else:
-                    filter_dict["data__{}".format(key)] = value
+        filter_dict = utils.request_get_to_filter(request.GET, table_fields)
 
         file_name = "{}__{}.csv".format(table.name, datetime.now().strftime("%d.%m.%Y"))
         with open("/tmp/{}".format(file_name), "w", encoding="utf-8-sig") as csv_export_file:
@@ -653,27 +638,29 @@ class FilterViewSet(viewsets.ModelViewSet):
         if is_two_tables_filter:
             filter_dict[secondary_table_slug] = {}
 
-        for key in request.GET:
-            table_field = "__".join(key.split("__")[:2])
-            if key and table_field in all_fields:
-                table = key.split("__")[0]
-                field = key.replace(table + "__", "")
 
-                filter_dict.setdefault(table, {})
-                value = request.GET.get(key).split(",")
+        filter_dict = utils.request_get_to_filter(request.GET, field_types, filter_dict, True)
+        # for key in request.GET:
+        #     table_field = "__".join(key.split("__")[:2])
+        #     if key and table_field in all_fields:
+        #         table = key.split("__")[0]
+        #         field = key.replace(table + "__", "")
 
-                if len(value) == 1:
-                    value = value[0]
-                else:
-                    field = field + "__in"
+        #         filter_dict.setdefault(table, {})
+        #         value = request.GET.get(key).split(",")
 
-                if field_types[table_field] in [
-                    "float",
-                    "int",
-                ]:
-                    filter_dict[table]["data__{}".format(field)] = float(value)
-                else:
-                    filter_dict[table]["data__{}".format(field)] = value
+        #         if len(value) == 1:
+        #             value = value[0]
+        #         else:
+        #             field = field + "__in"
+
+        #         if field_types[table_field] in [
+        #             "float",
+        #             "int",
+        #         ]:
+        #             filter_dict[table]["data__{}".format(field)] = float(value)
+        #         else:
+        #             filter_dict[table]["data__{}".format(field)] = value
 
 
         # If filter has only primary_table
@@ -815,28 +802,28 @@ class FilterViewSet(viewsets.ModelViewSet):
             primary_table_slug: {},
             secondary_table_slug: {},
         }
+        filter_dict = utils.request_get_to_filter(request.GET, field_types, filter_dict, True)
+        # for key in request.GET:
+        #     table_field = "__".join(key.split("__")[:2])
+        #     if key and table_field in all_fields:
+        #         table = key.split("__")[0]
+        #         field = key.replace(table + "__", "")
 
-        for key in request.GET:
-            table_field = "__".join(key.split("__")[:2])
-            if key and table_field in all_fields:
-                table = key.split("__")[0]
-                field = key.replace(table + "__", "")
+        #         filter_dict.setdefault(table, {})
+        #         value = request.GET.get(key).split(",")
 
-                filter_dict.setdefault(table, {})
-                value = request.GET.get(key).split(",")
+        #         if len(value) == 1:
+        #             value = value[0]
+        #         else:
+        #             field = field + "__in"
 
-                if len(value) == 1:
-                    value = value[0]
-                else:
-                    field = field + "__in"
-
-                if field_types[table_field] in [
-                    "float",
-                    "int",
-                ]:
-                    filter_dict[table]["data__{}".format(field)] = float(value)
-                else:
-                    filter_dict[table]["data__{}".format(field)] = value
+        #         if field_types[table_field] in [
+        #             "float",
+        #             "int",
+        #         ]:
+        #             filter_dict[table]["data__{}".format(field)] = float(value)
+        #         else:
+        #             filter_dict[table]["data__{}".format(field)] = value
 
         join_values = (
             models.Entry.objects.filter(table=primary_table.table)
@@ -937,27 +924,7 @@ class EntryViewSet(viewsets.ModelViewSet):
                 else:
                     fields = [x for x in table_fields.keys()]
 
-        filter_dict = {}
-        for key in request.GET:
-            if key and key.split("__")[0] in table_fields.keys():
-                value = request.GET.get(key).split(",")
-                if len(value) == 1:
-                    value = value[0]
-                else:
-                    key = key + "__in"
-
-                if table_fields[key.split("__")[0]].field_type in [
-                    "float",
-                    "int",
-                ]:
-                    filter_dict["data__{}".format(key)] = float(value)
-                else:
-                    filter_dict["data__{}".format(key)] = value
-
-        # if not filter_dict and table.filters:
-        #     for field, value in table.filters.items():
-        #         filter_dict['data__{}'.format(field)] = value
-        pprint(filter_dict)
+        filter_dict = utils.request_get_to_filter(request.GET, table_fields)
 
         if str_order and str_order.replace("-", "") in fields:
             if str_order.startswith("-"):

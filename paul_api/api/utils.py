@@ -114,23 +114,8 @@ def import_csv(reader, table, csv_import=None):
 def get_chart_data(request, chart, table, preview=False):
     y_axis_function = DB_FUNCTIONS[chart.y_axis_function]
 
-    table_fields = {x.name: x for x in table.fields.all()}
-    filter_dict = {}
-    for key in request.GET:
-        if key and key.split("__")[0] in table_fields.keys():
-            value = request.GET.get(key).split(",")
-            if len(value) == 1:
-                value = value[0]
-            else:
-                key = key + "__in"
-
-            if table_fields[key.split("__")[0]].field_type in [
-                "float",
-                "int",
-            ]:
-                filter_dict["data__{}".format(key)] = float(value)
-            else:
-                filter_dict["data__{}".format(key)] = value
+    table_fields = {x.name: x.field_type for x in table.fields.all()}
+    filter_dict = request_get_to_filter(request.GET, table_fields)
 
     chart_data = models.Entry.objects \
         .filter(table=chart.table) \
@@ -393,27 +378,88 @@ def prepare_chart_data(chart, chart_data, timeline=True):
     return data
 
 
-def get_card_data(request, card, table, preview=False):
-    data_column_function = DB_FUNCTIONS[card.data_column_function]
+def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False):
+    for key in request:
+        if is_filter:
+            table = key.split("__")[0]
+            filter_table_field = "__".join(key.split("__")[:2])
+            key = "__".join(key.split("__")[1:])
 
-    table_fields = {x.name: x for x in table.fields.all()}
-    filter_dict = {}
-    for key in request.GET:
-        if key and key.split("__")[0] in table_fields.keys():
-            value = request.GET.get(key).split(",")
+            filter_dict.setdefault(table, {})
+            filter_dict_table = filter_dict[table]
+        else:
+            filter_dict_table = filter_dict
+            filter_table_field = ''
+        column = key.split("__")[0]
+
+        # print('table:', table)
+        # print('key:', key)
+        # print('column:', column)
+        # print('table_fields:', table_fields)
+        if key and (column in table_fields.keys() or filter_table_field in table_fields.keys()):
+            if is_filter:
+                column_type = table_fields[filter_table_field]
+                value = request.get(table + '__' + key).split(",")
+            else:
+                column_type = table_fields[column]
+                value = request.get(key).split(",")
+            key_lookup = key.split("__")[-1]
+            # print('column_type', column_type)
+            # print('key_lookup', key_lookup)
+
+
             if len(value) == 1:
                 value = value[0]
             else:
                 key = key + "__in"
 
-            if table_fields[key.split("__")[0]].field_type in [
+            if column_type in [
                 "float",
                 "int",
             ]:
-                filter_dict["data__{}".format(key)] = float(value)
-            else:
-                filter_dict["data__{}".format(key)] = value
 
+                filter_dict_table["data__{}".format(key)] = float(value)
+            else:
+
+                if column_type == 'date' and key_lookup == 'relative':
+                    relative_type = value.split('_')[0] # current | next | last
+                    relative_period = value.split('_')[-1] + 's' # day | week | month | year
+                    today = datetime.today().date()
+                    relative_increment_dict = {}
+
+                    if relative_type in ['current', 'next']:
+                        relative_increment = 0 if relative_type == 'current' else 1
+                        relative_increment_dict[relative_period] = relative_increment
+                        date_start = today + relativedelta(**relative_increment_dict)
+                    else:
+                        relative_increment_dict[relative_period] = 1
+                        date_start = today - relativedelta(**relative_increment_dict)
+
+                    if relative_period == 'weeks':
+                        date_start = date_start - relativedelta(
+                            days=(date_start.isoweekday() - 1) % 7)
+                    elif relative_period == 'months':
+                        date_start = date_start.replace(day=1)
+                    elif relative_period == 'years':
+                        date_start = date_start.replace(month=1, day=1)
+
+                    filter_dict_table["data__{}__gte".format(column)] = date_start
+                    filter_dict_table["data__{}__lt".format(column)] = date_start + relativedelta(**{relative_period:1})
+                else:
+                    filter_dict_table["data__{}".format(key)] = value
+        if is_filter:
+            filter_dict[table] = filter_dict_table
+        else:
+            filter_dict = filter_dict_table
+    pprint(filter_dict)
+    return filter_dict
+
+def get_card_data(request, card, table, preview=False):
+    data_column_function = DB_FUNCTIONS[card.data_column_function]
+
+    table_fields = {x.name: x.field_type for x in table.fields.all()}
+    filter_dict = request_get_to_filter(request.GET, table_fields)
+    
     card_data = models.Entry.objects \
         .filter(table=card.table) \
         .filter(**filter_dict)

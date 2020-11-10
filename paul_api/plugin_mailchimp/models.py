@@ -83,7 +83,8 @@ class Task(models.Model):
 @receiver(post_delete, sender=Task)
 def delete_periodic_task(sender, **kwargs):
     instance = kwargs.get('instance')
-    instance.periodic_task.delete()
+    if instance.periodic_task:
+        instance.periodic_task.delete()
 
 class TaskResult(api_models.PluginTaskResult):
     """

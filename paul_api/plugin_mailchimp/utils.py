@@ -120,7 +120,7 @@ def run_sync(key,
     segment_members_table_fields_defs = table_fields.TABLE_MAPPING['segment_members']
 
     for list in lists['lists']:
-        print('List:', list['name'])
+        # print('List:', list['name'])
         # Sync lists
         audience_exists = models.Entry.objects.filter(
             table=audiences_table, data__id=list['id'])
@@ -169,7 +169,7 @@ def run_sync(key,
         list_segments = client.lists.segments.all(list_id=list['id'], get_all=True)
 
         for segment in list_segments['segments']:
-            print('     Segment:', segment['name'])
+            # print('     Segment:', segment['name'])
             audience_segments_exists = models.Entry.objects.filter(
                 table=audience_segments_table, data__audience_id=segment['list_id'])
             if audience_segments_exists:
@@ -195,7 +195,7 @@ def run_sync(key,
             segment_members = client.lists.segments.members.all(list_id=list['id'], segment_id=segment['id'], get_all=True)
 
             for member in segment_members['members']:
-                print('         Segment member:', member['email_address'])
+                # print('         Segment member:', member['email_address'])
                 segment_members_exists = models.Entry.objects.filter(
                     table=segment_members_table, data__id=member['id'], data__segment_id=segment['id'])
                 if segment_members_exists:
@@ -215,7 +215,7 @@ def run_sync(key,
                     field_def = segment_members_table_fields_defs[field]
                     if field in member.keys():
                         if field_def['type'] == 'enum':
-                            print(segment_members_table, field)
+                            # print(segment_members_table, field)
                             table_column = models.TableColumn.objects.get(table=segment_members_table, name=field)
                             if not table_column.choices:
                                 table_column.choices = []
@@ -244,7 +244,7 @@ def run_sync(key,
         list_members = client.lists.members.all(list_id=list['id'], get_all=True)
 
         for member in list_members['members']:
-            print('     List member:', member['email_address'])
+            # print('     List member:', member['email_address'])
             member['audience_name'] = list['name']
             audience_members_exists = models.Entry.objects.filter(
                 table=audience_members_table, data__id=member['id'], data__audience_id=list['id'])
@@ -266,7 +266,7 @@ def run_sync(key,
                     if field_def['type'] == 'enum':
                         table_column = models.TableColumn.objects.get(table=audience_members_table, name=field)
                         if not table_column.choices:
-                            print('no choices', table_column)
+                            # print('no choices', table_column)
                             table_column.choices = []
                         if 'is_list' in field_def.keys():
                             for item in member[field]:
@@ -276,7 +276,7 @@ def run_sync(key,
                         else:
                             if member[field] not in table_column.choices:
                                 table_column.choices.append(member[field])
-                                print('append', member[field])
+                                # print('append', member[field])
                                 table_column.save()
                     if 'is_list' in field_def.keys():
                         items = []
@@ -335,7 +335,6 @@ def add_list_to_segment(settings,
 
 
 def get_emails_from_filtered_view(token, filtered_view, settings):
-    print(token.key)
     page = 1
     continue_request = True
     results = []

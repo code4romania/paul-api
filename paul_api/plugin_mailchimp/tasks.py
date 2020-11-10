@@ -18,6 +18,7 @@ def hello(a):
 
 @shared_task
 def sync(request, task_id):
+    print('start mailchimp sync task')
     task = models.Task.objects.get(pk=task_id)
     if hasattr(request, 'user'):
         user = request.user
@@ -66,7 +67,7 @@ def sync(request, task_id):
     task_result.date_end = timezone.now()
     task_result.duration = task_result.date_end - task_result.date_start
     task_result.save()
-
+    print('ended mailchimp sync task')
     return task_result.id, task_result.success
 
 @shared_task

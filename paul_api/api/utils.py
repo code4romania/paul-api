@@ -379,7 +379,11 @@ def prepare_chart_data(chart, chart_data, timeline=True):
 
 
 def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False):
+    # pprint(request)
+    # print('------')
+    # print('filter_dict:', filter_dict)
     for key in request:
+
         if is_filter:
             table = key.split("__")[0]
             filter_table_field = "__".join(key.split("__")[:2])
@@ -451,14 +455,14 @@ def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False
             filter_dict[table] = filter_dict_table
         else:
             filter_dict = filter_dict_table
-    pprint(filter_dict)
+    # pprint(filter_dict)
     return filter_dict
 
 def get_card_data(request, card, table, preview=False):
     data_column_function = DB_FUNCTIONS[card.data_column_function]
 
     table_fields = {x.name: x.field_type for x in table.fields.all()}
-    filter_dict = request_get_to_filter(request.GET, table_fields)
+    filter_dict = request_get_to_filter(request.GET, table_fields, {}, False)
     
     card_data = models.Entry.objects \
         .filter(table=card.table) \

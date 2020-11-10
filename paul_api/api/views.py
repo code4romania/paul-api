@@ -309,7 +309,7 @@ class TableViewSet(viewsets.ModelViewSet):
         table = models.Table.objects.get(pk=pk)
         table_fields = {x.name: x for x in table.fields.all()}
 
-        filter_dict = utils.request_get_to_filter(request.GET, table_fields)
+        filter_dict = utils.request_get_to_filter(request.GET, table_fields, {}, False)
 
         file_name = "{}__{}.csv".format(table.name, datetime.now().strftime("%d.%m.%Y"))
         with open("/tmp/{}".format(file_name), "w", encoding="utf-8-sig") as csv_export_file:
@@ -924,7 +924,7 @@ class EntryViewSet(viewsets.ModelViewSet):
                 else:
                     fields = [x for x in table_fields.keys()]
 
-        filter_dict = utils.request_get_to_filter(request.GET, table_fields)
+        filter_dict = utils.request_get_to_filter(request.GET, table_fields, {}, False)
 
         if str_order and str_order.replace("-", "") in fields:
             if str_order.startswith("-"):

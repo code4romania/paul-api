@@ -16,6 +16,7 @@ class TaskViewSet(viewsets.ModelViewSet):
     pagination_class = EntriesPagination
     filter_backends = (filters.OrderingFilter,)
 
+
     def get_serializer_class(self):
         if self.action == "list":
             return serializers.TaskListSerializer
@@ -31,14 +32,37 @@ class TaskViewSet(viewsets.ModelViewSet):
     )
     def run(self, request, pk):
         task = self.get_object()
+
         if task.task_type == 'sync':
-            task_result_id, _ = tasks.sync(request, task.pk)
-            task_result = models.TaskResult.objects.get(pk=task_result_id)
+            print('aici')
+            # tasks.sync.apply_async(args=[None, task.id])
+            task_result_id = tasks.sync.apply_async(args=[None, task.id])
+            print(task_result_id)
+        else:
+            task_result_id, _ = tasks.run_segmentation(request, task.id)
 
-        result = serializers.TaskResultSerializer(
-            task_result, context={'request': request})
+        # task_result = models.TaskResult.objects.get(pk=task_result_id)
+        # result = serializers.TaskResultSerializer(
+            # task_result, context={'request': request})
+        result = {'data': {}}
+        return Response(result)
 
-        return Response(result.data)
+
+    @action(
+        detail=True,
+        methods=["get"],
+        name="Run Task",
+        url_path="run",
+    )
+    def run(self, request, pk):
+        task = self.get_object()
+        if task.task_type == 'sync':
+            # task_result_id  = tasks.sync(request, task.pk)
+            task_result_id = tasks.sync.apply_async(args=[None, task.id])
+            # task_result = models.TaskResult.objects.get(pk=task_result_id)
+
+        result = {'data': {}}
+        return Response(result)
 
 
 class TaskResultViewSet(viewsets.ReadOnlyModelViewSet):

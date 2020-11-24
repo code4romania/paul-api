@@ -67,7 +67,7 @@ class Task(models.Model):
 
     periodic_task = models.ForeignKey(
         PeriodicTask, null=True, blank=True, on_delete=models.SET_NULL,
-        related_name='plugin_tasks')
+        related_name='mailchimp_tasks')
 
     class Meta:
         pass
@@ -85,6 +85,7 @@ def delete_periodic_task(sender, **kwargs):
     instance = kwargs.get('instance')
     if instance.periodic_task:
         instance.periodic_task.delete()
+
 
 class TaskResult(api_models.PluginTaskResult):
     """

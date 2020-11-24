@@ -428,7 +428,7 @@ def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False
                 if column_type == 'date' and key_lookup == 'relative':
                     relative_type = value.split('_')[0] # current | next | last
                     relative_period = value.split('_')[-1] + 's' # day | week | month | year
-                    today = datetime.today().date()
+                    today = datetime.today()
                     relative_increment_dict = {}
 
                     if relative_type in ['current', 'next']:
@@ -447,7 +447,7 @@ def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False
                     elif relative_period == 'years':
                         date_start = date_start.replace(month=1, day=1)
 
-                    filter_dict_table["data__{}__gte".format(column)] = date_start
+                    filter_dict_table["data__{}__gte".format(column)] = date_start.replace(hours=0, minutes=0)
                     filter_dict_table["data__{}__lt".format(column)] = date_start + relativedelta(**{relative_period:1})
                 else:
                     filter_dict_table["data__{}".format(key)] = value
@@ -455,7 +455,7 @@ def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False
             filter_dict[table] = filter_dict_table
         else:
             filter_dict = filter_dict_table
-    # pprint(filter_dict)
+    pprint(filter_dict)
     return filter_dict
 
 def get_card_data(request, card, table, preview=False):

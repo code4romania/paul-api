@@ -9,7 +9,7 @@ services:
     build:
       context: .
       dockerfile: docker/api/Dockerfile
-    command: dockerize -wait tcp://db:5432 -timeout 90s -- web
+    command: dockerize -wait tcp://paul-db:5432 -timeout 90s -- web
     env_file:
       - .env
     environment:
@@ -20,13 +20,13 @@ services:
       - ./:/opt
     restart: on-failure
     depends_on:
-      - db
+      - paul-db
       - redis
 
 
-  db:
-    container_name: db
-    hostname: db
+  paul-db:
+    container_name: paul-db
+    hostname: paul-db
     build:
       context: .
       dockerfile: docker/postgres/Dockerfile
@@ -57,10 +57,10 @@ services:
     build:
       context: .
       dockerfile: docker/api/Dockerfile
-    command: dockerize -wait tcp://db:5432 -wait tcp://redis:6379 -timeout 90s -- celery
+    command: dockerize -wait tcp://paul-db:5432 -wait tcp://redis:6379 -timeout 90s -- celery
     depends_on:
       - api
-      - db
+      - paul-db
       - redis
     deploy:
       # replicas: 2
@@ -75,10 +75,10 @@ services:
     build:
       context: .
       dockerfile: docker/api/Dockerfile
-    command: dockerize -wait tcp://db:5432 -wait tcp://redis:6379 -timeout 90s -- celerybeat
+    command: dockerize -wait tcp://paul-db:5432 -wait tcp://redis:6379 -timeout 90s -- celerybeat
     depends_on:
       - api
-      - db
+      - paul-db
       - redis
     restart: on-failure
 

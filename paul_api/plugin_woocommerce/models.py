@@ -18,6 +18,10 @@ class Settings(models.Model):
     key = models.CharField(max_length=255)
     secret = models.CharField(max_length=255)
     endpoint_url = models.URLField(max_length=255)
+    table_abonamente = models.CharField(max_length=255, default="WC Abonamente")
+    table_comenzi_compact = models.CharField(max_length=255, default="WC Comenzi compact")
+    table_comenzi_detaliat = models.CharField(max_length=255, default="WC Comenzi detaliat")
+    table_clienti = models.CharField(max_length=255, default="WC Clienti")
 
     class Meta:
         pass

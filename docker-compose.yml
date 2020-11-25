@@ -30,8 +30,8 @@ services:
     build:
       context: .
       dockerfile: docker/postgres/Dockerfile
-    ports:
-      - "5433:5432"
+    # ports:
+    #   - "5434:5432"
     env_file:
       - .env
     volumes:
@@ -48,8 +48,8 @@ services:
 
   redis:
     image: redis:latest
-    ports:
-     - '6379:6379'
+    # ports:
+    #  - '6379:6379'
     restart: on-failure
 
 

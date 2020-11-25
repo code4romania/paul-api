@@ -14,6 +14,7 @@ from plugin_woocommerce import models
 from django_celery_beat.models import CrontabSchedule, PeriodicTask
 import json
 
+
 class SettingsSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -22,6 +23,10 @@ class SettingsSerializer(serializers.ModelSerializer):
             "key",
             "secret",
             "endpoint_url",
+            "table_abonamente",
+            "table_comenzi_compact",
+            "table_comenzi_detaliat",
+            "table_clienti",
         ]
 
 

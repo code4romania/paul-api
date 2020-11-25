@@ -20,9 +20,20 @@ def sync(request, task_id):
     KEY = settings.key
     SECRET = settings.secret
     ENDPOINT_URL = settings.endpoint_url
+    TABLE_ABONAMENTE = settings.table_abonamente
+    TABLE_COMENZI_COMPACT = settings.table_comenzi_compact
+    TABLE_COMENZI_DETALIAT = settings.table_comenzi_detaliat
+    TABLE_CLIENTI = settings.table_clienti
     # TABLE_NAME = settings.table_name
 
-    success, stats = utils.run_sync(ENDPOINT_URL, KEY, SECRET)
+    success, stats = utils.run_sync(
+        KEY,
+        SECRET,
+        ENDPOINT_URL,
+        TABLE_ABONAMENTE,
+        TABLE_COMENZI_COMPACT,
+        TABLE_COMENZI_DETALIAT,
+        TABLE_CLIENTI)
 
     task_result.success = success
     task_result.stats = stats

@@ -923,7 +923,9 @@ class EntryViewSet(viewsets.ModelViewSet):
                     fields = [x for x in default_fields.keys()]
                 else:
                     fields = [x for x in table_fields.keys()]
-
+        print(request.GET)
+        pprint(request.META)
+        print(request.query_params)
         filter_dict = utils.request_get_to_filter(request.GET, table_fields, {}, False)
 
         if str_order and str_order.replace("-", "") in fields:
@@ -1236,4 +1238,7 @@ class CardViewSet(viewsets.ModelViewSet):
     def get_data(self, request, pk):
         card = self.get_object()
         data = utils.get_card_data(request, card, card.table)
+        print('-------')
+        print(data)
+        print('-------')
         return Response(data)

@@ -379,9 +379,6 @@ def prepare_chart_data(chart, chart_data, timeline=True):
 
 
 def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False):
-    # pprint(request)
-    # print('------')
-    # print('filter_dict:', filter_dict)
     for key in request:
 
         if is_filter:
@@ -396,10 +393,6 @@ def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False
             filter_table_field = ''
         column = key.split("__")[0]
 
-        # print('table:', table)
-        # print('key:', key)
-        # print('column:', column)
-        # print('table_fields:', table_fields)
         if key and (column in table_fields.keys() or filter_table_field in table_fields.keys()):
             if is_filter:
                 column_type = table_fields[filter_table_field]
@@ -408,9 +401,6 @@ def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False
                 column_type = table_fields[column]
                 value = request.get(key).split(",")
             key_lookup = key.split("__")[-1]
-            # print('column_type', column_type)
-            # print('key_lookup', key_lookup)
-
 
             if len(value) == 1:
                 value = value[0]
@@ -447,7 +437,7 @@ def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False
                     elif relative_period == 'years':
                         date_start = date_start.replace(month=1, day=1)
 
-                    filter_dict_table["data__{}__gte".format(column)] = date_start.replace(hours=0, minutes=0)
+                    filter_dict_table["data__{}__gte".format(column)] = date_start.replace(hour=0, minute=0)
                     filter_dict_table["data__{}__lt".format(column)] = date_start + relativedelta(**{relative_period:1})
                 else:
                     filter_dict_table["data__{}".format(key)] = value
@@ -455,15 +445,16 @@ def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False
             filter_dict[table] = filter_dict_table
         else:
             filter_dict = filter_dict_table
-    pprint(filter_dict)
+    # pprint(filter_dict)
     return filter_dict
+
 
 def get_card_data(request, card, table, preview=False):
     data_column_function = DB_FUNCTIONS[card.data_column_function]
 
     table_fields = {x.name: x.field_type for x in table.fields.all()}
     filter_dict = request_get_to_filter(request.GET, table_fields, {}, False)
-    
+
     card_data = models.Entry.objects \
         .filter(table=card.table) \
         .filter(**filter_dict)
@@ -475,9 +466,14 @@ def get_card_data(request, card, table, preview=False):
             .aggregate(value=data_column_function(Cast(
                 KeyTextTransform(card.data_column.name, "data"), FloatField()
             )))
+
     else:
         data = card_data \
             .aggregate(value=data_column_function('id'))
+
+    if data['value'] is None:
+        data['value'] = 0
+
     return data
 
 

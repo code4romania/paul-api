@@ -38,14 +38,6 @@ services:
       - database-data:/var/lib/postgresql/data/
     restart: on-failure
 
-  # rabbitmq:
-  #   container_name: rabbitmq
-  #   hostname: rabbitmq
-  #   image: rabbitmq:latest
-  #   ports:
-  #     - "5672:5672"
-  #   restart: on-failure
-
   redis:
     image: redis:latest
     # ports:

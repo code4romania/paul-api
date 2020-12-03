@@ -1,33 +1,91 @@
-import json
+#!/usr/bin/env python3
 
-import requests
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
 import copy
 import datetime
 import json
+import os
 import re
 import sys
 import traceback
 import urllib
+from dataclasses import dataclass, field
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
+from urllib import parse
 
 import requests
 from requests.adapters import HTTPAdapter
+from requests.exceptions import HTTPError
 from requests.packages.urllib3.util.retry import Retry
 
-# from json_to_csv import json_to_csv
-
-# from woocommerce import API
-
-KEY = "ck_dfeab47b910ef6b5113cadc93d27b51cfff357b3"
-SECRET = "cs_2a6077c83243eb84fe9b788668b29d62e9b82d40"
-BASE_URL = "https://dor.ro/wp-json/wc/"
+T = TypeVar("T")
 
 DEFAULT_TIMEOUT = 20  # seconds
 
 
+@dataclass
+class Msg(Exception):
+    msg: str
+
+    def to_str(self) -> str:
+        return f"Error: {self.msg}\nPlease try the action again. If the error persists contact support"
+
+
+def err_url_get(url: str, err: HTTPError) -> Msg:
+    return Msg(f"GET on URL {url} returned {err}")
+
+
+def err_url_no_json(url: str) -> Msg:
+    return Msg(f"GET on {url} did not return a valid JSON")
+
+
+def err_url_response_code(url: str, code) -> Msg:
+    return Msg(f"URL {url} returned unexpected code {code}")
+
+
+def err_fallback(msg: str) -> Msg:
+    return Msg(f"Unexpected migration error: {msg}")
+
+
+def err_transform(table: str, row: Any, column: str, err: Any) -> Msg:
+    sep = ": " if err else ""
+    return Msg(
+        f"Encountered error for column {column} of entry Id {row} in table {table}{sep}{err}. Value left empty"
+    )
+
+
+# pair of (data,messages) returned by transform functions
+TransformResult = Tuple[List[Dict[str, Any]], List[Msg]]
+
+
+@dataclass
+class Endpoint:
+    name: str
+    version: str
+
+    mk_url: Callable[
+        ["Endpoint", str, int], str
+    ] = lambda self, base_url, page: f"{base_url}{self.version}/{self.name}?page={page}"
+    filter: Callable[[Any], bool] = lambda _entry: True
+
+    # dict of suffix -> transform
+    transform: Dict[str, Callable[[List], TransformResult]] = field(
+        default_factory=dict
+    )
+
+
 class TimeoutHTTPAdapter(HTTPAdapter):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         self.timeout = DEFAULT_TIMEOUT
         if "timeout" in kwargs:
             self.timeout = kwargs["timeout"]
@@ -41,93 +99,102 @@ class TimeoutHTTPAdapter(HTTPAdapter):
         return super().send(request, **kwargs)
 
 
-def get_rename_keys(obj, key_name_map):
-    """key_name_map is a dict of captured_key => new_name | (new_name, value_fn)"""
-    d = {}
-    for k, new_name in key_name_map.items():
-        if type(new_name) is tuple:
-            name, value_fn = new_name
-            d[name] = value_fn(obj.get(k))
-        else:
-            d[new_name] = obj.get(k)
+class Fetcher:
+    def __init__(self, key: str, secret: str) -> None:
+        self.key = key
+        self.secret = secret
+        self.http = requests.Session()
 
-    # return {new_name: obj.get(k) for k, new_name in key_name_map.items()}
-    return d
+        retries = Retry(
+            total=10, backoff_factor=4, status_forcelist=[429, 500, 502, 503, 504]
+        )
+
+        # mount timeout adapter so that all calls have the same timeout
+        adapter = TimeoutHTTPAdapter(timeout=60, max_retries=retries)
+        self.http.mount("https://", adapter)
+        self.http.mount("http://", adapter)
+
+        # the request will raise an exception on 4XX and 5XX
+        assert_status_hook = (
+            lambda response, *args, **kwargs: response.raise_for_status()
+        )
+        self.http.hooks["response"] = [assert_status_hook]
+
+    def get(self, url: str, user_params: Dict[str, str] = {}):
+        print(f"requesting {url}")
+        params = {
+            "consumer_key": self.key,
+            "consumer_secret": self.secret,
+            **user_params,
+        }
+        return self.http.get(url, params=params)
+
+    def get_json(
+        self, url, user_params: Dict[str, str] = {}
+    ) -> Union[None, List, Dict]:
+        try:
+            response = self.get(url, user_params)
+            if response.status_code == requests.codes.no_content:
+                return None
+            if response.status_code != requests.codes.ok:
+                raise err_url_response_code(url, response.status_code)
+            return response.json()
+        except HTTPError as err:
+            raise err_url_get(url, err) from err
+        except ValueError as err:
+            raise err_url_no_json(url) from err
 
 
-def fix_date_format(d):
+def fix_date_format(d: str) -> str:
     if not d:
         return ""
     return datetime.datetime.strptime(d, "%Y-%m-%dT%H:%M:%S").strftime("%Y-%m-%d")
 
 
-BILLING_SUBKEYS = {
-    "first_name": "Billing First Name",
-    "last_name": "Billing Last Name",
-    "company": "Billing Company",
-    "address_1": "Billing Address_1",
-    "address_2": "Billing Address_2",
-    "city": "Billing City",
-    "state": "Billing State",
-    "postcode": "Billing Postcode",
-    "country": "Billing Country",
-    "email": "Billing Email",
-    "phone": "Billing Phone",
-}
-
-SHIPPING_SUBKEYS = {
-    "first_name": "Shipping First Name",
-    "last_name": "Shipping Last Name",
-    "company": "Shipping Company",
-    "address_1": "Shipping Address_1",
-    "address_2": "Shipping Address_2",
-    "city": "Shipping City",
-    "state": "Shipping State",
-    "postcode": "Shipping Postcode",
-    "country": "Shipping Country",
-    "email": "Shipping Email",
-    "phone": "Shipping Phone",
-}
-
-
-def _key(_key_name, default=None):
+def _key(key_name: str, default: Optional[T] = None) -> Callable[[Dict[str, Any]], T]:
     if default is None:
-        return lambda obj: obj[_key_name]
-    return lambda obj: obj.get(_key_name, default)
-
-
-ITEM_COLUMNS = {
-    "Item ID": _key("id"),
-    "Item Name": _key("name"),
-    "Item Price": lambda obj: str(
-        float(obj["price"]) + (float(obj["total_tax"]) / float(obj["quantity"]))
-    ),
-    "Item Product ID": _key("product_id"),
-    "Item Quantity": _key("quantity"),
-    "Item SKU": _key("sku"),
-    "Item Total": lambda obj: str(float(obj["total"]) + float(obj["total_tax"])),
-    "Item Total TVA": _key("total_tax"),
-    "Item Variation ID": _key("variation_id"),
-}
+        return lambda obj: obj[key_name]
+    return lambda obj: obj.get(key_name, default)
 
 
 CUSTOMER_METADATA_KEYS = {
-    "_mailchimp_sync_status": (
-        "Newsletter comunitate",
-        lambda obj: obj.get("status") == "subscribed" if obj else False,
-    ),
-    "mailchimp_woocommerce_is_subscribed": (
-        "Mailchimp WooCommerce subscribed",
-        lambda v: v == "1",
-    ),
-    "_wc_memberships_mailchimp_sync_opt_in": (
-        "Mailchimp opt in",
-        lambda v: v == "yes",
-    ),
+    "Newsletter comunitate": lambda obj: (obj or {})
+    .get("_mailchimp_sync_status", {})
+    .get("status")
+    == "subscribed",
+    "Mailchimp WooCommerce subscribed": lambda obj: str(
+        obj.get("mailchimp_woocommerce_is_subscribed")
+    )
+    == "1",
+    "Mailchimp opt in": lambda obj: str(
+        obj.get("_wc_memberships_mailchimp_sync_opt_in")
+    )
+    == "yes",
 }
 
 
-def transform_customers(data):
+def add_columns(
+    entry: Dict[str, Any],
+    entry_id: Any,
+    table: str,
+    cols: Dict[str, Callable],
+    src: Dict[str, Any],
+) -> List[Msg]:
+    messages = []
+    for col_name, get_val in cols.items():
+        v = ""
+        try:
+            v = get_val(src)
+        except KeyError as err:
+            messages.append(err_transform(table, entry_id, col_name, err))
+        except Exception as ex:
+            messages.append(err_transform(table, entry_id, col_name, str(ex)))
+
+        entry[col_name] = v
+    return messages
+
+
+def transform_customers(data: List) -> TransformResult:
     COLUMNS = {
         "ID Client": _key("id"),
         "Nume": lambda obj: f"{obj['first_name']} {obj['last_name']}".strip(),
@@ -146,64 +213,82 @@ def transform_customers(data):
     }
 
     customers = []
+    messages = []
 
     for cust in data:
-        entry = {name: get_val(cust) for name, get_val in COLUMNS.items()}
+        try:
+            cust_id = cust.get("id")
+            entry: Dict[str, Any] = {}
+            # name: get_val(cust) for name, get_val in COLUMNS.items()}
+            messages += add_columns(entry, cust_id, "customers", COLUMNS, src=cust)
 
-        billing = cust["billing"]
-        entry.update(
-            {name: get_val(billing) for name, get_val in BILLING_COLUMNS.items()}
-        )
-
-        entry.update(
-            get_rename_keys(
-                {md["key"]: md["value"] for md in cust["meta_data"]},
-                CUSTOMER_METADATA_KEYS,
+            billing = cust["billing"]
+            messages += add_columns(
+                entry, cust_id, "customers", BILLING_COLUMNS, src=billing
             )
-        )
 
-        customers.append(entry)
+            messages += add_columns(
+                entry,
+                cust_id,
+                "customers",
+                CUSTOMER_METADATA_KEYS,
+                src={md["key"]: md["value"] for md in cust["meta_data"]},
+            )
 
-    return customers
+            customers.append(entry)
+
+        except Exception as err:
+            messages.append(err_fallback(f"transform error for customer: {err}"))
+
+    return customers, messages
 
 
-def fetch_items_with_ids(ids, mk_url):
-    fetcher = Fetcher()
-
+def fetch_items_with_ids(fetcher, ids, mk_url) -> Tuple[Dict[str, Any], List[Msg]]:
+    """
+    returns messages
+    """
+    messages = []
     items = {}
     for ID in ids:
         url = mk_url(ID)
         try:
-            response = fetcher.get(url)
-            resp_json = response.json()
-        except Exception as err:
-            print(f"get error for url {url}: {err}")
+            resp_json = fetcher.get_json(url)
+        except Msg as msg:
+            messages.append(msg)
             continue
-        # print(json.dumps(res.json(), indent=4))
+        except Exception as err:
+            messages.append(err_fallback(f"get error for url {url}: {err}"))
+            continue
         items[str(ID)] = resp_json
 
-    return items
+    return items, messages
 
 
-def fetch_subscription_notes(subscription_ids):
+def fetch_subscription_notes(
+    fetcher, base_url, subscription_ids
+) -> Tuple[Dict[str, Any], List[Msg]]:
     return fetch_items_with_ids(
-        subscription_ids, lambda ID: f"{BASE_URL}v1/subscriptions/{ID}/notes"
+        fetcher, subscription_ids, lambda ID: f"{base_url}v1/subscriptions/{ID}/notes"
     )
 
 
-def fetch_customers_by_id(customer_ids):
-    return fetch_items_with_ids(customer_ids, lambda ID: f"{BASE_URL}v3/customers/{ID}")
+def fetch_customers_by_id(
+    fetcher, base_url, customer_ids
+) -> Tuple[Dict[str, Any], List[Msg]]:
+    return fetch_items_with_ids(
+        fetcher, customer_ids, lambda ID: f"{base_url}v3/customers/{ID}"
+    )
 
 
-def fetch_customers_by_email(emails):
+def fetch_customers_by_email(
+    fetcher, base_url, emails: List[str]
+) -> Tuple[Dict[str, Any], List[Msg]]:
     """
     emails are sometimes emails, sometimes a "Name (email)" combo.
     First we try to parse the email out, and only request with the full string as fallback.
     The keys in the returned dict are the original strings (so they can be looked up from subscriptions)
     """
-    fetcher = Fetcher()
-
-    not_found = []
+    messages = []
     customers_by_email = {}
     for email in emails:
 
@@ -217,15 +302,17 @@ def fetch_customers_by_email(emails):
         resp_json = None
         for attempt in api_tries:
             arg = urllib.parse.quote(attempt)
-            url = f"https://dor.ro/wp-json/wc/v3/customers/?role=all&email={arg}"
+            url = f"{base_url}v3/customers/?role=all&email={arg}"
             try:
-                response = fetcher.get(url)
-                resp_json = response.json()
+                resp_json = fetcher.get_json(url)
                 # print(f"resp_json: {json.dumps(resp_json)}")
                 if resp_json:
                     break
+            except Msg as msg:
+                messages.append(msg)
+                continue
             except Exception as err:
-                print(f"get error for email {email}: {err}")
+                messages.append(err_fallback(f"get error for email {email}: {err}"))
                 continue
         else:
             # not_found += api_tries
@@ -236,11 +323,13 @@ def fetch_customers_by_email(emails):
 
     # print("emails not found", not_found)
     # sys.exit(0)
-    return customers_by_email
+    return customers_by_email, messages
 
 
-def is_gift(sub):
-    """returns None when it's not a gift, and returns the meta value when it is"""
+def is_gift(sub: Dict) -> Optional[str]:
+    """
+    returns None when it's not a gift, and returns the meta value when it is
+    """
     items = sub.get("line_items")
     if not isinstance(items, list):
         return None
@@ -257,7 +346,9 @@ def is_gift(sub):
     return None
 
 
-def partition_emails_and_customer_ids(subscriptions_data):
+def partition_emails_and_customer_ids(
+    subscriptions_data: List,
+) -> Tuple[List[str], List[str]]:
     """
     returns a tuple of (emails, cust_ids)
     """
@@ -273,48 +364,48 @@ def partition_emails_and_customer_ids(subscriptions_data):
 
 
 def fetch_convoluted_data_stage_2(
-    subs_ep,
-    notes_fname,
-    customers_emails_fname,
-):
-    with open(first_file(subs_ep), "r") as f:
-        subscriptions_data = json.loads(f.read())
+    fetcher: Fetcher,
+    base_url: str,
+    subs_ep: Endpoint,
+    notes_fname: str,
+    customers_emails_fname: str,
+) -> List[Msg]:
+    messages = []
+    subscriptions_data = get_json(first_file(subs_ep))
 
-    subscription_notes = fetch_subscription_notes(
-        [sub["id"] for sub in subscriptions_data]
+    subscription_notes, new_msgs = fetch_subscription_notes(
+        fetcher, base_url, [sub["id"] for sub in subscriptions_data]
     )
-    with open(notes_fname, "w") as f:
-        f.write(json.dumps(subscription_notes, indent=4))
+    put_json(notes_fname, subscription_notes)
+    messages += new_msgs
 
     emails, _cust_ids = partition_emails_and_customer_ids(subscriptions_data)
 
     # print("mails :", len(emails))
     # print(emails)
 
-    customers_by_email = fetch_customers_by_email(emails)
-    with open(customers_emails_fname, "w") as f:
-        f.write(json.dumps(customers_by_email, indent=4))
+    customers_by_email, customer_msgs = fetch_customers_by_email(
+        fetcher, base_url, emails
+    )
+    put_json(customers_emails_fname, customers_by_email)
+    messages += customer_msgs
+    return messages
 
 
 def fetch_convoluted_data_stage_3(
-    subs_ep,
-    memberships_lifetime_ep,
-    memberships_old_ep,
-    customers_emails_fname,
+    fetcher: Fetcher,
+    base_url: str,
+    subs_ep: Endpoint,
+    memberships_lifetime_ep: Endpoint,
+    memberships_old_ep: Endpoint,
+    customers_emails_fname: str,
     known_customers,
-    customers_fname,
-):
-    with open(first_file(subs_ep), "r") as f:
-        subscriptions_data = json.loads(f.read())
-
-    with open(first_file(memberships_lifetime_ep), "r") as f:
-        life_members_data = json.loads(f.read())
-
-    with open(first_file(memberships_old_ep), "r") as f:
-        old_members_data = json.loads(f.read())
-
-    with open(customers_emails_fname, "r") as f:
-        customers_by_email = json.loads(f.read())
+    customers_fname: str,
+) -> List[Msg]:
+    subscriptions_data = get_json(first_file(subs_ep))
+    life_members_data = get_json(first_file(memberships_lifetime_ep))
+    old_members_data = get_json(first_file(memberships_old_ep))
+    customers_by_email = get_json(customers_emails_fname)
 
     ids_from_email = set(
         str(entry["id"]) for c in customers_by_email.values() for entry in c
@@ -326,19 +417,19 @@ def fetch_convoluted_data_stage_3(
     ids_from_old_members = set(str(m["customer_id"]) for m in old_members_data)
 
     _emails, cust_ids = partition_emails_and_customer_ids(subscriptions_data)
-    cust_ids = set(cust_ids)
+    cust_ids_set = set(cust_ids)
 
     new_ids_from_email = ids_from_email - known_customer_ids
-    print("new from email", list(sorted(new_ids_from_email)))
+    # print("new from email", list(sorted(new_ids_from_email)))
     new_ids_from_life = ids_from_life_members - known_customer_ids
-    print("new from life", list(sorted(new_ids_from_life)))
+    # print("new from life", list(sorted(new_ids_from_life)))
     new_ids_from_old = ids_from_old_members - known_customer_ids
-    print("new from old", list(sorted(new_ids_from_old)))
-    new_ids_from_subs = cust_ids - known_customer_ids
-    print("new from subs", list(sorted(new_ids_from_subs)))
+    # print("new from old", list(sorted(new_ids_from_old)))
+    new_ids_from_subs = cust_ids_set - known_customer_ids
+    # print("new from subs", list(sorted(new_ids_from_subs)))
 
-    cust_ids = (
-        list(cust_ids)
+    all_cust_ids = (
+        list(cust_ids_set)
         + list(ids_from_email)
         + list(ids_from_life_members)
         + list(ids_from_old_members)
@@ -347,22 +438,24 @@ def fetch_convoluted_data_stage_3(
     # print("cust_ids :", len(cust_ids))
     # print(cust_ids)
 
-    cust_ids = set(cust_ids)
-    remaining_ids = cust_ids - set(known_customers.keys())
-    print("REMAINING: ", list(sorted(remaining_ids)))
-    print("REMAINING: ", len(cust_ids))
+    all_cust_ids_set = set(all_cust_ids)
+    remaining_ids = all_cust_ids_set - set(known_customers.keys())
+    # print("REMAINING: ", list(sorted(remaining_ids)))
+    # print("REMAINING: ", len(cust_ids))
 
     # print("cust_ids :", len(cust_ids))
     # print(cust_ids)
 
-    customers_by_id = fetch_customers_by_id(remaining_ids)
+    customers_by_id, messages = fetch_customers_by_id(fetcher, base_url, remaining_ids)
     customers_by_id.update(known_customers)
-    with open(customers_fname, "w") as f:
-        f.write(json.dumps(customers_by_id, indent=4))
+    put_json(customers_fname, customers_by_id)
+    return messages
 
 
-def filter_for_prefix_and_strip(iterable, prefix):
-    for x in iterable:
+def filter_for_prefix_and_strip(
+    iter: Iterable[str], prefix: str
+) -> Generator[str, None, None]:
+    for x in iter:
         if not x:
             continue
         if x.startswith(prefix):
@@ -376,9 +469,7 @@ def transform_convoluted(
     subscription_notes,
     customers_by_id,
     customers_by_email,
-):
-    # subscriptions_data = subscriptions_data[0:10]
-    # print(sorted(subscription_notes.keys()))
+) -> TransformResult:
 
     BILLING_COLUMNS = {
         "Adresa": lambda obj: f"{obj['address_1']} {obj['address_2']}".strip(),
@@ -390,7 +481,7 @@ def transform_convoluted(
         "Telefon": _key("phone"),
     }
 
-    def compute_recurrence(sub):
+    def compute_recurrence(sub: Dict) -> str:
         # just in case it's either string or int
         billing_interval = str(sub["billing_interval"])
         billing_period = sub["billing_period"]
@@ -401,7 +492,7 @@ def transform_convoluted(
 
         return f"Every {billing_interval} {billing_period}"
 
-    def status_value(obj):
+    def status_value(obj: Dict) -> str:
         st = obj["status"]
         if st == "paused":
             return "on hold"
@@ -411,7 +502,7 @@ def transform_convoluted(
         "Data abonarii": lambda obj: fix_date_format(obj["start_date"]),
         "Data expirarii": lambda obj: fix_date_format(obj["end_date"]),
         "Data urmatoarei plati": lambda obj: fix_date_format(
-            obj.get("next_payment_date")
+            obj.get("next_payment_date", "")
         ),
         "ID abonament": _key("id"),
         "Metoda de plata": _key("payment_method", ""),
@@ -420,16 +511,18 @@ def transform_convoluted(
     }
 
     abonamente = []
+    messages = []
 
     for sub in subscriptions_data:
         if not sub.get("line_items"):
             continue
 
-        entry = {}
+        entry: Dict[str, Any] = {}
+        sub_id = sub.get("id")
 
         try:
-            entry.update(
-                {name: get_val(sub) for name, get_val in COMMON_COLUMNS.items()}
+            messages += add_columns(
+                entry, sub_id, "abonamente", COMMON_COLUMNS, src=sub
             )
             entry["Creat via"] = sub["created_via"]
             entry["Recurenta"] = compute_recurrence(sub)
@@ -440,15 +533,19 @@ def transform_convoluted(
             else:
                 cust_id = sub["customer_id"]
 
+            if str(cust_id) == "0":
+                continue
+
             cust = customers_by_id[str(cust_id)]
 
             entry["Nume"] = f"{cust['first_name']} {cust['last_name']}".strip()
             entry["Email"] = cust["email"]
-            entry.update(
-                get_rename_keys(
-                    {md["key"]: md["value"] for md in cust["meta_data"]},
-                    CUSTOMER_METADATA_KEYS,
-                )
+            messages += add_columns(
+                entry,
+                sub_id,
+                "abonamente",
+                CUSTOMER_METADATA_KEYS,
+                src={md["key"]: md["value"] for md in cust["meta_data"]},
             )
             entry["Cadou"] = "Yes" if gift_mail else "No"
 
@@ -457,8 +554,12 @@ def transform_convoluted(
             else:
                 billing = sub["billing"]
 
-            entry.update(
-                {name: get_val(billing) for name, get_val in BILLING_COLUMNS.items()}
+            messages += add_columns(
+                entry,
+                sub_id,
+                "abonamente",
+                BILLING_COLUMNS,
+                src=billing,
             )
 
             items = sub["line_items"]
@@ -468,7 +569,7 @@ def transform_convoluted(
                 assert {**items[0], "id": 0} == {
                     **items[1],
                     "id": 0,
-                }, f"unrecognized 2-item line_items case for sub id {sub['id']}"
+                }, f"unrecognized 2-item line_items case for subscription id {sub['id']}"
 
                 items = [copy.deepcopy(items[0])]
             elif len(items) == 6:
@@ -478,12 +579,10 @@ def transform_convoluted(
             if len(items) == 1:
                 item_name = items[0]["name"]
                 quantity = items[0]["quantity"]
-                # product_id = items[0]["product_id"]
 
             elif len(items) == 5:
                 item_name = items[0]["name"]
                 quantity = items[0]["quantity"]
-                # product_id = items[0]["product_id"]
 
                 other_names = set(i["name"] for i in items[1:])
                 other_qty = [i["quantity"] for i in items[1:]]
@@ -515,8 +614,13 @@ def transform_convoluted(
                         nume_abonament = "Abonament Digital + Print Anual Cadou"
                         break
                 else:
-                    raise Exception(
-                        f"unmatched gift product id in items for sub id {sub['id']}"
+                    messages.append(
+                        err_transform(
+                            "abonamente",
+                            sub_id,
+                            "Nume abonament",
+                            "unmatched gift product id in items",
+                        )
                     )
             else:
                 for item in items:
@@ -530,8 +634,13 @@ def transform_convoluted(
                         nume_abonament = "Abonament Digital + Print Anual"
                         break
                 else:
-                    raise Exception(
-                        f"unmatched product id in items for sub id {sub['id']}"
+                    messages.append(
+                        err_transform(
+                            "abonamente",
+                            sub_id,
+                            "Nume abonament",
+                            "unmatched product id in items",
+                        )
                     )
 
             entry["Nume abonament"] = nume_abonament
@@ -555,53 +664,78 @@ def transform_convoluted(
             abonamente.append(entry)
 
         except Exception as e:
-            print(f"\nexception for sub {sub['id']} : {str(e)}")
-            traceback.print_exc(file=sys.stderr)
+            messages.append(
+                err_fallback(
+                    f"exception for subscription {sub_id} : {str(type(e))} {e}"
+                )
+            )
+            # traceback.print_exc(file=sys.stderr)
             continue
 
     reference_keys = list(sorted(abonamente[0].keys()))
 
     for old in old_members_data:
+        if str(old.get("customer_id")) == "0":
+            continue
 
         try:
-            entry = abonament_entry_for_member_data(
+            entry, new_msg = abonament_entry_for_member_data(
                 old, COMMON_COLUMNS, BILLING_COLUMNS, customers_by_id
             )
             entry["Nume abonament"] = "Abonament vechi"
+            messages += new_msg
 
-            assert list(sorted(entry.keys())) == reference_keys
+            assert (
+                list(sorted(entry.keys())) == reference_keys
+            ), f"columns missing for old membership {old.get('id')}"
             abonamente.append(entry)
 
         except Exception as e:
-            print(f"\nexception for old member {old['id']} : {str(e)}")
-            traceback.print_exc(file=sys.stderr)
+            messages.append(
+                err_fallback(
+                    f"exception for old membership {old.get('id')} : {str(type(e))} {e}"
+                )
+            )
+            # traceback.print_exc(file=sys.stderr)
             continue
 
     for life in life_members_data:
+        if str(life.get("customer_id")) == "0":
+            continue
 
         try:
-            entry = abonament_entry_for_member_data(
+            entry, new_msg = abonament_entry_for_member_data(
                 life, COMMON_COLUMNS, BILLING_COLUMNS, customers_by_id
             )
             entry["Nume abonament"] = "Abonament pe viata"
+            messages += new_msg
 
-            assert list(sorted(entry.keys())) == reference_keys
+            assert (
+                list(sorted(entry.keys())) == reference_keys
+            ), f"columns missing for lifetime membership {life.get('id')}"
             abonamente.append(entry)
 
         except Exception as e:
-            print(f"\nexception for life member {life['id']} : {str(e)}")
-            traceback.print_exc(file=sys.stderr)
+            messages.append(
+                err_fallback(
+                    f"exception for lifetime membership {life.get('id')} : {str(type(e))} {e}"
+                )
+            )
+            # traceback.print_exc(file=sys.stderr)
             continue
 
-    return abonamente
+    return abonamente, messages
 
 
 # this would work nicer as an inner function, but python is acting too weird with captures here
 def abonament_entry_for_member_data(
     mem, COMMON_COLUMNS, BILLING_COLUMNS, customers_by_id
-):
-    entry = {}
-    entry.update({name: get_val(mem) for name, get_val in COMMON_COLUMNS.items()})
+) -> Tuple[Dict[str, Any], List[Msg]]:
+    entry: Dict[str, Any] = {}
+    sub_id = mem.get("id")
+    messages = []
+    messages += add_columns(entry, sub_id, "abonamente", COMMON_COLUMNS, src=mem)
+
     entry["Creat via"] = "admin"
     entry["Recurenta"] = ""
     entry["Ce contine"] = ""
@@ -615,30 +749,37 @@ def abonament_entry_for_member_data(
 
     entry["Nume"] = f"{cust['first_name']} {cust['last_name']}".strip()
     entry["Email"] = cust["email"]
-    entry.update(
-        get_rename_keys(
-            customer_meta,
-            CUSTOMER_METADATA_KEYS,
-        )
+    messages += add_columns(
+        entry,
+        sub_id,
+        "abonamente",
+        CUSTOMER_METADATA_KEYS,
+        src=customer_meta,
     )
 
     billing = cust["billing"]
-    entry.update({name: get_val(billing) for name, get_val in BILLING_COLUMNS.items()})
+    messages += add_columns(
+        entry,
+        sub_id,
+        "abonamente",
+        BILLING_COLUMNS,
+        src=billing,
+    )
 
     entry["Metoda de livrare"] = customer_meta.get("delivery_note")
     entry["Cantitate"] = int(customer_meta.get("print_quantity", 1))
     entry["Note"] = customer_meta.get("customer_note")
 
-    return entry
+    return entry, messages
 
 
-def transform_orders(data, distribute):
-    def infer_tip_comanda(obj):
+def transform_orders(data: List, distribute: bool) -> TransformResult:
+    def infer_tip_comanda(obj) -> str:
         if obj["payment_method"] == "braintree_cc" and obj["created_via"] == "checkout":
             return "noua"
         if (
             obj["payment_method"] == "braintree_cc"
-            and obj["created_via"] != "subscription"
+            and obj["created_via"] == "subscription"
         ):
             return "reinnoire"
         if (
@@ -646,7 +787,7 @@ def transform_orders(data, distribute):
             and obj["created_via"] == "checkout"
         ):
             return "produs"
-        raise Exception(f"no result for {json.dumps(obj, indent=4)}")
+        return "manual"
 
     COLUMNS = {
         "ID Comanda": _key("number"),
@@ -668,29 +809,42 @@ def transform_orders(data, distribute):
     }
 
     orders = []
+    messages = []
+    table_name = "orders_" + ("verbose" if distribute else "compact")
 
     for order in data:
         if "line_items" not in order or len(order["line_items"]) == 0:
             continue
 
+        order_id = order.get("id")
+
         try:
-            entry = {name: get_val(order) for name, get_val in COLUMNS.items()}
+            entry: Dict[str, Any] = {}
+            messages += add_columns(entry, order_id, table_name, COLUMNS, src=order)
             entry["Data"] = fix_date_format(entry["Data"])
 
             billing = order["billing"]
-            entry.update(
-                {
-                    name + " (facturare)": get_val(billing)
-                    for name, get_val in BILLING_SHIPPING_COLUMNS.items()
-                }
+            messages += add_columns(
+                entry,
+                order_id,
+                table_name,
+                cols={
+                    name + " (facturare)": fn
+                    for name, fn in BILLING_SHIPPING_COLUMNS.items()
+                },
+                src=billing,
             )
 
             shipping = order["shipping"]
-            entry.update(
-                {
-                    name + " (livrare)": get_val(shipping)
-                    for name, get_val in BILLING_SHIPPING_COLUMNS.items()
-                }
+            messages += add_columns(
+                entry,
+                order_id,
+                table_name,
+                cols={
+                    name + " (livrare)": fn
+                    for name, fn in BILLING_SHIPPING_COLUMNS.items()
+                },
+                src=shipping,
             )
 
             if not distribute:
@@ -709,249 +863,174 @@ def transform_orders(data, distribute):
                         float(item["total"]) + float(item["total_tax"])
                     )
                     orders.append(replica)
-        except Exception as e:  # pokemon exception handling
-            # print(f"exception for order {order['id']} : {e}")
+
+        except Exception as e:
+            messages.append(err_fallback(f"exception for order {order['id']} : {e}"))
             continue
 
-    return orders
+    return orders, messages
 
 
-def transform_products(data):
-    ENDPOINT_TO_COLUMN = {
-        "categories": "Categories",
-        "date_created": "Date Created",
-        "date_modified": "Date Modified",
-        "downloadable": "Downloadable",
-        "id": "ID",
-        "name": "Name",
-        "on_sale": "On Sale",
-        "parent_id": "Parent ID",
-        "permalink": "Permalink",
-        "price": "Price",
-        "purchasable": "Purchasable",
-        "regular_price": "Regular Price",
-        "sale_price": "Sale Price",
-        "sku": "SKU",
-        "status": "Status",
-        "stock_quantity": "Stock Quantity",
-        "tax_class": "Tax Class",
-        "total_sales": "Total Sales",
-        "type": "Type",
-        "virtual": "Virtual",
-    }
+def fetch_all(
+    endpoints: List[Endpoint], fetcher, base_url: str
+) -> Tuple[bool, List[Msg]]:
+    """
+    returns success (false if any endpoint had zero entries) and list of errors
+    """
+    messages = []
+    success = True
 
-    products = []
+    for ep in endpoints:
+        count, ep_messages = fetch_one(ep, fetcher, base_url)
+        success = success and count > 0
+        messages += ep_messages
 
-    for product in data:
-        entry = get_rename_keys(product, ENDPOINT_TO_COLUMN)
-
-        if len(entry["Categories"]) > 1:
-            entry["Categories"] = ", ".join(
-                [elem["name"] for elem in entry["Categories"]]
-            )
-        else:
-            entry["Categories"] = entry["Categories"][0]["name"]
-
-        products.append(entry)
-
-    return products
+    return success, messages
 
 
-class Fetcher:
-    def __init__(self):
-        self.http = requests.Session()
-
-        retries = Retry(
-            total=10, backoff_factor=4, status_forcelist=[429, 500, 502, 503, 504]
-        )
-
-        # mount timeout adapter so that all calls have the same timeout
-        adapter = TimeoutHTTPAdapter(timeout=60, max_retries=retries)
-        self.http.mount("https://", adapter)
-        self.http.mount("http://", adapter)
-
-        # the request will raise an exception on 4XX and 5XX
-        assert_status_hook = (
-            lambda response, *args, **kwargs: response.raise_for_status()
-        )
-        self.http.hooks["response"] = [assert_status_hook]
-
-    def get(self, url, user_params={}):
-        print(f"requesting {url}")
-        params = {"consumer_key": KEY, "consumer_secret": SECRET, **user_params}
-        return self.http.get(url, params=params)
-
-
-def fetch_all(endpoints):
-    fetcher = Fetcher()
-
+def fetch_one(ep: Endpoint, fetcher, base_url: str) -> Tuple[int, List[Msg]]:
+    """
+    returns count of entries and list of errors
+    """
+    messages = []
     params = {"per_page": 50}
 
-    for ep in endpoints:
-        ep_name = ep["name"]
-        page = ep.get("page") or 1
-        data = []
-        version = ep["version"]
-        mk_url = ep.get("mk_url") or (
-            lambda pg: f"{BASE_URL}{version}/{ep_name}?page={pg}"
-        )
-        data_filter = ep.get("filter") or (lambda x: True)
+    # page = ep.get("page") or 1
+    page = 1
+    data: List = []
 
-        print(f"fetching endpoint {ep_name}...")
+    mk_url = ep.mk_url
 
-        while True:
-            # if page == 48 or page == 57:
-            #     page += 1
-            #     continue
-            if page % 500 == 0:
-                with open(f"partial_{page}_{first_file(ep)}", "w") as f:
-                    f.write(json.dumps(data, indent=4))
-            # url = f"{base_url}{version}/{ep_name}/plans?page={page}"
-            url = mk_url(page)
-            print(f"from {url}")
-            try:
-                response = fetcher.get(url, user_params=params)
-            except requests.exceptions.HTTPError as err:
-                print(f"{version} {ep_name} {err}")
-                break
-            except Exception as err:
-                print(f"{version} {ep_name} {err}")
-                break
+    while True:
+        # if page == 48 or page == 57:
+        #     page += 1
+        #     continue
+        if page % 500 == 0:
+            with open(f"partial_{page}_{first_file(ep)}", "w") as f:
+                f.write(json.dumps(data, indent=4))
 
-            try:
-                response_json = response.json()
-            except ValueError:
-                print(f"{url} did not return a valid JSON")
-                break
+        # mypy bug: https://github.com/python/mypy/issues/5485
+        url = mk_url(ep, base_url, page)  # type: ignore
 
-            print(f"{ep_name}, page {page}:  {len(response_json)}")
-            # print(f"json: {json.dumps(response_json, indent=4)}")
-            # break
+        try:
+            response_json = fetcher.get_json(url, user_params=params)
+        except Msg as msg:
+            messages.append(msg)
+            break
+        except Exception as err:
+            messages.append(err_fallback(f"{ep.version} {ep.name} {err}"))
+            break
 
-            if len(response_json) > 1:
-                data.extend(filter(data_filter, response_json))
-                # print(json.dumps(response_json, indent=4))
-                # print(f"got {len(response_json)} elems")
-                page += 1
-            else:
-                break
+        # print(f"{ep_name}, page {page}:  {len(response_json)}")
+        # print(f"json: {json.dumps(response_json, indent=4)}")
+        # break
 
-        # print(f"GOT JSON for {ep_name}")
-        # print(json.dumps(data, indent=4))
-        print(f"done fetching {ep_name}")
-        with open(first_file(ep), "w") as f:
-            f.write(json.dumps(data, indent=4))
+        if len(response_json) > 1:
+            # mypy bug: https://github.com/python/mypy/issues/5485
+            data.extend(filter(ep.filter, response_json))  # type: ignore
+            # print(json.dumps(response_json, indent=4))
+            # print(f"got {len(response_json)} elems")
+            page += 1
+        else:
+            break
+
+    # print(f"GOT JSON for {ep_name}")
+    # print(json.dumps(data, indent=4))
+    # print(f"done fetching {ep_name}")
+    put_json(first_file(ep), data)
+
+    return len(data), messages
 
 
-def fancy_filter(in_files, out_file, fun):
+def file_to_file_filter(
+    in_files: List[str],
+    out_file: str,
+    # fun: Callable[[Any], TransformResult],  # FIXME: how to write this type sig ?
+    fun: Callable,  # FIXME: how to write this type sig ?
+) -> List[Msg]:
     data_sets = []
     for fname in in_files:
-        with open(fname, "r") as f:
-            data_sets.append(json.loads(f.read()))
+        data_sets.append(get_json(fname))
 
-    customers = fun(*data_sets)
-    with open(out_file, "w") as f:
-        f.write(json.dumps(customers, indent=4))
-
-
-def first_file(endpoint):
-    return f"{endpoint['version']}_{endpoint['name']}.json"
+    data, messages = fun(*data_sets)
+    put_json(out_file, data)
+    return messages
 
 
-def processed_file(endpoint, suffix):
-    return f"FINAL_{endpoint['name']}{suffix}.json"
+def first_file(ep: Endpoint) -> str:
+    return f"{ep.version}_{ep.name}.json"
 
 
-def csv_file(endpoint, suffix):
-    return f"FINAL_{endpoint['name']}{suffix}.csv"
+def processed_file(ep: Endpoint, suffix: str) -> str:
+    return f"FINAL_{ep.name}{suffix}.json"
 
 
-def do_transforms(endpoints):
+# def csv_file(endpoint, suffix):
+#     return f"FINAL_{endpoint['name']}{suffix}.csv"
+
+
+def do_transforms(endpoints: List[Endpoint]) -> List[Msg]:
+    """
+    returns messages
+    """
+    messages = []
     for ep in endpoints:
-        if "transform" not in ep:
-            continue
+        for suffix, trans_fn in ep.transform.items():
+            src = first_file(ep)
+            dst = processed_file(ep, suffix)
 
-        trans = ep["transform"]
-        if callable(trans):
-            transform_one(ep, trans, suffix="")
-        elif isinstance(trans, dict):
-            for suf, trans_fn in trans.items():
-                transform_one(ep, trans_fn, suffix="_" + suf)
-        else:
-            # TODO logging
-            print(f"unknown transform for endpoint {ep['name']}")
+            messages += file_to_file_filter([src], dst, trans_fn)
+
+    return messages
 
 
-def transform_one(ep, trans_fn, suffix):
-    src = first_file(ep)
-    dst = processed_file(ep, suffix)
-
-    fancy_filter([src], dst, trans_fn)
-    json_to_csv(dst, csv_file(ep, suffix))
-
-
-def get_json(filename):
+def get_json(filename: str) -> Any:
     with open(filename, "r") as f:
-        data = json.loads(f.read())
-
-    return data
+        return json.loads(f.read())
 
 
-def list_to_dict(data, field):
-    new_data = {x[field]: x for x in data}
+def put_json(filename: str, data: Any) -> None:
+    with open(filename, "w") as f:
+        f.write(json.dumps(data, indent=4))
 
-    return new_data
 
-
-SUBSCRIPTIONS = {
-    "name": "subscriptions",
-    "version": "v1",
-    # no transform key
-}
-MEMBERSHIPS_LIFETIME = {
-    "name": "memberships_lifetime",
-    "version": "v3",
-    "mk_url": lambda page: f"{BASE_URL}v3/memberships/members?plan=sustinator-dor-pe-viata&page={page}",
-    # no transform key
-}
-MEMBERSHIPS_OLD = {
-    "name": "memberships_old",
-    "version": "v3",
-    "mk_url": lambda page: f"{BASE_URL}v3/memberships/members?plan=sustinatori-dor&page={page}",
-    "filter": lambda entry: entry.get("subscription_id") is None
-    # no transform key
-}
-ORDERS = {
-    "name": "orders",
-    "version": "v3",
-    "transform": {
-        "verbose": lambda x: transform_orders(x, distribute=True),
-        "compact": lambda x: transform_orders(x, distribute=False),
+SUBSCRIPTIONS = Endpoint(
+    name="subscriptions",
+    version="v1",
+)
+MEMBERSHIPS_LIFETIME = Endpoint(
+    name="memberships_lifetime",
+    version="v3",
+    mk_url=lambda self, base_url, page: f"{base_url}v3/memberships/members?plan=sustinator-dor-pe-viata&page={page}",
+)
+MEMBERSHIPS_OLD = Endpoint(
+    name="memberships_old",
+    version="v3",
+    mk_url=lambda self, base_url, page: f"{base_url}v3/memberships/members?plan=sustinatori-dor&page={page}",
+    filter=lambda entry: entry.get("subscription_id") is None,
+)
+ORDERS = Endpoint(
+    name="orders",
+    version="v3",
+    transform={
+        "_verbose": lambda x: transform_orders(x, distribute=True),
+        "_compact": lambda x: transform_orders(x, distribute=False),
     },
-}
-CUSTOMERS = {
-    "name": "customers",
-    "version": "v3",
-    "transform": transform_customers,
-    "mk_url": lambda page: f"{BASE_URL}v3/customers/?role=all&page={page}",
-}
-ENDPOINTS = [
-    ORDERS,
-    CUSTOMERS,
-    SUBSCRIPTIONS,
-    MEMBERSHIPS_OLD,
-    MEMBERSHIPS_LIFETIME,
-    # {
-    #     "name": "products",
-    #     "version": "v3",
-    #     "transform": transform_products,
-    # },
-]
+)
+CUSTOMERS = Endpoint(
+    name="customers",
+    version="v3",
+    transform={"": transform_customers},
+    mk_url=lambda self, base_url, page: f"{base_url}v3/customers/?role=all&page={page}",
+)
+ENDPOINTS = [ORDERS, CUSTOMERS, SUBSCRIPTIONS, MEMBERSHIPS_OLD, MEMBERSHIPS_LIFETIME]
 
 
-def main(KEY, SECRET, ENDPOINT_URL):
-    fetch_all(ENDPOINTS)
-    do_transforms(ENDPOINTS)
+def main(KEY: str, SECRET: str, BASE_URL: str) -> tuple:
+    fetcher = Fetcher(KEY, SECRET)
+
+    success, messages = fetch_all(ENDPOINTS, fetcher, BASE_URL)
+    messages += do_transforms(ENDPOINTS)
 
     # abonamente is tricky; fetching is split to allow incremental changes
 
@@ -960,18 +1039,21 @@ def main(KEY, SECRET, ENDPOINT_URL):
     customers_fname = "customers_index.json"
     customers_emails_fname = "customers_email_index.json"
 
-    fetch_convoluted_data_stage_2(
+    messages += fetch_convoluted_data_stage_2(
+        fetcher,
+        BASE_URL,
         SUBSCRIPTIONS,
         notes_fname,
         customers_emails_fname,
     )
 
     # 3rd stage fetch
-    with open(first_file(CUSTOMERS), "r") as f:
-        customers_data = json.loads(f.read())
+    customers_data = get_json(first_file(CUSTOMERS))
     known_customers = {str(c["id"]): c for c in customers_data}
 
-    fetch_convoluted_data_stage_3(
+    messages += fetch_convoluted_data_stage_3(
+        fetcher,
+        BASE_URL,
         SUBSCRIPTIONS,
         MEMBERSHIPS_LIFETIME,
         MEMBERSHIPS_OLD,
@@ -982,7 +1064,7 @@ def main(KEY, SECRET, ENDPOINT_URL):
 
     # actual transformation
     dest_fname = "FINAL_abonamente.json"
-    fancy_filter(
+    messages += file_to_file_filter(
         in_files=[
             first_file(SUBSCRIPTIONS),
             first_file(MEMBERSHIPS_LIFETIME),
@@ -994,23 +1076,36 @@ def main(KEY, SECRET, ENDPOINT_URL):
         out_file=dest_fname,
         fun=transform_convoluted,
     )
-    json_to_csv(dest_fname, "FINAL_abonamente.csv")
 
-    return success, stats, table1_location
+    table_locations = [
+        dest_fname,
+        processed_file(CUSTOMERS, suffix=""),
+        *(processed_file(ORDERS, suff) for suff in ORDERS.transform.keys()),
+    ]
+
+    # heuristic: if a json is under 10 bytes it can't have even one entry
+    success = success and all(os.path.getsize(f) > 10 for f in table_locations)
+
+    stats = [msg.to_str() for msg in messages]
+
+    return (success, stats, *table_locations)
 
 
-
-def run_sync(KEY, SECRET, ENDPOINT_URL, TABLE_ABONAMENTE, TABLE_COMENZI_COMPACT, TABLE_COMENZI_DETALIAT, TABLE_CLIENTI):
-    '''
+def run_sync(
+    KEY,
+    SECRET,
+    ENDPOINT_URL,
+    TABLE_ABONAMENTE,
+    TABLE_COMENZI_COMPACT,
+    TABLE_COMENZI_DETALIAT,
+    TABLE_CLIENTI,
+):
+    """
     Do the actual sync.
 
     Return success (bool), updates(json), errors(json)
-    '''
+    """
     success = True
-    stats = {
-        'success': 0,
-        'errors': 0,
-        'details': []
-    }
-    stats['details'].append('TBD')
+    stats = {"success": 0, "errors": 0, "details": []}
+    # stats["details"].append("TBD")
     return success, stats

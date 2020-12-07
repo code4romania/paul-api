@@ -31,9 +31,10 @@ def sync(request, task_id):
         SECRET,
         ENDPOINT_URL,
         TABLE_ABONAMENTE,
+        TABLE_CLIENTI,
         TABLE_COMENZI_COMPACT,
         TABLE_COMENZI_DETALIAT,
-        TABLE_CLIENTI)
+        )
 
     task_result.success = success
     task_result.stats = stats

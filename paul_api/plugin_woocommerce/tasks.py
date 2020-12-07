@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from plugin_woocommerce import utils, models, serializers
 from celery import shared_task
-
+from django.utils import timezone
 
 @shared_task
 def sync(request, task_id):
@@ -39,6 +39,9 @@ def sync(request, task_id):
     task_result.success = success
     task_result.stats = stats
     task_result.status = 'Finished'
+    task_result.date_end = timezone.now()
+    task_result.duration = task_result.date_end - task_result.date_start
+    
     task_result.save()
 
     return task_result.id, task_result.success

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+from django.contrib.auth.models import User
+from django.utils import timezone
+from api import models
+
 import copy
 import datetime
 import json
@@ -27,6 +31,13 @@ import requests
 from requests.adapters import HTTPAdapter
 from requests.exceptions import HTTPError
 from requests.packages.urllib3.util.retry import Retry
+from .table_fields import (
+    SUBSCRIPTIONS_FIELDS,
+    CUSTOMER_FIELDS,
+    ORDERS_COMPACT_FIELDS,
+    ORDERS_VERBOSE_FIELDS
+)
+from pprint import pprint
 
 T = TypeVar("T")
 
@@ -1091,14 +1102,39 @@ def main(KEY: str, SECRET: str, BASE_URL: str) -> tuple:
     return (success, stats, *table_locations)
 
 
+def get_or_create_table(table_fields_defs, table_name):
+    db = models.Database.objects.last()
+    user, _ = User.objects.get_or_create(username='paul-sync')
+
+    table, created = models.Table.objects.get_or_create(
+        name=table_name,
+        database=db,
+        owner=user)
+    table.last_edit_date = timezone.now()
+    table.last_edit_user = user
+    table.active = True
+    table.save()
+
+    # if created:
+    for field_name, field_details in table_fields_defs.items():
+        column, _ = models.TableColumn.objects.get_or_create(
+            table=table,
+            name=field_name
+            )
+        column.display_name = field_details['display_name']
+        column.field_type = field_details['type']
+        column.save()
+
+    return table
+
 def run_sync(
     KEY,
     SECRET,
     ENDPOINT_URL,
     TABLE_ABONAMENTE,
-    TABLE_COMENZI_COMPACT,
-    TABLE_COMENZI_DETALIAT,
     TABLE_CLIENTI,
+    TABLE_COMENZI_DETALIAT,
+    TABLE_COMENZI_COMPACT,
 ):
     """
     Do the actual sync.
@@ -1106,6 +1142,68 @@ def run_sync(
     Return success (bool), updates(json), errors(json)
     """
     success = True
-    stats = {"success": 0, "errors": 0, "details": []}
-    # stats["details"].append("TBD")
+    map_tables = {
+        'FINAL_abonamente.json' : {
+            'fields': SUBSCRIPTIONS_FIELDS,
+            'name': TABLE_ABONAMENTE,
+            'unique_field': 'id_abonament'
+        },
+        'FINAL_customers.json' : {
+            'fields': CUSTOMER_FIELDS,
+            'name': TABLE_CLIENTI,
+            'unique_field': 'id_client'
+        },
+        'FINAL_orders_verbose.json' : {
+            'fields': ORDERS_VERBOSE_FIELDS,
+            'name': TABLE_COMENZI_DETALIAT,
+            'unique_field': 'id_comanda'
+        },
+        'FINAL_orders_compact.json' : {
+            'fields': ORDERS_COMPACT_FIELDS,
+            'name': TABLE_COMENZI_COMPACT,
+            'unique_field': 'id_comanda'
+        },
+    }
+
+    # success, stats, *table_locations = (True, ['Error: GET on URL https://dor.ro/wp-json/wc/v3/customers/0 returned 404 Client Error: Not Found for url: https://www.dor.ro/wp-json/wc/v3/customers/0?consumer_key=ck_dfeab47b910ef6b5113cadc93d27b51cfff357b3&consumer_secret=cs_2a6077c83243eb84fe9b788668b29d62e9b82d40\nPlease try the action again. If the error persists contact support'], 'FINAL_abonamente.json', 'FINAL_customers.json', 'FINAL_orders_verbose.json', 'FINAL_orders_compact.json')
+    success, stats, *table_locations = main(KEY, SECRET, ENDPOINT_URL)
+
+    for table_name in table_locations[1:]:
+
+        print(table_name)
+        table_fields_def = map_tables[table_name]['fields']
+        table = get_or_create_table(table_fields_def, map_tables[table_name]['name'])
+        print(table)
+        json_table = json.load(open(table_name))
+        i = 0
+        for entry_json in json_table:
+            i += 1
+            print(i)
+            unique_field = map_tables[table_name]['unique_field']
+            entry_filter = {
+                'table':table,
+                'data__{}'.format(unique_field) : entry_json[table_fields_def[unique_field]['display_name']]
+            }
+            entries = models.Entry.objects.filter(**entry_filter)
+            # print(entries)
+
+            if entries:
+                entry = entries[0]
+            else:
+                entry_data = {}
+                for entry_field_name in table_fields_def:
+                    value = entry_json.get(table_fields_def[entry_field_name]['display_name'], None)
+                    if table_fields_def[entry_field_name]['type'] == 'enum':
+                        table_column = models.TableColumn.objects.get(table=table, name=entry_field_name)
+                        if not table_column.choices:
+                            table_column.choices = []
+                        if value not in table_column.choices:
+                            table_column.choices.append(value)
+                            table_column.save()
+                    entry_data[entry_field_name] = value
+                entry = models.Entry.objects.create(
+                        table=table,
+                        data=entry_data)
+
+
     return success, stats

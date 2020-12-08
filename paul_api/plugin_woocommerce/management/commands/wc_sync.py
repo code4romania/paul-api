@@ -50,8 +50,8 @@ class Command(BaseCommand):
             ENDPOINT_URL,
             TABLE_ABONAMENTE,
             TABLE_CLIENTI,
-            TABLE_COMENZI_COMPACT,
             TABLE_COMENZI_DETALIAT,
+            TABLE_COMENZI_COMPACT,
             )
 
         task_result.success = success

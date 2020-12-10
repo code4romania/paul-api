@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 
-from django.contrib.auth.models import User
-from django.utils import timezone
-from api import models
-
 import copy
 import datetime
 import json
@@ -13,6 +9,7 @@ import sys
 import traceback
 import urllib
 from dataclasses import dataclass, field
+from pprint import pprint
 from typing import (
     Any,
     Callable,
@@ -28,18 +25,22 @@ from typing import (
 from urllib import parse
 
 import requests
+from api import models
+from django.contrib.auth.models import User
+from django.utils import timezone
 from requests.adapters import HTTPAdapter
 from requests.exceptions import HTTPError
 from requests.packages.urllib3.util.retry import Retry
+
 from .table_fields import (
-    SUBSCRIPTIONS_FIELDS,
     CUSTOMER_FIELDS,
     ORDERS_COMPACT_FIELDS,
-    ORDERS_VERBOSE_FIELDS
+    ORDERS_VERBOSE_FIELDS,
+    SUBSCRIPTIONS_FIELDS,
 )
-from pprint import pprint
 
 T = TypeVar("T")
+
 
 DEFAULT_TIMEOUT = 20  # seconds
 
@@ -132,7 +133,7 @@ class Fetcher:
         self.http.hooks["response"] = [assert_status_hook]
 
     def get(self, url: str, user_params: Dict[str, str] = {}):
-        print(f"requesting {url}")
+        # print(f"requesting {url}")
         params = {
             "consumer_key": self.key,
             "consumer_secret": self.secret,
@@ -873,6 +874,7 @@ def transform_orders(data: List, distribute: bool) -> TransformResult:
                     replica["Pret"] = str(
                         float(item["total"]) + float(item["total_tax"])
                     )
+                    replica["Id Produs"] = f"{order['id']}_{item['id']}"
                     orders.append(replica)
 
         except Exception as e:
@@ -1099,17 +1101,28 @@ def main(KEY: str, SECRET: str, BASE_URL: str) -> tuple:
 
     stats = [msg.to_str() for msg in messages]
 
+    junk = [
+        *map(first_file, ENDPOINTS),
+        notes_fname,
+        customers_fname,
+        customers_emails_fname,
+    ]
+    for f in junk:
+        try:
+            os.remove(f)
+        except FileNotFoundError:
+            pass
+
     return (success, stats, *table_locations)
 
 
 def get_or_create_table(table_fields_defs, table_name):
     db = models.Database.objects.last()
-    user, _ = User.objects.get_or_create(username='paul-sync')
+    user, _ = User.objects.get_or_create(username="paul-sync")
 
     table, created = models.Table.objects.get_or_create(
-        name=table_name,
-        database=db,
-        owner=user)
+        name=table_name, database=db, owner=user
+    )
     table.last_edit_date = timezone.now()
     table.last_edit_user = user
     table.active = True
@@ -1118,14 +1131,14 @@ def get_or_create_table(table_fields_defs, table_name):
     # if created:
     for field_name, field_details in table_fields_defs.items():
         column, _ = models.TableColumn.objects.get_or_create(
-            table=table,
-            name=field_name
-            )
-        column.display_name = field_details['display_name']
-        column.field_type = field_details['type']
+            table=table, name=field_name
+        )
+        column.display_name = field_details["display_name"]
+        column.field_type = field_details["type"]
         column.save()
 
     return table
+
 
 def run_sync(
     KEY,
@@ -1143,67 +1156,70 @@ def run_sync(
     """
     success = True
     map_tables = {
-        'FINAL_abonamente.json' : {
-            'fields': SUBSCRIPTIONS_FIELDS,
-            'name': TABLE_ABONAMENTE,
-            'unique_field': 'id_abonament'
+        "FINAL_abonamente.json": {
+            "fields": SUBSCRIPTIONS_FIELDS,
+            "name": TABLE_ABONAMENTE,
+            "unique_field": "id_abonament",
         },
-        'FINAL_customers.json' : {
-            'fields': CUSTOMER_FIELDS,
-            'name': TABLE_CLIENTI,
-            'unique_field': 'id_client'
+        "FINAL_customers.json": {
+            "fields": CUSTOMER_FIELDS,
+            "name": TABLE_CLIENTI,
+            "unique_field": "id_client",
         },
-        'FINAL_orders_verbose.json' : {
-            'fields': ORDERS_VERBOSE_FIELDS,
-            'name': TABLE_COMENZI_DETALIAT,
-            'unique_field': 'id_comanda'
+        "FINAL_orders_verbose.json": {
+            "fields": ORDERS_VERBOSE_FIELDS,
+            "name": TABLE_COMENZI_DETALIAT,
+            "unique_field": "id_produs",
         },
-        'FINAL_orders_compact.json' : {
-            'fields': ORDERS_COMPACT_FIELDS,
-            'name': TABLE_COMENZI_COMPACT,
-            'unique_field': 'id_comanda'
+        "FINAL_orders_compact.json": {
+            "fields": ORDERS_COMPACT_FIELDS,
+            "name": TABLE_COMENZI_COMPACT,
+            "unique_field": "id_comanda",
         },
     }
-
 
     # success, stats, *table_locations = (True, ['Error: GET on URL https://dor.ro/wp-json/wc/v3/customers/0 returned 404 Client Error: Not Found for url: https://www.dor.ro/wp-json/wc/v3/customers/0?consumer_key=ck_dfeab47b910ef6b5113cadc93d27b51cfff357b3&consumer_secret=cs_2a6077c83243eb84fe9b788668b29d62e9b82d40\nPlease try the action again. If the error persists contact support'], 'FINAL_abonamente.json', 'FINAL_customers.json', 'FINAL_orders_verbose.json', 'FINAL_orders_compact.json')
     success, stats, *table_locations = main(KEY, SECRET, ENDPOINT_URL)
 
-    for table_name in table_locations:
+    for table_name in table_locations[1:]:
+
         print(table_name)
-        table_fields_def = map_tables[table_name]['fields']
-        table = get_or_create_table(table_fields_def, map_tables[table_name]['name'])
+        table_fields_def = map_tables[table_name]["fields"]
+        table = get_or_create_table(table_fields_def, map_tables[table_name]["name"])
+        print(table)
         json_table = json.load(open(table_name))
         i = 0
         for entry_json in json_table:
             i += 1
-            unique_field = map_tables[table_name]['unique_field']
+            print(i)
+            unique_field = map_tables[table_name]["unique_field"]
             entry_filter = {
-                'table':table,
-                'data__{}'.format(unique_field) : entry_json[table_fields_def[unique_field]['display_name']]
+                "table": table,
+                "data__{}".format(unique_field): entry_json[
+                    table_fields_def[unique_field]["display_name"]
+                ],
             }
-            entry = models.Entry.objects.filter(**entry_filter)
-            print(table, i)
+            entries = models.Entry.objects.filter(**entry_filter)
+            # print(entries)
 
-            if not entry:
-                entry = models.Entry.objects.create(table=table, data={unique_field: entry_json[table_fields_def[unique_field]['display_name']]})
+            if entries:
+                entry = entries[0]
             else:
-                entry = entry[0]
+                entry_data = {}
+                for entry_field_name in table_fields_def:
+                    value = entry_json.get(
+                        table_fields_def[entry_field_name]["display_name"], None
+                    )
+                    if table_fields_def[entry_field_name]["type"] == "enum":
+                        table_column = models.TableColumn.objects.get(
+                            table=table, name=entry_field_name
+                        )
+                        if not table_column.choices:
+                            table_column.choices = []
+                        if value not in table_column.choices:
+                            table_column.choices.append(value)
+                            table_column.save()
+                    entry_data[entry_field_name] = value
+                entry = models.Entry.objects.create(table=table, data=entry_data)
 
-            entry_data = {}
-            for entry_field_name in table_fields_def:
-                value = entry_json.get(table_fields_def[entry_field_name]['display_name'], None)
-                if table_fields_def[entry_field_name]['type'] == 'enum':
-                    table_column = models.TableColumn.objects.get(table=table, name=entry_field_name)
-                    if not table_column.choices:
-                        table_column.choices = []
-                    if value not in table_column.choices:
-                        table_column.choices.append(value)
-                        table_column.save()
-                entry_data[entry_field_name] = value
-
-            models.Entry.objects.filter(**entry_filter).update(
-                    data=entry_data)
-        os.remove(table_name)
-    stats = {'details': stats}
     return success, stats

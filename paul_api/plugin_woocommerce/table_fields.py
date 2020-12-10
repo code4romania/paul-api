@@ -272,6 +272,10 @@ ORDERS_VERBOSE_FIELDS = {
         'display_name': 'ID Comanda',
         'type': 'text'
     },
+    'id_produs': {
+        'display_name': 'ID Produs',
+        'type': 'text'
+    },
     'data': {
         'display_name': 'Data',
         'type': 'date'

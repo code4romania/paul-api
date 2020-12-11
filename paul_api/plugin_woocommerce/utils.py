@@ -139,7 +139,9 @@ class Fetcher:
             "consumer_secret": self.secret,
             **user_params,
         }
-        return self.http.get(url, params=params)
+        response = self.http.get(url, params=params)
+
+        return response
 
     def get_json(
         self, url, user_params: Dict[str, str] = {}

@@ -1182,7 +1182,7 @@ def run_sync(
 
     try:
         # success, stats, *table_locations = (True, ['Error: GET on URL https://dor.ro/wp-json/wc/v3/customers/0 returned 404 Client Error: Not Found for url: https://www.dor.ro/wp-json/wc/v3/customers/0?consumer_key=ck_dfeab47b910ef6b5113cadc93d27b51cfff357b3&consumer_secret=cs_2a6077c83243eb84fe9b788668b29d62e9b82d40\nPlease try the action again. If the error persists contact support'], 'FINAL_abonamente.json', 'FINAL_customers.json', 'FINAL_orders_verbose.json', 'FINAL_orders_compact.json')
-        # success, stats, *table_locations = (True, ['Error: GET on URL https://dor.ro/wp-json/wc/v3/customers/0 returned 404 Client Error: Not Found for url: https://www.dor.ro/wp-json/wc/v3/customers/0?consumer_key=ck_dfeab47b910ef6b5113cadc93d27b51cfff357b3&consumer_secret=cs_2a6077c83243eb84fe9b788668b29d62e9b82d40\nPlease try the action again. If the error persists contact support'], 'FINAL_orders_verbose.json', 'FINAL_orders_compact.json')
+        # success, stats, *table_locations = (True, ['Error: GET on URL https://dor.ro/wp-json/wc/v3/customers/0 returned 404 Client Error: Not Found for url: https://www.dor.ro/wp-json/wc/v3/customers/0?consumer_key=ck_dfeab47b910ef6b5113cadc93d27b51cfff357b3&consumer_secret=cs_2a6077c83243eb84fe9b788668b29d62e9b82d40\nPlease try the action again. If the error persists contact support'], 'FINAL_abonamente.json')
         success, stats, *table_locations = main(KEY, SECRET, ENDPOINT_URL)
 
         for table_name in table_locations:
@@ -1202,25 +1202,24 @@ def run_sync(
                 print(table, i)
 
                 if not entry:
-                    # entry = models.Entry.objects.create(table=table, data={unique_field: entry_json[table_fields_def[unique_field]['display_name']]})
-                # else:
-                    # entry = entry[0]
+                    entry = models.Entry.objects.create(table=table, data={unique_field: entry_json[table_fields_def[unique_field]['display_name']]})
+                else:
+                    entry = entry[0]
 
-                    entry_data = {}
-                    for entry_field_name in table_fields_def:
-                        value = entry_json.get(table_fields_def[entry_field_name]['display_name'], None)
-                        if table_fields_def[entry_field_name]['type'] == 'enum':
-                            table_column = models.TableColumn.objects.get(table=table, name=entry_field_name)
-                            if not table_column.choices:
-                                table_column.choices = []
-                            if value not in table_column.choices:
-                                table_column.choices.append(value)
-                                table_column.save()
-                        entry_data[entry_field_name] = value
+                entry_data = {}
+                for entry_field_name in table_fields_def:
+                    value = entry_json.get(table_fields_def[entry_field_name]['display_name'], None)
+                    if table_fields_def[entry_field_name]['type'] == 'enum':
+                        table_column = models.TableColumn.objects.get(table=table, name=entry_field_name)
+                        if not table_column.choices:
+                            table_column.choices = []
+                        if value and str(value) not in table_column.choices:
+                            table_column.choices.append(value)
+                            table_column.save()
+                    entry_data[entry_field_name] = value
 
-                    models.Entry.objects.create(
-                        table=table,
-                        data=entry_data)
+                models.Entry.objects.filter(**entry_filter).update(
+                    data=entry_data)
             # os.remove(table_name)
         stats = {'details': stats}
 

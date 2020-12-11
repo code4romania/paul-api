@@ -29,7 +29,7 @@ class TableColumnSerializer(serializers.ModelSerializer):
 
     def get_choices(self, obj):
         if type(obj.choices) == list:
-            return sorted(obj.choices)
+            return sorted([x for x in obj.choices if x])
         return []
 
 

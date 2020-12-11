@@ -876,7 +876,7 @@ def transform_orders(data: List, distribute: bool) -> TransformResult:
                     replica["Pret"] = str(
                         float(item["total"]) + float(item["total_tax"])
                     )
-                    replica["Id Produs"] = f"{order['id']}_{item['id']}"
+                    replica["ID Produs"] = f"{order['id']}_{item['id']}"
                     orders.append(replica)
 
         except Exception as e:
@@ -908,7 +908,7 @@ def fetch_one(ep: Endpoint, fetcher, base_url: str) -> Tuple[int, List[Msg]]:
     returns count of entries and list of errors
     """
     messages = []
-    params = {"per_page": 50}
+    params = {"per_page": 100}
 
     # page = ep.get("page") or 1
     page = 1
@@ -1180,48 +1180,54 @@ def run_sync(
         },
     }
 
-    # success, stats, *table_locations = (True, ['Error: GET on URL https://dor.ro/wp-json/wc/v3/customers/0 returned 404 Client Error: Not Found for url: https://www.dor.ro/wp-json/wc/v3/customers/0?consumer_key=ck_dfeab47b910ef6b5113cadc93d27b51cfff357b3&consumer_secret=cs_2a6077c83243eb84fe9b788668b29d62e9b82d40\nPlease try the action again. If the error persists contact support'], 'FINAL_abonamente.json', 'FINAL_customers.json', 'FINAL_orders_verbose.json', 'FINAL_orders_compact.json')
-    success, stats, *table_locations = main(KEY, SECRET, ENDPOINT_URL)
+    try:
+        # success, stats, *table_locations = (True, ['Error: GET on URL https://dor.ro/wp-json/wc/v3/customers/0 returned 404 Client Error: Not Found for url: https://www.dor.ro/wp-json/wc/v3/customers/0?consumer_key=ck_dfeab47b910ef6b5113cadc93d27b51cfff357b3&consumer_secret=cs_2a6077c83243eb84fe9b788668b29d62e9b82d40\nPlease try the action again. If the error persists contact support'], 'FINAL_abonamente.json', 'FINAL_customers.json', 'FINAL_orders_verbose.json', 'FINAL_orders_compact.json')
+        # success, stats, *table_locations = (True, ['Error: GET on URL https://dor.ro/wp-json/wc/v3/customers/0 returned 404 Client Error: Not Found for url: https://www.dor.ro/wp-json/wc/v3/customers/0?consumer_key=ck_dfeab47b910ef6b5113cadc93d27b51cfff357b3&consumer_secret=cs_2a6077c83243eb84fe9b788668b29d62e9b82d40\nPlease try the action again. If the error persists contact support'], 'FINAL_orders_verbose.json', 'FINAL_orders_compact.json')
+        success, stats, *table_locations = main(KEY, SECRET, ENDPOINT_URL)
 
-    for table_name in table_locations[1:]:
+        for table_name in table_locations:
+            print(table_name)
+            table_fields_def = map_tables[table_name]['fields']
+            table = get_or_create_table(table_fields_def, map_tables[table_name]['name'])
+            json_table = json.load(open(table_name))
+            i = 0
+            for entry_json in json_table:
+                i += 1
+                unique_field = map_tables[table_name]['unique_field']
+                entry_filter = {
+                    'table':table,
+                    'data__{}'.format(unique_field) : entry_json[table_fields_def[unique_field]['display_name']]
+                }
+                entry = models.Entry.objects.filter(**entry_filter)
+                print(table, i)
 
-        print(table_name)
-        table_fields_def = map_tables[table_name]["fields"]
-        table = get_or_create_table(table_fields_def, map_tables[table_name]["name"])
-        print(table)
-        json_table = json.load(open(table_name))
-        i = 0
-        for entry_json in json_table:
-            i += 1
-            print(i)
-            unique_field = map_tables[table_name]["unique_field"]
-            entry_filter = {
-                "table": table,
-                "data__{}".format(unique_field): entry_json[
-                    table_fields_def[unique_field]["display_name"]
-                ],
-            }
-            entries = models.Entry.objects.filter(**entry_filter)
-            # print(entries)
+                if not entry:
+                    # entry = models.Entry.objects.create(table=table, data={unique_field: entry_json[table_fields_def[unique_field]['display_name']]})
+                # else:
+                    # entry = entry[0]
 
-            if entries:
-                entry = entries[0]
-            else:
-                entry_data = {}
-                for entry_field_name in table_fields_def:
-                    value = entry_json.get(
-                        table_fields_def[entry_field_name]["display_name"], None
-                    )
-                    if table_fields_def[entry_field_name]["type"] == "enum":
-                        table_column = models.TableColumn.objects.get(
-                            table=table, name=entry_field_name
-                        )
-                        if not table_column.choices:
-                            table_column.choices = []
-                        if value not in table_column.choices:
-                            table_column.choices.append(value)
-                            table_column.save()
-                    entry_data[entry_field_name] = value
-                entry = models.Entry.objects.create(table=table, data=entry_data)
+                    entry_data = {}
+                    for entry_field_name in table_fields_def:
+                        value = entry_json.get(table_fields_def[entry_field_name]['display_name'], None)
+                        if table_fields_def[entry_field_name]['type'] == 'enum':
+                            table_column = models.TableColumn.objects.get(table=table, name=entry_field_name)
+                            if not table_column.choices:
+                                table_column.choices = []
+                            if value not in table_column.choices:
+                                table_column.choices.append(value)
+                                table_column.save()
+                        entry_data[entry_field_name] = value
 
+                    models.Entry.objects.create(
+                        table=table,
+                        data=entry_data)
+            # os.remove(table_name)
+        stats = {'details': stats}
+
+    except Exception as e:
+        print('---Error', e)
+        success = False
+        stats = {
+            'details': ['Error in utils: ' + str(e)]
+        }
     return success, stats

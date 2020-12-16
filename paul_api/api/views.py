@@ -183,15 +183,18 @@ class TableViewSet(viewsets.ModelViewSet):
 
 
     def create(self, request):
+        print('CREATE TABLE')
         fields = request.data.get("fields")
         csv_import_pk = request.data.get("import_id")
         data = request.data
-
+        print('before serializer')
         serializer = serializers.tables.TableCreateSerializer(
             data=data,
             context={"request": request},
         )
+        print('after serializer')
         serializer.is_valid(raise_exception=True)
+        print('after is valid serializer')
 
         self.perform_create(serializer)
 

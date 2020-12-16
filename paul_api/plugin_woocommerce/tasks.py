@@ -3,6 +3,7 @@ from plugin_woocommerce import utils, models, serializers
 from celery import shared_task
 from django.utils import timezone
 
+
 @shared_task
 def sync(request, task_id):
     if hasattr(request, 'user'):

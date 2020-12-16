@@ -55,6 +55,7 @@ class TaskListSerializer(serializers.ModelSerializer):
             "last_edit_user",
         ]
 
+
     def get_crontab(self, obj):
         if obj.periodic_task:
             return '{} {} {} {} {}'.format(

@@ -491,7 +491,14 @@ class TableViewSet(viewsets.ModelViewSet):
 class FilterViewSet(viewsets.ModelViewSet):
     queryset = models.Filter.objects.all()
     pagination_class = EntriesPagination
+    filter_backends = (OrderingFilter,)
 
+    ordering_fields = {
+        'name': 'name',
+        'creation_date': 'creation_date',
+        'table': 'table__name',
+        'owner.username': 'owner__username'
+    }
     def get_queryset(self):
         queryset = self.queryset
         user = self.request.user
@@ -1111,6 +1118,15 @@ class ChartViewSet(viewsets.ModelViewSet):
     queryset = models.Chart.objects.all()
     pagination_class = EntriesPagination
 
+    filter_backends = (OrderingFilter,)
+
+    ordering_fields = {
+        'name': 'name',
+        'creation_date': 'creation_date',
+        'table': 'table__name',
+        'owner.username': 'owner__username'
+    }
+
     def get_queryset(self):
         queryset = self.queryset
         user = self.request.user
@@ -1188,7 +1204,14 @@ class ChartViewSet(viewsets.ModelViewSet):
 class CardViewSet(viewsets.ModelViewSet):
     queryset = models.Card.objects.all()
     pagination_class = EntriesPagination
+    filter_backends = (OrderingFilter,)
 
+    ordering_fields = {
+        'name': 'name',
+        'creation_date': 'creation_date',
+        'table': 'table__name',
+        'owner.username': 'owner__username'
+    }
     def get_queryset(self):
         queryset = self.queryset
         user = self.request.user

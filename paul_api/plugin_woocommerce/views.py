@@ -16,6 +16,14 @@ class TaskViewSet(viewsets.ModelViewSet):
     pagination_class = EntriesPagination
     filter_backends = (filters.OrderingFilter,)
 
+    ordering_fields = {
+        'name': 'name',
+        'task_type': 'task_type',
+        'last_edit_date': 'last_edit_date',
+        'last_run_date': 'last_run_date',
+        'schedule_enabled': 'periodic_task__enabled',
+        'last_edit_user.username': 'last_edit_user__username',
+    }
 
     def get_serializer_class(self):
         if self.action == "list":

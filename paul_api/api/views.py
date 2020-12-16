@@ -499,6 +499,7 @@ class FilterViewSet(viewsets.ModelViewSet):
         'table': 'table__name',
         'owner.username': 'owner__username'
     }
+
     def get_queryset(self):
         queryset = self.queryset
         user = self.request.user
@@ -644,7 +645,6 @@ class FilterViewSet(viewsets.ModelViewSet):
         }
         if is_two_tables_filter:
             filter_dict[secondary_table_slug] = {}
-
 
         filter_dict = utils.request_get_to_filter(request.GET, field_types, filter_dict, True)
         # for key in request.GET:
@@ -918,7 +918,7 @@ class EntryViewSet(viewsets.ModelViewSet):
         table = models.Table.objects.get(pk=table_pk)
         str_fields = request.GET.get("__fields", "") if request else None
         str_order = request.GET.get("__order", "") if request else None
-        table_fields = {x.name: x for x in table.fields.all().order_by("id")}
+        table_fields = {x.name: x.field_type for x in table.fields.all().order_by("id")}
         default_fields = {x.name: x for x in table.default_fields.all().order_by("id")}
 
         if str_fields == "ALL":

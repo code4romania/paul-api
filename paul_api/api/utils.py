@@ -115,7 +115,7 @@ def get_chart_data(request, chart, table, preview=False):
     y_axis_function = DB_FUNCTIONS[chart.y_axis_function]
 
     table_fields = {x.name: x.field_type for x in table.fields.all()}
-    filter_dict = request_get_to_filter(request.GET, table_fields)
+    filter_dict = request_get_to_filter(request.GET, table_fields, {}, False)
 
     chart_data = models.Entry.objects \
         .filter(table=chart.table) \
@@ -414,7 +414,6 @@ def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False
 
                 filter_dict_table["data__{}".format(key)] = float(value)
             else:
-
                 if column_type == 'date' and key_lookup == 'relative':
                     relative_type = value.split('_')[0] # current | next | last
                     relative_period = value.split('_')[-1] + 's' # day | week | month | year

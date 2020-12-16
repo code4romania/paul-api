@@ -64,11 +64,12 @@ def sync(request, task_id):
             for k, v in table_stats.items():
                 stats_details.append('<b>{}</b> {} in <b>{}</b>'.format(v, k, table))
         task_result.stats['details'] = stats_details
-        task_result.date_end = timezone.now()
-        task_result.duration = task_result.date_end - task_result.date_start
-        task_result.save()
+    task_result.date_end = timezone.now()
+    task_result.duration = task_result.date_end - task_result.date_start
+    task_result.save()
     print('ended mailchimp sync task')
     return task_result.id, task_result.success
+
 
 @shared_task
 def run_segmentation(request, task_id):

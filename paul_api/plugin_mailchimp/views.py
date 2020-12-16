@@ -22,6 +22,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         'name': 'name',
         'task_type': 'task_type',
         'last_edit_date': 'last_edit_date',
+        'last_run_date': 'last_run_date',
         'schedule_enabled': 'periodic_task__enabled',
         'last_edit_user.username': 'last_edit_user__username',
     }
@@ -43,6 +44,11 @@ class TaskViewSet(viewsets.ModelViewSet):
         task = self.get_object()
 
         if task.task_type == 'sync':
+            print('aici')
+            print('aici')
+            print('aici')
+            print('aici')
+            print('aici')
             print('aici')
             # tasks.sync.apply_async(args=[None, task.id])
             task_result_id = tasks.sync.apply_async(args=[None, task.id])

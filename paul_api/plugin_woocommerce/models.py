@@ -1,11 +1,14 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.dispatch import receiver
-from django.db.models.signals import post_delete
+from django.db.models.signals import post_delete, post_save
+from django.utils import timezone
 
 from api import models as api_models
 
-from django_celery_beat.models import CrontabSchedule, PeriodicTask
+from django_celery_beat.models import PeriodicTask
+
+
 TASK_TYPES = (
     ('sync', 'Import tables'),
     )
@@ -35,6 +38,7 @@ class Task(models.Model):
     task_type = models.CharField(max_length=100, choices=TASK_TYPES)
 
     last_edit_date = models.DateTimeField(auto_now=True)
+    last_run_date = models.DateTimeField(null=True)
     last_edit_user = models.ForeignKey(
         User, null=True, on_delete=models.SET_NULL,
         related_name="woocommerce_tasks")
@@ -45,13 +49,6 @@ class Task(models.Model):
 
     class Meta:
         pass
-
-    @property
-    def last_run_date(self):
-        if self.task_results.exists():
-            return self.task_results.order_by('-date_start').first().date_start
-        else:
-            return None
 
 
 @receiver(post_delete, sender=Task)
@@ -68,3 +65,13 @@ class TaskResult(api_models.PluginTaskResult):
     task = models.ForeignKey(
         Task, null=True, blank=True, on_delete=models.CASCADE,
         related_name='task_results')
+
+
+@receiver(post_save, sender=TaskResult)
+def update_task_run_date(sender, instance, **kwargs):
+
+    created = kwargs.get('created')
+    if created:
+        task = instance.task
+        task.last_run_date = timezone.now()
+        task.save()

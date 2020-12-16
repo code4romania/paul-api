@@ -445,7 +445,7 @@ def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False
             filter_dict[table] = filter_dict_table
         else:
             filter_dict = filter_dict_table
-    # pprint(filter_dict)
+    pprint(filter_dict)
     return filter_dict
 
 

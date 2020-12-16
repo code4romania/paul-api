@@ -62,6 +62,13 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
             "last_edit_date",
             "active",
         ]
+        validators = [
+            serializers.UniqueTogetherValidator(
+                queryset=model.objects.all(),
+                fields=('name', 'database'),
+                message="This table name is already in use. Please choose another one."
+            )
+        ]
 
     def validate(self, data):
         if "id" in data.keys():

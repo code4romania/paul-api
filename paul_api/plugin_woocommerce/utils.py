@@ -485,14 +485,18 @@ def transform_convoluted(
     customers_by_email,
 ) -> TransformResult:
 
-    BILLING_COLUMNS = {
+    USER_DATA_COLUMNS = {
         "Adresa": lambda obj: f"{obj['address_1']} {obj['address_2']}".strip(),
         "Cod postal": _key("postcode"),
         "Judet": _key("state"),
         "Oras": _key("city"),
         "Tara": _key("country"),
         "Companie": _key("company"),
-        "Telefon": _key("phone"),
+    }
+
+    BILLING_COLUMNS = {
+        **USER_DATA_COLUMNS,
+        "Telefon": _key("phone", ""),
     }
 
     def compute_recurrence(sub: Dict) -> str:
@@ -580,12 +584,8 @@ def transform_convoluted(
 
             # convert outlier cases to regular ones
             if len(items) == 2:
-                assert {**items[0], "id": 0} == {
-                    **items[1],
-                    "id": 0,
-                }, f"unrecognized 2-item line_items case for subscription id {sub['id']}"
-
                 items = [copy.deepcopy(items[0])]
+
             elif len(items) == 6:
                 # assumed to be test cases
                 continue
@@ -694,7 +694,7 @@ def transform_convoluted(
 
         try:
             entry, new_msg = abonament_entry_for_member_data(
-                old, COMMON_COLUMNS, BILLING_COLUMNS, customers_by_id
+                old, COMMON_COLUMNS, USER_DATA_COLUMNS, customers_by_id
             )
             entry["Nume abonament"] = "Abonament vechi"
             messages += new_msg
@@ -719,7 +719,7 @@ def transform_convoluted(
 
         try:
             entry, new_msg = abonament_entry_for_member_data(
-                life, COMMON_COLUMNS, BILLING_COLUMNS, customers_by_id
+                life, COMMON_COLUMNS, USER_DATA_COLUMNS, customers_by_id
             )
             entry["Nume abonament"] = "Abonament pe viata"
             messages += new_msg
@@ -743,7 +743,10 @@ def transform_convoluted(
 
 # this would work nicer as an inner function, but python is acting too weird with captures here
 def abonament_entry_for_member_data(
-    mem, COMMON_COLUMNS, BILLING_COLUMNS, customers_by_id
+    mem,
+    COMMON_COLUMNS: Dict[str, Callable],
+    user_data_columns: Dict[str, Callable],
+    customers_by_id,
 ) -> Tuple[Dict[str, Any], List[Msg]]:
     entry: Dict[str, Any] = {}
     sub_id = mem.get("id")
@@ -771,13 +774,19 @@ def abonament_entry_for_member_data(
         src=customer_meta,
     )
 
-    billing = cust["billing"]
     messages += add_columns(
         entry,
         sub_id,
         "abonamente",
-        BILLING_COLUMNS,
-        src=billing,
+        user_data_columns,
+        src=cust["shipping"],
+    )
+    messages += add_columns(
+        entry,
+        sub_id,
+        f"abonamente st={mem.get('status', 'None')}",
+        {"Telefon": _key("shipping_phone", "")},
+        src=customer_meta,
     )
 
     entry["Metoda de livrare"] = customer_meta.get("delivery_note")
@@ -1187,30 +1196,45 @@ def run_sync(
 
         for table_name in table_locations:
             print(table_name)
-            table_fields_def = map_tables[table_name]['fields']
-            table = get_or_create_table(table_fields_def, map_tables[table_name]['name'])
+            table_fields_def = map_tables[table_name]["fields"]
+            table = get_or_create_table(
+                table_fields_def, map_tables[table_name]["name"]
+            )
             json_table = json.load(open(table_name))
             i = 0
             for entry_json in json_table:
                 i += 1
-                unique_field = map_tables[table_name]['unique_field']
+                unique_field = map_tables[table_name]["unique_field"]
                 entry_filter = {
-                    'table':table,
-                    'data__{}'.format(unique_field) : entry_json[table_fields_def[unique_field]['display_name']]
+                    "table": table,
+                    "data__{}".format(unique_field): entry_json[
+                        table_fields_def[unique_field]["display_name"]
+                    ],
                 }
                 entry = models.Entry.objects.filter(**entry_filter)
                 print(table, i)
 
                 if not entry:
-                    entry = models.Entry.objects.create(table=table, data={unique_field: entry_json[table_fields_def[unique_field]['display_name']]})
+                    entry = models.Entry.objects.create(
+                        table=table,
+                        data={
+                            unique_field: entry_json[
+                                table_fields_def[unique_field]["display_name"]
+                            ]
+                        },
+                    )
                 else:
                     entry = entry[0]
 
                 entry_data = {}
                 for entry_field_name in table_fields_def:
-                    value = entry_json.get(table_fields_def[entry_field_name]['display_name'], None)
-                    if table_fields_def[entry_field_name]['type'] == 'enum':
-                        table_column = models.TableColumn.objects.get(table=table, name=entry_field_name)
+                    value = entry_json.get(
+                        table_fields_def[entry_field_name]["display_name"], None
+                    )
+                    if table_fields_def[entry_field_name]["type"] == "enum":
+                        table_column = models.TableColumn.objects.get(
+                            table=table, name=entry_field_name
+                        )
                         if not table_column.choices:
                             table_column.choices = []
                         if value and str(value) not in table_column.choices:
@@ -1218,15 +1242,12 @@ def run_sync(
                             table_column.save()
                     entry_data[entry_field_name] = value
 
-                models.Entry.objects.filter(**entry_filter).update(
-                    data=entry_data)
+                models.Entry.objects.filter(**entry_filter).update(data=entry_data)
             # os.remove(table_name)
-        stats = {'details': stats}
+        stats = {"details": stats}
 
     except Exception as e:
-        print('---Error', e)
+        print("---Error", e)
         success = False
-        stats = {
-            'details': ['Error in utils: ' + str(e)]
-        }
+        stats = {"details": ["Error in utils: " + str(e)]}
     return success, stats

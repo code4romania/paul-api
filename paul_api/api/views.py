@@ -627,7 +627,8 @@ class FilterViewSet(viewsets.ModelViewSet):
         if is_two_tables_filter:
             secondary_table_fields.append("data__{}".format(secondary_table_join_field))
 
-        order_table = str_order.replace("-", "").split("__")[0]
+        # order_table = str_order.replace("-", "").split("__")[0]
+        order_table = str_order.split("__")[0]
         str_order = str_order.replace(order_table + "__", "")
 
         if str_order:
@@ -639,6 +640,7 @@ class FilterViewSet(viewsets.ModelViewSet):
             order_by = "id"
 
         table_order_by = "id"
+
         if order_table == primary_table_slug:
             table_order_by = order_by
 
@@ -650,28 +652,6 @@ class FilterViewSet(viewsets.ModelViewSet):
             filter_dict[secondary_table_slug] = {}
 
         filter_dict = utils.request_get_to_filter(request.GET, field_types, filter_dict, True)
-        # for key in request.GET:
-        #     table_field = "__".join(key.split("__")[:2])
-        #     if key and table_field in all_fields:
-        #         table = key.split("__")[0]
-        #         field = key.replace(table + "__", "")
-
-        #         filter_dict.setdefault(table, {})
-        #         value = request.GET.get(key).split(",")
-
-        #         if len(value) == 1:
-        #             value = value[0]
-        #         else:
-        #             field = field + "__in"
-
-        #         if field_types[table_field] in [
-        #             "float",
-        #             "int",
-        #         ]:
-        #             filter_dict[table]["data__{}".format(field)] = float(value)
-        #         else:
-        #             filter_dict[table]["data__{}".format(field)] = value
-
 
         # If filter has only primary_table
         if not is_two_tables_filter:

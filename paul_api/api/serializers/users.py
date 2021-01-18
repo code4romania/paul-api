@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User, Group
 from django.utils import timezone
 from django.urls import reverse
+from django.db.models import ImageField
 from rest_framework.response import Response
 from rest_framework import serializers
 
@@ -26,17 +27,18 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     tables_permissions = serializers.SerializerMethodField()
-    avatar = serializers.ImageField(source="userprofile.avatar", allow_null=True)
+    avatar = serializers.ImageField(source="userprofile.avatar", allow_null=True, required=False)
 
     class Meta:
         model = User
-        fields = ["email", "avatar", "first_name", "last_name", "tables_permissions"]
+        fields = [
+            "email", "avatar", "first_name", "last_name", "tables_permissions"]
 
     def partial_update(self, request, *args, **kwargs):
         return Response(1)
 
     def update(self, instance, validated_data):
-
+        pprint(validated_data)
         if self.partial:
             tables_permissions = self.initial_data.get("tables_permissions")
             if tables_permissions:
@@ -56,9 +58,14 @@ class UserUpdateSerializer(serializers.ModelSerializer):
                         remove_perm("delete_table", instance, table)
 
         else:
-            userprofile_data = validated_data.pop("userprofile")
+            if validated_data.get('userprofile'):
+                userprofile_data = validated_data.pop("userprofile")
+                profile = models.Userprofile.objects.get(user=instance)
+                profile.avatar = userprofile_data['avatar']
+                profile.save()
             User.objects.filter(pk=instance.pk).update(**validated_data)
-            models.Userprofile.objects.filter(user=instance).update(**userprofile_data)
+
+            # models.Userprofile.objects.filter(user=instance).update(**userprofile_data)
         instance.refresh_from_db()
 
         return instance

@@ -106,8 +106,7 @@ class FilterDetailSerializer(serializers.ModelSerializer):
         primary_table = obj.primary_table
 
         for field in primary_table.fields.all():
-            fields.append(
-                {
+            field_dict = {
                     "id": field.id,
                     "table_id": primary_table.id,
                     "name": "{}__{}".format(primary_table.table.slug, field.name),
@@ -116,7 +115,9 @@ class FilterDetailSerializer(serializers.ModelSerializer):
                     "choices": field.choices,
                     "sortable": False
                 }
-            )
+            if not obj.join_tables.all():
+                field_dict['sortable'] = True
+            fields.append(field_dict)
         if obj.join_tables.all():
             secondary_table = obj.join_tables.all()[0]
             for field in secondary_table.fields.all():

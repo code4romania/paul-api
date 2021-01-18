@@ -76,7 +76,7 @@ class Userprofile(models.Model):
 
     dashboard_filters = models.ManyToManyField("Filter", blank=True)
     dashboard_charts = models.ManyToManyField("Chart", blank=True)
-    dashboard_cards = models.ManyToManyField("Card", blank=True)
+    cards = models.ManyToManyField("Card", through='UserCard', blank=True)
 
     token = models.UUIDField(default=uuid.uuid4)
     avatar = models.ImageField(upload_to="avatars", null=True, blank=True)
@@ -87,6 +87,30 @@ class Userprofile(models.Model):
     class Meta:
         pass
 
+
+class UserCard(models.Model):
+    """
+    Description: Model Description
+    """
+    profile = models.ForeignKey(Userprofile, on_delete=models.CASCADE, related_name="dashboard_cards")
+    card = models.ForeignKey('Card', on_delete=models.CASCADE)
+    order = models.IntegerField(
+        verbose_name='Order',
+        help_text='What order to display this card within the profile dashboard.',
+        max_length=255,
+        default=1
+    )
+
+    class Meta:
+        verbose_name = "Profile Card"
+        verbose_name_plural = "Profile cards"
+        ordering = ['order',]
+
+    def __str__(self):
+        return '{} - {} (o:{})'.format(
+            self.profile,
+            self.card,
+            self.order)
 
 class Database(models.Model):
     """

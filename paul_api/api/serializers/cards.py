@@ -14,7 +14,7 @@ class ListDataSerializer(serializers.ModelSerializer):
 
     def get_show_in_dashboard(self, obj):
         userprofile = self.context["request"].user.userprofile
-        return obj in userprofile.dashboard_cards.all()
+        return obj in userprofile.cards.all()
 
     class Meta:
         model = models.Card

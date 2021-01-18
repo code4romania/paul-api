@@ -183,18 +183,14 @@ class TableViewSet(viewsets.ModelViewSet):
 
 
     def create(self, request):
-        print('CREATE TABLE')
         fields = request.data.get("fields")
         csv_import_pk = request.data.get("import_id")
         data = request.data
-        print('before serializer')
         serializer = serializers.tables.TableCreateSerializer(
             data=data,
             context={"request": request},
         )
-        print('after serializer')
         serializer.is_valid(raise_exception=True)
-        print('after is valid serializer')
 
         self.perform_create(serializer)
 
@@ -747,34 +743,52 @@ class FilterViewSet(viewsets.ModelViewSet):
     def csv_export(self, request, pk):
         obj = models.Filter.objects.filter(pk=pk).prefetch_related("primary_table", "join_tables")[0]
         str_fields = request.GET.get("__fields", "") if request else None
+        str_order = request.GET.get("__order", "") if request else None
 
         primary_table = obj.primary_table
         primary_table_slug = primary_table.table.slug
-        primary_table_join_field = primary_table.join_field.name
 
-        secondary_table = obj.join_tables.all()[0]
-        secondary_table_slug = secondary_table.table.slug
-        secondary_table_join_field = secondary_table.join_field.name
+        is_two_tables_filter = False
+
+        if obj.join_tables.all():
+            primary_table_join_field = primary_table.join_field.name
+            secondary_table = obj.join_tables.all()[0]
+            secondary_table_slug = secondary_table.table.slug
+            secondary_table_join_field = secondary_table.join_field.name
+            is_two_tables_filter = True
 
         # Get all fields and display fields
         all_fields = []
         field_types = {}
         for field in primary_table.fields.all().order_by("id"):
-            field_key = "{}__{}".format(primary_table.table.slug, field.name)
-            all_fields.append(field_key)
-            field_types[field_key] = field.field_type
-        for field in secondary_table.fields.all().order_by("id"):
-            field_key = "{}__{}".format(secondary_table.table.slug, field.name)
-            all_fields.append(field_key)
-            field_types[field_key] = field.field_type
+            if obj.default_fields.all():
+                if field in obj.default_fields.all():
+                    field_key = "{}__{}".format(primary_table.table.slug, field.name)
+                    all_fields.append(field_key)
+                    field_types[field_key] = field.field_type
+            else:
+                field_key = "{}__{}".format(primary_table.table.slug, field.name)
+                all_fields.append(field_key)
+                field_types[field_key] = field.field_type
 
+        if is_two_tables_filter:
+            for field in secondary_table.fields.all().order_by("id"):
+                if obj.default_fields.all():
+                    if field in obj.default_fields.all():
+                        field_key = "{}__{}".format(secondary_table.table.slug, field.name)
+                        all_fields.append(field_key)
+                        field_types[field_key] = field.field_type
+                else:
+                    field_key = "{}__{}".format(secondary_table.table.slug, field.name)
+                    all_fields.append(field_key)
+                    field_types[field_key] = field.field_type
+
+        fields = all_fields
         if str_fields:
             if str_fields == "ALL":
                 fields = all_fields
             else:
                 fields = str_fields.split(",") if str_fields else None
-        else:
-            fields = all_fields
 
         primary_table_fields = []
         secondary_table_fields = []
@@ -785,100 +799,142 @@ class FilterViewSet(viewsets.ModelViewSet):
             else:
                 secondary_table_fields.append(field.replace(secondary_table_slug + "__", "data__"))
 
-        secondary_table_fields.append("data__{}".format(secondary_table_join_field))
+        if is_two_tables_filter:
+            secondary_table_fields.append("data__{}".format(secondary_table_join_field))
+
+        # order_table = str_order.replace("-", "").split("__")[0]
+        order_table = str_order.split("__")[0]
+        str_order = str_order.replace(order_table + "__", "")
+
+        if str_order:
+            if str_order.startswith("-"):
+                order_by = "-data__{}".format(str_order[1:])
+            else:
+                order_by = "data__{}".format(str_order)
+        else:
+            order_by = "id"
+
+        table_order_by = "id"
+
+        if order_table == primary_table_slug:
+            table_order_by = order_by
 
         # Create filters dict
         filter_dict = {
             primary_table_slug: {},
-            secondary_table_slug: {},
         }
+        if is_two_tables_filter:
+            filter_dict[secondary_table_slug] = {}
+
         filter_dict = utils.request_get_to_filter(request.GET, field_types, filter_dict, True)
-        # for key in request.GET:
-        #     table_field = "__".join(key.split("__")[:2])
-        #     if key and table_field in all_fields:
-        #         table = key.split("__")[0]
-        #         field = key.replace(table + "__", "")
 
-        #         filter_dict.setdefault(table, {})
-        #         value = request.GET.get(key).split(",")
-
-        #         if len(value) == 1:
-        #             value = value[0]
-        #         else:
-        #             field = field + "__in"
-
-        #         if field_types[table_field] in [
-        #             "float",
-        #             "int",
-        #         ]:
-        #             filter_dict[table]["data__{}".format(field)] = float(value)
-        #         else:
-        #             filter_dict[table]["data__{}".format(field)] = value
-
-        join_values = (
-            models.Entry.objects.filter(table=primary_table.table)
-            .filter(**filter_dict[primary_table_slug])
-            .values("data__{}".format(primary_table_join_field))
-        )
-
-        filter_dict[secondary_table_slug]["data__{}__in".format(secondary_table_join_field)] = join_values
-
-        result_values = (
-            models.Entry.objects.filter(table__slug=secondary_table_slug)
-            .filter(**filter_dict[secondary_table_slug])
-            .values(*secondary_table_fields)
-            .order_by("data__{}".format(secondary_table_join_field))
-        )
-
-        queryset = result_values
-
-        if not fields:
-            fields = [x.replace("data__", "{}__".format(primary_table_slug)) for x in primary_table_fields]
-            fields += [x.replace("data__", "{}__".format(secondary_table_slug)) for x in secondary_table_fields]
-        queryset_count = queryset.count()
-        paginator = Paginator(queryset, 1000)  # Show 100 objects per page, you can choose any other value
-
-        file_name = "{}__{}.csv".format(obj.slug, datetime.now().strftime("%d_%m_%Y__%H_%M"))
-        with open("/tmp/{}".format(file_name), "w", encoding="utf-8-sig") as csv_export_file:
-            writer = csv.DictWriter(
-                csv_export_file,
-                delimiter=";",
-                quoting=csv.QUOTE_MINIMAL,
-                fieldnames=fields,
+        # If filter has only primary_table
+        if not is_two_tables_filter:
+            result_values = (
+                models.Entry.objects.filter(table__slug=primary_table_slug)
+                .filter(**filter_dict[primary_table_slug])
+                .values(*primary_table_fields)
+                .order_by(table_order_by)
             )
-            writer.writeheader()
-            for i in paginator.page_range:  # A 1-based range iterator of page numbers, e.g. yielding [1, 2, 3, 4].
-                print("Writing page:", i)
-                data = paginator.get_page(i)
-                page = data.object_list
+            queryset = result_values
 
-                page_join_values = [x["data__{}".format(secondary_table_join_field)] for x in page]
+            if not fields:
+                fields = [x.replace("data__", "{}__".format(primary_table_slug)) for x in primary_table_fields]
 
-                filter_dict[primary_table_slug]["data__{}__in".format(primary_table_join_field)] = page_join_values
-                primary_table_values = {
-                    x.data[primary_table_join_field]: {"data__" + key: value for key, value in x.data.items()}
-                    for x in models.Entry.objects.filter(table=primary_table.table)
-                    .filter(**filter_dict[primary_table_slug])
-                    .exclude(data=None)
-                }
+            paginator = Paginator(queryset, 1000)  # Show 100 objects per page, you can choose any other value
 
-                for entry in page:
-                    final_entry = {}
-                    final_entry_primary_table_values = {}
+            file_name = "{}__{}.csv".format(obj.slug, datetime.now().strftime("%d_%m_%Y__%H_%M"))
+            with open("/tmp/{}".format(file_name), "w", encoding="utf-8-sig") as csv_export_file:
+                writer = csv.DictWriter(
+                    csv_export_file,
+                    delimiter=";",
+                    quoting=csv.QUOTE_MINIMAL,
+                    fieldnames=fields,
+                )
+                writer.writeheader()
+                for i in paginator.page_range:  # A 1-based range iterator of page numbers, e.g. yielding [1, 2, 3, 4].
+                    print("Writing page:", i)
+                    data = paginator.get_page(i)
+                    page = data.object_list
 
-                    entry_primary_table_values = primary_table_values[
-                        entry["data__{}".format(secondary_table_join_field)]
-                    ]
+                    for entry in page:
+                        final_entry = {}
+                        final_entry_primary_table_values = {}
 
-                    for key in entry:
-                        final_entry[key.replace("data__", "{}__".format(secondary_table_slug))] = entry[key]
-                    for key in entry_primary_table_values:
-                        final_entry_primary_table_values[
-                            key.replace("data__", "{}__".format(primary_table_slug))
-                        ] = entry_primary_table_values[key]
+                        for key in entry:
+                            final_entry[key.replace("data__", "{}__".format(primary_table_slug))] = entry[key]
+                        
+                        writer.writerow({k: v for k, v in final_entry.items() if k in fields})
 
-                    final_entry.update(final_entry_primary_table_values)
-                    writer.writerow({k: v for k, v in final_entry.items() if k in fields})
+        else:
+            join_values = (
+                models.Entry.objects.filter(table=primary_table.table)
+                .filter(**filter_dict[primary_table_slug])
+                .values("data__{}".format(primary_table.join_field.name))
+                .order_by(table_order_by)
+            )
+
+            filter_dict[secondary_table_slug]["data__{}__in".format(secondary_table_join_field)] = join_values
+
+            table_order_by = "id"
+            if order_table == secondary_table_slug:
+                table_order_by = order_by
+
+            result_values = (
+                models.Entry.objects.filter(table__slug=secondary_table_slug)
+                .filter(**filter_dict[secondary_table_slug])
+                .values(*secondary_table_fields)
+                .order_by(table_order_by)
+            )
+
+            queryset = result_values
+            if not fields:
+                fields = [x.replace("data__", "{}__".format(primary_table_slug)) for x in primary_table_fields]
+                fields += [x.replace("data__", "{}__".format(secondary_table_slug)) for x in secondary_table_fields]
+            queryset_count = queryset.count()
+            paginator = Paginator(queryset, 1000)  # Show 100 objects per page, you can choose any other value
+
+            file_name = "{}__{}.csv".format(obj.slug, datetime.now().strftime("%d_%m_%Y__%H_%M"))
+            with open("/tmp/{}".format(file_name), "w", encoding="utf-8-sig") as csv_export_file:
+                writer = csv.DictWriter(
+                    csv_export_file,
+                    delimiter=";",
+                    quoting=csv.QUOTE_MINIMAL,
+                    fieldnames=fields,
+                )
+                writer.writeheader()
+                for i in paginator.page_range:  # A 1-based range iterator of page numbers, e.g. yielding [1, 2, 3, 4].
+                    print("Writing page:", i)
+                    data = paginator.get_page(i)
+                    page = data.object_list
+
+                    page_join_values = [x["data__{}".format(secondary_table_join_field)] for x in page]
+
+                    filter_dict[primary_table_slug]["data__{}__in".format(primary_table_join_field)] = page_join_values
+                    primary_table_values = {
+                        x.data[primary_table_join_field]: {"data__" + key: value for key, value in x.data.items()}
+                        for x in models.Entry.objects.filter(table=primary_table.table)
+                        .filter(**filter_dict[primary_table_slug])
+                        .exclude(data=None)
+                    }
+
+                    for entry in page:
+                        final_entry = {}
+                        final_entry_primary_table_values = {}
+
+                        entry_primary_table_values = primary_table_values[
+                            entry["data__{}".format(secondary_table_join_field)]
+                        ]
+
+                        for key in entry:
+                            final_entry[key.replace("data__", "{}__".format(secondary_table_slug))] = entry[key]
+                        for key in entry_primary_table_values:
+                            final_entry_primary_table_values[
+                                key.replace("data__", "{}__".format(primary_table_slug))
+                            ] = entry_primary_table_values[key]
+
+                        final_entry.update(final_entry_primary_table_values)
+                        writer.writerow({k: v for k, v in final_entry.items() if k in fields})
 
         with open("/tmp/{}".format(file_name), "rb") as csv_export_file:
             # response = HttpResponse(FileWrapper(csv_export_file), content_type='application/vnd.ms-excel')

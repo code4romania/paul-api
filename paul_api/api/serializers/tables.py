@@ -115,7 +115,6 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
                 default_fields = validated_data.pop('default_fields')
                 if default_fields:
                     for field in default_fields:
-                        print(field)
                         instance.default_fields.add(field)
             instance.refresh_from_db()
         else:

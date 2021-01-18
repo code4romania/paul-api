@@ -110,9 +110,12 @@ class UserView(APIView):
         Return a list of all users.
         """
         user = request.user
+        profile = user.userprofile
+        profile_cards = [card.card for card in profile.dashboard_cards.all()]
         admin_group = Group.objects.get(name='admin')
+
         cards_serializer = serializers.cards.ListSerializer(
-            user.userprofile.dashboard_cards.all(), many=True, context={'request': request})
+            profile_cards, many=True, context={'request': request})
         charts_serializer = serializers.charts.ListSerializer(
             user.userprofile.dashboard_charts.all(), many=True, context={'request': request})
         filters_serializer = serializers.filters.FilterListSerializer(
@@ -1279,16 +1282,20 @@ class CardViewSet(viewsets.ModelViewSet):
         card = self.get_object()
         userprofile = request.user.userprofile
 
-        if not userprofile.dashboard_cards:
-            userprofile.dashboard_cards.set([])
+        profile_card, created = models.UserCard.objects.get_or_create(
+            profile=userprofile,
+            card=card
+            )
 
-        if card in userprofile.dashboard_cards.all():
-            userprofile.dashboard_cards.remove(card)
+        if created:
+            profile_card.order = userprofile.cards.count() + 1
+            profile_card.save()
         else:
-            userprofile.dashboard_cards.add(card)
-        userprofile.save()
+            profile_card.delete()
+
         return Response(
-            {'card_in_dashboard': card in userprofile.dashboard_cards.all()})
+            {'card_in_dashboard': created})
+
 
     @action(
         detail=True,

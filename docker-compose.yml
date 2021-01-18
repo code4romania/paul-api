@@ -18,6 +18,7 @@ services:
       - "8000:8000"
     volumes:
       - ./:/opt
+      - media:/var/www/paul-api/media
     restart: on-failure
     depends_on:
       - paul-db
@@ -83,5 +84,7 @@ services:
       - redis
 networks:
   main:
+
 volumes:
   database-data:
+  media:

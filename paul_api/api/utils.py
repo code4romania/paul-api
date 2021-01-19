@@ -19,6 +19,7 @@ from . import models
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import requests
+import re
 from pprint import pprint
 
 DB_FUNCTIONS = {
@@ -29,18 +30,21 @@ DB_FUNCTIONS = {
     "Avg": Avg,
 }
 
+
 def send_email(template, context, subject, to):
     html = get_template(template)
     html_content = html.render(context)
 
-    msg = EmailMultiAlternatives(subject, html_content, settings.NO_REPLY_EMAIL, [to])
+    msg = EmailMultiAlternatives(
+        subject, html_content, settings.NO_REPLY_EMAIL, [to])
     msg.attach_alternative(html_content, "text/html")
 
     return msg.send()
 
 
 def snake_case(text):
-    return inflection.underscore(inflection.parameterize(text))
+    value = inflection.underscore(inflection.parameterize(text))
+    return re.sub('_+', '_', value)
 
 
 def import_csv(reader, table, csv_import=None):
@@ -76,7 +80,7 @@ def import_csv(reader, table, csv_import=None):
                             entry_dict[field_name] = float(row[key])
                         elif field_type == "date":
                             value = datetime.strptime(row[key], field.field_format)
-                            entry_dict[field_name] = value
+                            entry_dict[field_name] = value.strftime('%Y-%m-%d')
                         elif field_type == "enum":
                             value = row[key]
                             if not field_choices[field_name]:
@@ -173,12 +177,12 @@ def get_chart_data(request, chart, table, preview=False):
     if chart.timeline_field:
         chart_data = chart_data.order_by('time')
         data = prepare_chart_data(chart, chart_data, timeline=True)
-
     else:
         chart_data = chart_data.order_by('data__' +  chart.x_axis_field.name)
         data = prepare_chart_data(chart, chart_data, timeline=False)
 
     return data
+
 
 def get_strftime(date, period):
     if not date:
@@ -379,6 +383,7 @@ def prepare_chart_data(chart, chart_data, timeline=True):
 
 
 def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False):
+    pprint(request)
     for key in request:
 
         if is_filter:
@@ -394,6 +399,7 @@ def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False
         column = key.split("__")[0]
 
         if key and (column in table_fields.keys() or filter_table_field in table_fields.keys()):
+            print(key)
             if is_filter:
                 column_type = table_fields[filter_table_field]
                 value = request.get(table + '__' + key).split(",")
@@ -414,30 +420,37 @@ def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False
 
                 filter_dict_table["data__{}".format(key)] = float(value)
             else:
-                if column_type == 'date' and key_lookup == 'relative':
-                    relative_type = value.split('_')[0] # current | next | last
-                    relative_period = value.split('_')[-1] + 's' # day | week | month | year
-                    today = datetime.today()
-                    relative_increment_dict = {}
+                if column_type == 'date':
+                    if key_lookup == 'relative':
+                        relative_type = value.split('_')[0] # current | next | last
+                        relative_period = value.split('_')[-1] + 's' # day | week | month | year
+                        today = datetime.today()
+                        relative_increment_dict = {}
 
-                    if relative_type in ['current', 'next']:
-                        relative_increment = 0 if relative_type == 'current' else 1
-                        relative_increment_dict[relative_period] = relative_increment
-                        date_start = today + relativedelta(**relative_increment_dict)
+                        if relative_type in ['current', 'next']:
+                            relative_increment = 0 if relative_type == 'current' else 1
+                            relative_increment_dict[relative_period] = relative_increment
+                            date_start = today + relativedelta(**relative_increment_dict)
+                        else:
+                            relative_increment_dict[relative_period] = 1
+                            date_start = today - relativedelta(**relative_increment_dict)
+
+                        if relative_period == 'weeks':
+                            date_start = date_start - relativedelta(
+                                days=(date_start.isoweekday() - 1) % 7)
+                        elif relative_period == 'months':
+                            date_start = date_start.replace(day=1)
+                        elif relative_period == 'years':
+                            date_start = date_start.replace(month=1, day=1)
+
+                        filter_dict_table["data__{}__gte".format(column)] = date_start.replace(hour=0, minute=0)
+                        filter_dict_table["data__{}__lt".format(column)] = date_start + relativedelta(**{relative_period:1})
                     else:
-                        relative_increment_dict[relative_period] = 1
-                        date_start = today - relativedelta(**relative_increment_dict)
+                        filter_dict_table["data__{}".format(key)] = value[:10]
+                        # filter_dict_table = {'data__data_nasterii__gte': '1987-06-25'}
+                        print(key, value[:10])
+                        print('===')
 
-                    if relative_period == 'weeks':
-                        date_start = date_start - relativedelta(
-                            days=(date_start.isoweekday() - 1) % 7)
-                    elif relative_period == 'months':
-                        date_start = date_start.replace(day=1)
-                    elif relative_period == 'years':
-                        date_start = date_start.replace(month=1, day=1)
-
-                    filter_dict_table["data__{}__gte".format(column)] = date_start.replace(hour=0, minute=0)
-                    filter_dict_table["data__{}__lt".format(column)] = date_start + relativedelta(**{relative_period:1})
                 else:
                     filter_dict_table["data__{}".format(key)] = value
         if is_filter:
@@ -445,6 +458,9 @@ def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False
         else:
             filter_dict = filter_dict_table
     pprint(filter_dict)
+    print('--FINAL FILTER DICT--')
+    print('--FINAL FILTER DICT--')
+
     return filter_dict
 
 

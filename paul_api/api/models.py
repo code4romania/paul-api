@@ -6,10 +6,12 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import Group
-import uuid
 from django.dispatch import receiver
-from djoser.signals import user_activated, user_registered
+from djoser.signals import user_activated
 from api import utils
+
+import uuid
+import re
 
 
 @receiver(user_activated)
@@ -181,7 +183,7 @@ class Table(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-        value = self.name
+        value = re.sub('_+', '_', self.name)
         self.slug = slugify(value, allow_unicode=True)
         self.last_edit_date = timezone.now()
         super().save(*args, **kwargs)
@@ -215,7 +217,8 @@ class TableColumn(models.Model):
         return "[{}] {} ({})".format(self.table, self.name, self.field_type)
 
     def save(self, *args, **kwargs):
-        self.slug = slugify(self.name, allow_unicode=True)
+        value = re.sub('_+', '_', self.name)
+        self.slug = slugify(value, allow_unicode=True)
         super().save(*args, **kwargs)
 
 
@@ -370,7 +373,7 @@ class Filter(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-        value = self.name
+        value = re.sub('_+', '_', self.name)
         self.slug = slugify(value, allow_unicode=True)
         super().save(*args, **kwargs)
 

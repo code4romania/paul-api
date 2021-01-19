@@ -11,6 +11,7 @@ from . import table_fields
 
 import requests
 
+
 def get_or_create_table(table_type, table_name):
     db = models.Database.objects.last()
     user, _ = User.objects.get_or_create(username='paul-sync')
@@ -120,8 +121,6 @@ def run_sync(key,
     segment_members_table_fields_defs = table_fields.TABLE_MAPPING['segment_members']
 
     for list in lists['lists']:
-        # print('List:', list['name'])
-        # Sync lists
         audience_exists = models.Entry.objects.filter(
             table=audiences_table, data__id=list['id'])
 
@@ -135,10 +134,13 @@ def run_sync(key,
                 data={'id': list['id']})
 
         for field in audiences_table_fields_defs:
+            field_def = audiences_table_fields_defs[field]
             try:
-                audience_entry.data[field] = list[field]
+                if field_def['type'] == 'date':
+                    audience_entry.data[field] = list[field][:10]
+                else:
+                    audience_entry.data[field] = list[field]
             except:
-                field_def = audiences_table_fields_defs[field]
                 audience_entry.data[field] = list[field_def['mailchimp_parent_key_name']][field_def['mailchimp_key_name']]
 
         audience_entry.save()
@@ -158,8 +160,12 @@ def run_sync(key,
                     'audience_name': list['name']
                     })
         for field in audiences_stats_table_fields_defs:
+            field_def = audiences_stats_table_fields_defs[field]
             try:
-                audience_stats_entry.data[field] = list['stats'][field]
+                if field_def['type'] == 'date':
+                    audience_stats_entry.data[field] = list['stats'][field][:10]
+                else:
+                    audience_stats_entry.data[field] = list['stats'][field]
             except:
                 pass
 
@@ -184,8 +190,12 @@ def run_sync(key,
                         'audience_name': list['name']
                         })
             for field in audience_segments_table_fields_defs:
+                field_def = audience_segments_table_fields_defs[field]
                 try:
-                    audience_segments_entry.data[field] = segment[field]
+                    if field_def['type'] == 'date':
+                        audience_segments_entry.data[field] = segment[field][:10]
+                    else:
+                        audience_segments_entry.data[field] = segment[field]
                 except:
                     pass
 
@@ -231,7 +241,10 @@ def run_sync(key,
                         if 'is_list' in field_def.keys():
                             segment_members_entry.data[field] = ','.join(member[field])
                         else:
-                            segment_members_entry.data[field] = member[field]
+                            if field_def['type'] == 'date':
+                                segment_members_entry.data[field] = member[field][:10]
+                            else:
+                                segment_members_entry.data[field] = member[field]
                     else:
                         try:
                             segment_members_entry.data[field] = member[field_def['mailchimp_parent_key_name']][field_def['mailchimp_key_name']]
@@ -286,7 +299,10 @@ def run_sync(key,
                             stats[audience_tags_table_name][tag_status] += 1
                         audience_members_entry.data[field] = ','.join(items)
                     else:
-                        audience_members_entry.data[field] = member[field]
+                        if field_def['type'] == 'enum':
+                            audience_members_entry.data[field] = member[field][:10]
+                        else:
+                            audience_members_entry.data[field] = member[field]
                 else:
                     try:
                         audience_members_entry.data[field] = member[field_def['mailchimp_parent_key_name']][field_def['mailchimp_key_name']]

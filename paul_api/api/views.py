@@ -144,7 +144,6 @@ class DatabaseViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.databases.DatabaseSerializer
 
 
-
 class CanView(permissions.BasePermission):
     """
     Object-level permission to only allow owners of an object to access it.

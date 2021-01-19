@@ -20,7 +20,7 @@ DATATYPE_SERIALIZERS = {
     "text": serializers.CharField,
     "float": serializers.FloatField,
     "int": serializers.IntegerField,
-    "date": serializers.DateTimeField,
+    "date": serializers.DateField,
     "bool": serializers.BooleanField,
     "enum": serializers.CharField,
 }

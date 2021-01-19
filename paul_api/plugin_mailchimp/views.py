@@ -44,12 +44,6 @@ class TaskViewSet(viewsets.ModelViewSet):
         task = self.get_object()
 
         if task.task_type == 'sync':
-            print('aici')
-            print('aici')
-            print('aici')
-            print('aici')
-            print('aici')
-            print('aici')
             # tasks.sync.apply_async(args=[None, task.id])
             task_result_id = tasks.sync.apply_async(args=[None, task.id])
             print(task_result_id)

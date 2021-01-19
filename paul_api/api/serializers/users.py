@@ -38,7 +38,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         return Response(1)
 
     def update(self, instance, validated_data):
-        pprint(validated_data)
         if self.partial:
             tables_permissions = self.initial_data.get("tables_permissions")
             if tables_permissions:
@@ -56,7 +55,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
                         remove_perm("view_table", instance, table)
                         remove_perm("change_table", instance, table)
                         remove_perm("delete_table", instance, table)
-
         else:
             if validated_data.get('userprofile'):
                 userprofile_data = validated_data.pop("userprofile")
@@ -65,7 +63,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
                 profile.save()
             User.objects.filter(pk=instance.pk).update(**validated_data)
 
-            # models.Userprofile.objects.filter(user=instance).update(**userprofile_data)
         instance.refresh_from_db()
 
         return instance

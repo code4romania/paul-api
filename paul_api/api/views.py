@@ -126,11 +126,15 @@ class UserView(APIView):
             "charts": charts_serializer.data,
             "filters": filters_serializer.data
         }
+
+        avatar_url = profile.avatar.url
+
         response = {
             "username": user.username,
             "id": user.id,
             "dashboard": dashboard,
-            "is_admin": admin_group in user.groups.all()
+            "is_admin": admin_group in user.groups.all(),
+            "avatar": request.build_absolute_uri(avatar_url)
         }
         return Response(response)
 

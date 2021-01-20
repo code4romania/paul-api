@@ -1,6 +1,6 @@
 from django.db.models import (
     Count, Sum, Min, Max, Avg,
-    DateTimeField, CharField, FloatField, IntegerField)
+    DateTimeField, CharField, FloatField, IntegerField, Q)
 from django.db.models.functions import Trunc, Cast
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.urls import reverse
@@ -119,11 +119,11 @@ def get_chart_data(request, chart, table, preview=False):
     y_axis_function = DB_FUNCTIONS[chart.y_axis_function]
 
     table_fields = {x.name: x.field_type for x in table.fields.all()}
-    filter_dict = request_get_to_filter(request.GET, table_fields, {}, False)
+    filter_dict = request_get_to_filter(request.GET, table_fields, Q(), False)
 
     chart_data = models.Entry.objects \
         .filter(table=chart.table) \
-        .filter(**filter_dict)
+        .filter(filter_dict)
     if preview:
         chart_data = chart_data[:100]
 
@@ -382,10 +382,9 @@ def prepare_chart_data(chart, chart_data, timeline=True):
     return data
 
 
-def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False):
-    pprint(request)
+def request_get_to_filter(request, table_fields, filter_dict=Q(), is_filter=False):
+    # print(request)
     for key in request:
-
         if is_filter:
             table = key.split("__")[0]
             filter_table_field = "__".join(key.split("__")[:2])
@@ -399,7 +398,6 @@ def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False
         column = key.split("__")[0]
 
         if key and (column in table_fields.keys() or filter_table_field in table_fields.keys()):
-            print(key)
             if is_filter:
                 column_type = table_fields[filter_table_field]
                 value = request.get(table + '__' + key).split(",")
@@ -413,52 +411,68 @@ def request_get_to_filter(request, table_fields, filter_dict={}, is_filter=False
             else:
                 key = key + "__in"
 
-            if column_type in [
-                "float",
-                "int",
-            ]:
-
-                filter_dict_table["data__{}".format(key)] = float(value)
+            if value == '__BLANK':
+                filter_dict_table = filter_dict_table & Q(
+                    Q(
+                        **{"data__{}__isnull".format(key): True}) | Q(
+                        **{"data__{}".format(key): ''})
+                    )
             else:
-                if column_type == 'date':
-                    if key_lookup == 'relative':
-                        relative_type = value.split('_')[0] # current | next | last
-                        relative_period = value.split('_')[-1] + 's' # day | week | month | year
-                        today = datetime.today()
-                        relative_increment_dict = {}
-
-                        if relative_type in ['current', 'next']:
-                            relative_increment = 0 if relative_type == 'current' else 1
-                            relative_increment_dict[relative_period] = relative_increment
-                            date_start = today + relativedelta(**relative_increment_dict)
-                        else:
-                            relative_increment_dict[relative_period] = 1
-                            date_start = today - relativedelta(**relative_increment_dict)
-
-                        if relative_period == 'weeks':
-                            date_start = date_start - relativedelta(
-                                days=(date_start.isoweekday() - 1) % 7)
-                        elif relative_period == 'months':
-                            date_start = date_start.replace(day=1)
-                        elif relative_period == 'years':
-                            date_start = date_start.replace(month=1, day=1)
-
-                        filter_dict_table["data__{}__gte".format(column)] = date_start.replace(hour=0, minute=0)
-                        filter_dict_table["data__{}__lt".format(column)] = date_start + relativedelta(**{relative_period:1})
-                    else:
-                        filter_dict_table["data__{}".format(key)] = value[:10]
-                        # filter_dict_table = {'data__data_nasterii__gte': '1987-06-25'}
-                        print(key, value[:10])
-                        print('===')
-
+                if column_type in [
+                    "float",
+                    "int",
+                ]:
+                    filter_dict_table = filter_dict_table & Q(
+                        **{"data__{}".format(key): float(value)})
                 else:
-                    filter_dict_table["data__{}".format(key)] = value
+                    if column_type == 'date':
+                        if key_lookup == 'relative':
+                            relative_type = value.split('_')[0] # current | next | last
+                            relative_period = value.split('_')[-1] + 's' # day | week | month | year
+                            today = datetime.today()
+                            relative_increment_dict = {}
+
+                            if relative_type in ['current', 'next']:
+                                relative_increment = 0 if relative_type == 'current' else 1
+                                relative_increment_dict[relative_period] = relative_increment
+                                date_start = today + relativedelta(**relative_increment_dict)
+                            else:
+                                relative_increment_dict[relative_period] = 1
+                                date_start = today - relativedelta(**relative_increment_dict)
+
+                            if relative_period == 'weeks':
+                                date_start = date_start - relativedelta(
+                                    days=(date_start.isoweekday() - 1) % 7)
+                            elif relative_period == 'months':
+                                date_start = date_start.replace(day=1)
+                            elif relative_period == 'years':
+                                date_start = date_start.replace(month=1, day=1)
+
+                            # filter_dict_table["data__{}__gte".format(column)] = date_start.replace(hour=0, minute=0)
+                            # filter_dict_table["data__{}__lt".format(column)] = date_start + relativedelta(**{relative_period:1})
+                            filter_dict_table = filter_dict_table & Q(
+                                **{"data__{}__gte".format(column): date_start.replace(hour=0, minute=0)})
+                            filter_dict_table = filter_dict_table & Q(
+                                **{"data__{}__lt".format(column): date_start + relativedelta(**{relative_period:1})})
+                        else:
+                            # filter_dict_table["data__{}".format(key)] = value
+                            filter_dict_table = filter_dict_table & Q(
+                                **{"data__{}".format(key): value})
+                            # filter_dict_table = {'data__data_nasterii__gte': '1987-06-25'}
+                            # print(key, value[:10])
+                            # print('===')
+
+                    else:
+                        filter_dict_table = filter_dict_table & Q(
+                                **{"data__{}".format(key): value})
+                        # filter_dict_table["data__{}".format(key)] = value
         if is_filter:
             filter_dict[table] = filter_dict_table
         else:
             filter_dict = filter_dict_table
-    pprint(filter_dict)
     print('--FINAL FILTER DICT--')
+    pprint(filter_dict)
+    # filter_dict = {'data__data_expirarii__isnull': True}
     print('--FINAL FILTER DICT--')
 
     return filter_dict
@@ -468,11 +482,11 @@ def get_card_data(request, card, table, preview=False):
     data_column_function = DB_FUNCTIONS[card.data_column_function]
 
     table_fields = {x.name: x.field_type for x in table.fields.all()}
-    filter_dict = request_get_to_filter(request.GET, table_fields, {}, False)
+    filter_dict = request_get_to_filter(request.GET, table_fields, Q(), False)
 
     card_data = models.Entry.objects \
         .filter(table=card.table) \
-        .filter(**filter_dict)
+        .filter(filter_dict)
 
     if preview:
         card_data = card_data[:100]

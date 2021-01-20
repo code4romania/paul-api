@@ -34,7 +34,8 @@ class DatabaseAdmin(admin.ModelAdmin):
 
 class CsvFieldMapInline(admin.TabularInline):
     model = models.CsvFieldMap
-    fields = ("original_name", "display_name", "field_type", "field_format", "table_column")
+    fields = (
+        "original_name", "display_name", "field_type", "field_format", "table_column")
     can_delete = True
     can_add = False
     verbose_name_plural = "Csv File Fields Map"
@@ -98,13 +99,13 @@ class BaseEntityAdmin(admin.ModelAdmin):
 
 
 @admin.register(models.Entry)
-class EntryAdmin(BaseEntityAdmin):
+class EntryAdmin(admin.ModelAdmin):
     list_display = ("table", "data")
     exclude = ()
     # readonly_fields = ('table', )
     # form = EntryAdminForm
     list_filter = ("table__name",)
-
+    search_fields = ['data']
     # def get_form(self, request, obj=None, **kwargs):
     #     # By passing 'fields', we prevent ModelAdmin.get_form from
     #     # looking up the fields itself by calling self.get_fieldsets()

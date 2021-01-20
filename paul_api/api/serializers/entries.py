@@ -120,6 +120,8 @@ class EntrySerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data, *args, **kwargs):
+        pprint(self.initial_data)
+        print('----')
         instance.data = self.initial_data
         instance.table.last_edit_user = self.context["request"].user
         instance.table.last_edit_date = datetime.now()

@@ -187,7 +187,6 @@ class TableViewSet(viewsets.ModelViewSet):
             base_permissions = (api_permissions.IsAuthenticatedOrGetToken(),)
         return base_permissions
 
-
     def create(self, request):
         fields = request.data.get("fields")
         csv_import_pk = request.data.get("import_id")
@@ -314,7 +313,7 @@ class TableViewSet(viewsets.ModelViewSet):
         table = models.Table.objects.get(pk=pk)
         table_fields = {x.name: x for x in table.fields.all()}
 
-        filter_dict = utils.request_get_to_filter(request.GET, table_fields, {}, False)
+        filter_dict = utils.request_get_to_filter(request.GET, table_fields, Q(), False)
 
         file_name = "{}__{}.csv".format(table.name, datetime.now().strftime("%d.%m.%Y"))
         with open("/tmp/{}".format(file_name), "w", encoding="utf-8-sig") as csv_export_file:
@@ -325,7 +324,7 @@ class TableViewSet(viewsets.ModelViewSet):
                 fieldnames=table.fields.values_list("name", flat=True),
             )
             writer.writeheader()
-            for row in table.entries.filter(**filter_dict):
+            for row in table.entries.filter(filter_dict):
                 writer.writerow(row.data)
 
         with open("/tmp/{}".format(file_name), "rb") as csv_export_file:
@@ -648,10 +647,10 @@ class FilterViewSet(viewsets.ModelViewSet):
 
         # Create filters dict
         filter_dict = {
-            primary_table_slug: {},
+            primary_table_slug: Q(),
         }
         if is_two_tables_filter:
-            filter_dict[secondary_table_slug] = {}
+            filter_dict[secondary_table_slug] = Q()
 
         filter_dict = utils.request_get_to_filter(request.GET, field_types, filter_dict, True)
 
@@ -659,7 +658,7 @@ class FilterViewSet(viewsets.ModelViewSet):
         if not is_two_tables_filter:
             result_values = (
                 models.Entry.objects.filter(table__slug=primary_table_slug)
-                .filter(**filter_dict[primary_table_slug])
+                .filter(filter_dict[primary_table_slug])
                 .values(*primary_table_fields)
                 .order_by(table_order_by)
             )
@@ -681,20 +680,21 @@ class FilterViewSet(viewsets.ModelViewSet):
         else:
             join_values = (
                 models.Entry.objects.filter(table=primary_table.table)
-                .filter(**filter_dict[primary_table_slug])
+                .filter(filter_dict[primary_table_slug])
                 .values("data__{}".format(primary_table.join_field.name))
                 .order_by(table_order_by)
             )
 
-            filter_dict[secondary_table_slug]["data__{}__in".format(secondary_table_join_field)] = join_values
-
+            # filter_dict[secondary_table_slug]["data__{}__in".format(secondary_table_join_field)] = join_values
+            filter_dict[secondary_table_slug] = filter_dict[secondary_table_slug] & Q(
+                **{"data__{}__in".format(secondary_table_join_field) :join_values})
             table_order_by = "id"
             if order_table == secondary_table_slug:
                 table_order_by = order_by
 
             result_values = (
                 models.Entry.objects.filter(table__slug=secondary_table_slug)
-                .filter(**filter_dict[secondary_table_slug])
+                .filter(filter_dict[secondary_table_slug])
                 .values(*secondary_table_fields)
                 .order_by(table_order_by)
             )
@@ -711,11 +711,13 @@ class FilterViewSet(viewsets.ModelViewSet):
                 final_page = []
                 page_join_values = [x["data__{}".format(secondary_table_join_field)] for x in page]
 
-                filter_dict[primary_table_slug]["data__{}__in".format(primary_table_join_field)] = page_join_values
+                filter_dict[primary_table_slug] = filter_dict[primary_table_slug] & Q(
+                    **{"data__{}__in".format(primary_table_join_field): page_join_values})
+                # filter_dict[primary_table_slug]["data__{}__in".format(primary_table_join_field)] = page_join_values
                 primary_table_values = {
                     x.data[primary_table_join_field]: {"data__" + key: value for key, value in x.data.items()}
                     for x in models.Entry.objects.filter(table=primary_table.table)
-                    .filter(**filter_dict[primary_table_slug])
+                    .filter(filter_dict[primary_table_slug])
                     .exclude(data=None)
                 }
 
@@ -827,10 +829,10 @@ class FilterViewSet(viewsets.ModelViewSet):
 
         # Create filters dict
         filter_dict = {
-            primary_table_slug: {},
+            primary_table_slug: Q(),
         }
         if is_two_tables_filter:
-            filter_dict[secondary_table_slug] = {}
+            filter_dict[secondary_table_slug] = Q()
 
         filter_dict = utils.request_get_to_filter(request.GET, field_types, filter_dict, True)
 
@@ -838,7 +840,7 @@ class FilterViewSet(viewsets.ModelViewSet):
         if not is_two_tables_filter:
             result_values = (
                 models.Entry.objects.filter(table__slug=primary_table_slug)
-                .filter(**filter_dict[primary_table_slug])
+                .filter(filter_dict[primary_table_slug])
                 .values(*primary_table_fields)
                 .order_by(table_order_by)
             )
@@ -875,12 +877,14 @@ class FilterViewSet(viewsets.ModelViewSet):
         else:
             join_values = (
                 models.Entry.objects.filter(table=primary_table.table)
-                .filter(**filter_dict[primary_table_slug])
+                .filter(filter_dict[primary_table_slug])
                 .values("data__{}".format(primary_table.join_field.name))
                 .order_by(table_order_by)
             )
 
-            filter_dict[secondary_table_slug]["data__{}__in".format(secondary_table_join_field)] = join_values
+            filter_dict[secondary_table_slug] = filter_dict[secondary_table_slug] & Q(
+                **{"data__{}__in".format(secondary_table_join_field): join_values})
+            # filter_dict[secondary_table_slug]["data__{}__in".format(secondary_table_join_field)] = join_values
 
             table_order_by = "id"
             if order_table == secondary_table_slug:
@@ -888,7 +892,7 @@ class FilterViewSet(viewsets.ModelViewSet):
 
             result_values = (
                 models.Entry.objects.filter(table__slug=secondary_table_slug)
-                .filter(**filter_dict[secondary_table_slug])
+                .filter(filter_dict[secondary_table_slug])
                 .values(*secondary_table_fields)
                 .order_by(table_order_by)
             )
@@ -915,12 +919,13 @@ class FilterViewSet(viewsets.ModelViewSet):
                     page = data.object_list
 
                     page_join_values = [x["data__{}".format(secondary_table_join_field)] for x in page]
-
-                    filter_dict[primary_table_slug]["data__{}__in".format(primary_table_join_field)] = page_join_values
+                    filter_dict[primary_table_slug] = filter_dict[primary_table_slug] & Q(
+                        **{"data__{}__in".format(primary_table_join_field): page_join_values})
+                    # filter_dict[primary_table_slug]["data__{}__in".format(primary_table_join_field)] = page_join_values
                     primary_table_values = {
                         x.data[primary_table_join_field]: {"data__" + key: value for key, value in x.data.items()}
                         for x in models.Entry.objects.filter(table=primary_table.table)
-                        .filter(**filter_dict[primary_table_slug])
+                        .filter(filter_dict[primary_table_slug])
                         .exclude(data=None)
                     }
 
@@ -977,15 +982,15 @@ class EntryViewSet(viewsets.ModelViewSet):
                     fields = [x for x in table_fields.keys()]
 
 
-        filter_dict = utils.request_get_to_filter(request.GET, table_fields, {}, False)
+        filter_dict = utils.request_get_to_filter(request.GET, table_fields, Q(), False)
 
         if str_order and str_order.replace("-", "") in fields:
             if str_order.startswith("-"):
-                queryset = table.entries.filter(**filter_dict).order_by("-data__{}".format(str_order[1:]))
+                queryset = table.entries.filter(filter_dict).order_by("-data__{}".format(str_order[1:]))
             else:
-                queryset = table.entries.filter(**filter_dict).order_by("data__{}".format(str_order))
+                queryset = table.entries.filter(filter_dict).order_by("data__{}".format(str_order))
         else:
-            queryset = table.entries.filter(**filter_dict).order_by("id")
+            queryset = table.entries.filter(filter_dict).order_by("id")
             # queryset = table.entries.annotate(date_field=Cast(KeyTextTransform('data_iesire', "data"), DateField())).filter(date_field__exact='2020-07-21').order_by("id")
 
         page = self.paginate_queryset(queryset)

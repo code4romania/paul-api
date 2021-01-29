@@ -195,11 +195,14 @@ DJOSER = {
     "USERNAME_CHANGED_EMAIL_CONFIRMATION": True,
 }
 
+DEFAULT_FROM_EMAIL=env("NO_REPLY_EMAIL")
+SERVER_EMAIL=env("NO_REPLY_EMAIL")
+
 try:
     SENDGRID_API_KEY = env("SENDGRID_API_KEY")
-    EMAIL_BACKEND = "sendgrid_backend.SendgridBackend"
     SENDGRID_SANDBOX_MODE_IN_DEBUG = False
-    # SENDGRID_ECHO_TO_STDOUT = True
+    EMAIL_BACKEND = "sendgrid_backend.SendgridBackend"
+    SENDGRID_ECHO_TO_STDOUT = False
 except:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 

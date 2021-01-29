@@ -24,7 +24,7 @@ from rest_framework import filters as drf_filters
 from django_filters import rest_framework as filters
 from rest_framework_tricks.filters import OrderingFilter
 
-from silk.profiling.profiler import silk_profile
+
 
 import csv
 import json
@@ -570,7 +570,8 @@ class FilterViewSet(viewsets.ModelViewSet):
         obj = models.Filter.objects.filter(pk=pk).prefetch_related("primary_table", "join_tables")[0]
         str_fields = request.GET.get("__fields", "") if request else None
         str_order = request.GET.get("__order", "") if request else None
-
+        print(str_order)
+        print('---')
         primary_table = obj.primary_table
         primary_table_slug = primary_table.table.slug
 

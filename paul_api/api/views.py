@@ -570,8 +570,7 @@ class FilterViewSet(viewsets.ModelViewSet):
         obj = models.Filter.objects.filter(pk=pk).prefetch_related("primary_table", "join_tables")[0]
         str_fields = request.GET.get("__fields", "") if request else None
         str_order = request.GET.get("__order", "") if request else None
-        print(str_order)
-        print('---')
+
         primary_table = obj.primary_table
         primary_table_slug = primary_table.table.slug
 
@@ -634,17 +633,15 @@ class FilterViewSet(viewsets.ModelViewSet):
         str_order = str_order.replace(order_table + "__", "")
 
         if str_order:
-            if str_order.startswith("-"):
-                order_by = "-data__{}".format(str_order[1:])
+            if order_table.startswith("-"):
+                order_table = order_table[1:]
+                order_by = "-data__{}".format(str_order)
             else:
                 order_by = "data__{}".format(str_order)
         else:
             order_by = "id"
 
         table_order_by = "id"
-
-        if order_table == primary_table_slug:
-            table_order_by = order_by
 
         # Create filters dict
         filter_dict = {
@@ -657,6 +654,8 @@ class FilterViewSet(viewsets.ModelViewSet):
 
         # If filter has only primary_table
         if not is_two_tables_filter:
+            if order_table == primary_table_slug:
+                table_order_by = order_by
             result_values = (
                 models.Entry.objects.filter(table__slug=primary_table_slug)
                 .filter(filter_dict[primary_table_slug])
@@ -679,6 +678,9 @@ class FilterViewSet(viewsets.ModelViewSet):
                 return self.get_paginated_response(serializer.data)
         # If filter has secondary table
         else:
+            if order_table == secondary_table_slug:
+                table_order_by = order_by
+
             join_values = (
                 models.Entry.objects.filter(table=primary_table.table)
                 .filter(filter_dict[primary_table_slug])

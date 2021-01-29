@@ -470,10 +470,6 @@ def request_get_to_filter(request, table_fields, filter_dict=Q(), is_filter=Fals
             filter_dict[table] = filter_dict_table
         else:
             filter_dict = filter_dict_table
-    print('--FINAL FILTER DICT--')
-    pprint(filter_dict)
-    # filter_dict = {'data__data_expirarii__isnull': True}
-    print('--FINAL FILTER DICT--')
 
     return filter_dict
 

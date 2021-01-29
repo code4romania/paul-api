@@ -298,7 +298,6 @@ class Entry(models.Model):
     def clean_fields(self, exclude=None):
         super().clean_fields(exclude=exclude)
         fields = {x.name: x for x in self.table.fields.all()}
-        print('clean')
         for field, field_obj in fields.items():
             value = self.data.get(field, None)
             if field_obj.required:
@@ -314,10 +313,8 @@ class Entry(models.Model):
                             field, ", ".join(field_obj.choices))
                     )
             elif value and field_obj.field_type == "float":
-                print('da')
                 self.data[field] = float(self.data[field])
             elif value and field_obj.field_type == "int":
-                print('da')
                 self.data[field] = int(self.data[field])
 
 

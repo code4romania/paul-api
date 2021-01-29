@@ -1,11 +1,12 @@
 FROM python:3.7.4-alpine
 
 RUN apk update && \
-    apk add --no-cache --virtual build-deps python-dev postgresql-dev git python3-dev gcc musl-dev \
+    apk add --no-cache --virtual .build-deps python-dev postgresql-dev git python3-dev gcc g++ musl-dev \
         jpeg-dev zlib-dev freetype-dev lcms2-dev openjpeg-dev \
-        tiff-dev tk-dev tcl-dev harfbuzz-dev fribidi-dev
+        tiff-dev tk-dev tcl-dev harfbuzz-dev fribidi-dev libc-dev \
+        && rm -rf /var/cache/apk/*
 
-RUN pip3 install --upgrade pip setuptools \
+RUN pip3 install --upgrade pip setuptools greenlet cython \
     && wget -qO- https://github.com/jwilder/dockerize/releases/download/v0.2.0/dockerize-linux-amd64-v0.2.0.tar.gz | tar -zxf - -C /usr/bin \
     && chown root:root /usr/bin/dockerize
 
@@ -18,6 +19,8 @@ RUN mkdir -p /var/www/paul-api/media
 # Copy just the requirements for caching
 COPY ./requirements* /opt/
 RUN pip3 install -r requirements.txt
+
+# RUN apk del .build-deps gcc musl-dev g++
 
 WORKDIR /opt/paul_api/
 

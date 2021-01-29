@@ -59,7 +59,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "crispy_forms",
-    "silk",
+    # "silk",
     "djoser",
     "django_celery_beat",
     "django_celery_results",
@@ -194,7 +194,14 @@ DJOSER = {
     "SEND_CONFIRMATION_EMAIL": True,
     "USERNAME_CHANGED_EMAIL_CONFIRMATION": True,
 }
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+try:
+    SENDGRID_API_KEY = env("SENDGRID_API_KEY")
+    EMAIL_BACKEND = "sendgrid_backend.SendgridBackend"
+    SENDGRID_SANDBOX_MODE_IN_DEBUG = False
+    # SENDGRID_ECHO_TO_STDOUT = True
+except:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 NO_REPLY_EMAIL = env('NO_REPLY_EMAIL')
 

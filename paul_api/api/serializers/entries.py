@@ -114,6 +114,8 @@ class EntrySerializer(serializers.ModelSerializer):
         validated_data["table"] = self.context["table"]
         pprint(validated_data)
         instance = models.Entry.objects.create(**validated_data)
+        instance.clean_fields()
+        instance.save()
         instance.table.last_edit_user = self.context["request"].user
         instance.table.last_edit_date = datetime.now()
         instance.table.save()

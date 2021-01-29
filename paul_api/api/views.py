@@ -127,7 +127,7 @@ class UserView(APIView):
             "filters": filters_serializer.data
         }
 
-        avatar_url = profile.avatar.url
+        avatar_url = profile.avatar.url if profile.avatar else None
 
         response = {
             "username": user.username,

@@ -4,7 +4,7 @@ from django.db.models import (
 from django.db.models.functions import Trunc, Cast
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.urls import reverse
-
+from django.utils import timezone
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
@@ -429,7 +429,7 @@ def request_get_to_filter(request, table_fields, filter_dict=Q(), is_filter=Fals
                         if key_lookup == 'relative':
                             relative_type = value.split('_')[0] # current | next | last
                             relative_period = value.split('_')[-1] + 's' # day | week | month | year
-                            today = datetime.today()
+                            today = datetime.today() - timedelta(hours=22)
                             relative_increment_dict = {}
 
                             if relative_type in ['current', 'next']:
@@ -450,8 +450,10 @@ def request_get_to_filter(request, table_fields, filter_dict=Q(), is_filter=Fals
 
                             # filter_dict_table["data__{}__gte".format(column)] = date_start.replace(hour=0, minute=0)
                             # filter_dict_table["data__{}__lt".format(column)] = date_start + relativedelta(**{relative_period:1})
+                            # date_start = date_start.replace(hour=0, minute=0, second=0, microsecond=0)
+                            print(date_start)
                             filter_dict_table = filter_dict_table & Q(
-                                **{"data__{}__gte".format(column): date_start.replace(hour=0, minute=0)})
+                                **{"data__{}__gte".format(column): date_start})
                             filter_dict_table = filter_dict_table & Q(
                                 **{"data__{}__lt".format(column): date_start + relativedelta(**{relative_period:1})})
                         else:
@@ -470,7 +472,7 @@ def request_get_to_filter(request, table_fields, filter_dict=Q(), is_filter=Fals
             filter_dict[table] = filter_dict_table
         else:
             filter_dict = filter_dict_table
-
+    pprint(filter_dict)
     return filter_dict
 
 

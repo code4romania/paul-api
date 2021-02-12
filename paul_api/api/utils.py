@@ -429,29 +429,30 @@ def request_get_to_filter(request, table_fields, filter_dict=Q(), is_filter=Fals
                         if key_lookup == 'relative':
                             relative_type = value.split('_')[0] # current | next | last
                             relative_period = value.split('_')[-1] + 's' # day | week | month | year
-                            today = datetime.today() - timedelta(hours=22)
+                            today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
                             relative_increment_dict = {}
 
                             if relative_type in ['current', 'next']:
                                 relative_increment = 0 if relative_type == 'current' else 1
                                 relative_increment_dict[relative_period] = relative_increment
                                 date_start = today + relativedelta(**relative_increment_dict)
+                                pprint(relative_increment_dict)
                             else:
                                 relative_increment_dict[relative_period] = 1
                                 date_start = today - relativedelta(**relative_increment_dict)
 
                             if relative_period == 'weeks':
+                                date_start = date_start.replace(hour=0, minute=0, second=0, microsecond=0)
                                 date_start = date_start - relativedelta(
-                                    days=(date_start.isoweekday() - 1) % 7)
+                                    days=(date_start.isoweekday()-1) % 7, hours=2)
                             elif relative_period == 'months':
-                                date_start = date_start.replace(day=1)
+                                date_start = date_start.replace(day=1) - relativedelta(hours=2)
                             elif relative_period == 'years':
-                                date_start = date_start.replace(month=1, day=1)
+                                date_start = date_start.replace(month=1, day=1) - relativedelta(hours=2)
+                            elif relative_period == 'days':
+                                date_start = date_start - relativedelta(hours=2)
 
-                            # filter_dict_table["data__{}__gte".format(column)] = date_start.replace(hour=0, minute=0)
-                            # filter_dict_table["data__{}__lt".format(column)] = date_start + relativedelta(**{relative_period:1})
-                            # date_start = date_start.replace(hour=0, minute=0, second=0, microsecond=0)
-                            print(date_start)
+
                             filter_dict_table = filter_dict_table & Q(
                                 **{"data__{}__gte".format(column): date_start})
                             filter_dict_table = filter_dict_table & Q(

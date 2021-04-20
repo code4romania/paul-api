@@ -544,7 +544,10 @@ class FilterViewSet(viewsets.ModelViewSet):
         url_path="all",
     )
     def all(self, request):
+        print('self.queryset', self.queryset)
         response = serializers.filters.FilterListSerializer(self.queryset, many=True, context={'request': request})
+        print(response)
+        print(response.data)
         return Response(response.data)
 
     @action(

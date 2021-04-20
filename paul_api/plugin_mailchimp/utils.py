@@ -357,7 +357,7 @@ def get_emails_from_filtered_view(token, filtered_view, settings):
     headers = {'Authorization': 'Token ' + token.key}
 
     while continue_request:
-        url = 'http://api:8000/api/filters/{}/entries/?page={}'.format(filtered_view.pk, page)
+        url = 'http://api/api/filters/{}/entries/?page={}'.format(filtered_view.pk, page)
         r = requests.get(url, headers=headers).json()
         results += r['results']
         if r['links']['next']:

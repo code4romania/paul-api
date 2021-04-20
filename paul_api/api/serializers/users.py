@@ -111,7 +111,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
         for table in models.Table.objects.all():
             user_perms = checker.get_perms(table)
-
+            pprint(user_perms)
             if "change_table" in user_perms:
                 table_perm = "Can edit"
             elif "view_table" in user_perms:

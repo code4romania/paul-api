@@ -43,11 +43,11 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             if tables_permissions:
                 for table_permission in tables_permissions:
                     table = models.Table.objects.get(pk=table_permission["id"])
-                    if table_permission["permissions"] == "Can edit":
+                    if table_permission["permissions"] == "Editare":
                         assign_perm("change_table", instance, table)
                         assign_perm("view_table", instance, table)
                         assign_perm("delete_table", instance, table)
-                    elif table_permission["permissions"] == "Can view":
+                    elif table_permission["permissions"] == "Vizualizare":
                         assign_perm("view_table", instance, table)
                         remove_perm("change_table", instance, table)
                         remove_perm("delete_table", instance, table)
@@ -76,11 +76,11 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             user_perms = checker.get_perms(table)
 
             if "change_table" in user_perms:
-                table_perm = "Can edit"
+                table_perm = "Editare"
             elif "view_table" in user_perms:
-                table_perm = "Can view"
+                table_perm = "Vizualizare"
             else:
-                table_perm = "No rights"
+                table_perm = "Fără drepturi"
             tables.append({"name": table.name, "id": table.id, "permissions": table_perm})
         return tables
 
@@ -113,11 +113,11 @@ class UserDetailSerializer(serializers.ModelSerializer):
             user_perms = checker.get_perms(table)
             pprint(user_perms)
             if "change_table" in user_perms:
-                table_perm = "Can edit"
+                table_perm = "Editare"
             elif "view_table" in user_perms:
-                table_perm = "Can view"
+                table_perm = "Vizualizare"
             else:
-                table_perm = "No rights"
+                table_perm = "Fără drepturi"
             tables.append({"name": table.name, "id": table.id, "permissions": table_perm})
         return tables
 

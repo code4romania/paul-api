@@ -49,7 +49,8 @@ def snake_case(text):
 
 def import_csv(reader, table, csv_import=None):
     errors_count = 0
-    imports_count = 0
+    import_count_created = 0
+    import_count_updated = 0
     errors = []
     if csv_import:
         csv_field_mapping = {x.original_name: x for x in csv_import.csv_field_mapping.exclude(table_column=None)}
@@ -58,11 +59,13 @@ def import_csv(reader, table, csv_import=None):
     table_fields = {x.name: x for x in table.fields.all()}
     field_choices = {x.name: x.choices for x in table.fields.all()}
     i = 0
+    unique_fields = {field_map.table_column.name:field_map.original_name for field, field_map in csv_field_mapping.items() if field_map.unique==True}
     for row in reader:
         i += 1
         entry_dict = {}
         error_in_row = False
         errors_in_row = {}
+        
         try:
             for key, field in csv_field_mapping.items():
                 if csv_import:
@@ -93,26 +96,54 @@ def import_csv(reader, table, csv_import=None):
                         else:
                             entry_dict[field_name] = row[key]
                     else:
-                        if table_fields[field_name].required:
+                        print(table_fields)
+                        print(csv_field_mapping)
+                        if table_fields[field_name].required or csv_field_mapping[key].required:
                             error_in_row = True
-                            errors_in_row[key] = "This field is required"
+                            errors_in_row[key] = "Acest câmp este obligatoriu"
                         entry_dict[field_name] = None
                 except Exception as e:
-                    print(e)
+                    # print(e)
                     error_in_row = True
                     errors_in_row[key] = e.__class__.__name__
+                    # errors_in_row[key] = str(e)
             if not error_in_row:
-                models.Entry.objects.create(table=table, data=entry_dict)
-                imports_count += 1
+                entry = None
+                if unique_fields:
+                    # print('check unique')
+                    data = {}
+                    for field in unique_fields:
+                        data[field] = entry_dict[field]
+                    # print(data)
+                    try:
+                        entry, created = models.Entry.objects.get_or_create(table=table, data__contains=data)
+                        if created:
+                            import_count_created += 1
+                        else:
+                            import_count_updated += 1
+                    except:
+                        error_in_row = True
+                        for field in unique_fields:
+                            errors_in_row[unique_fields[field]] = 'Acest camp trebuie sa fie unic în tabel'
+                        errors.append({"row": row, "errors": errors_in_row})
+                        errors_count += 1
+                else:
+                    entry = models.Entry.objects.create(table=table)
+                    import_count_created += 1
+
+                if entry:
+                    entry.data = entry_dict
+                    entry.save()
             else:
                 errors.append({"row": row, "errors": errors_in_row})
                 errors_count += 1
 
         except Exception as e:
+            # print(e)
             errors_count += 1
 
-    print("errors: {} imports: {}".format(errors_count, imports_count))
-    return errors, errors_count, imports_count
+    # print("errors: {} import_count_created: {} import_count_updated: {}".format(errors_count, import_count_created, import_count_updated))
+    return errors, errors_count, import_count_created, import_count_updated
 
 
 def get_chart_data(request, chart, table, preview=False):

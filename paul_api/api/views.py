@@ -221,11 +221,11 @@ class TableViewSet(viewsets.ModelViewSet):
                 field_format=field["field_format"],
                 table_column=table_column
             )
-            table_column.required = field['required']
-            table_column.unique = field['unique']
+            table_column.required = field.get('required', False)
+            table_column.unique = field.get('unique', False)
             table_column.save()
-            csv_field_map.required = field['required']
-            csv_field_map.unique = field['unique']
+            csv_field_map.required = field.get('required', False)
+            csv_field_map.unique = field.get('unique', False)
             csv_field_map.save()
 
         try:
@@ -1154,6 +1154,7 @@ class CsvImportViewSet(viewsets.ModelViewSet):
             )
             existing_table_field = None
             existing_table_format = None
+
             if table_id:
                 if table.csv_field_mapping.all():
                     field_maps = table.csv_field_mapping.filter(
@@ -1164,6 +1165,8 @@ class CsvImportViewSet(viewsets.ModelViewSet):
                             csv_field_map.table_column = field_maps[0].table_column
                             csv_field_map.field_format = field_maps[0].field_format
                             csv_field_map.field_type = field_maps[0].field_type
+                            csv_field_map.required = field_maps[0].required
+                            csv_field_map.unique = field_maps[0].unique
                             csv_field_map.save()
                         except:
                             # existing_table_field = models.TableColumn.objects.get(
@@ -1176,7 +1179,9 @@ class CsvImportViewSet(viewsets.ModelViewSet):
                     "display_name": field,
                     "field_type": "text",
                     "field_format": existing_table_format,
-                    "table_field": existing_table_field
+                    "table_field": existing_table_field,
+                    "required": csv_field_map.required,
+                    "unique": csv_field_map.unique,
                 }
             )
 

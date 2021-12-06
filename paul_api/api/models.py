@@ -211,7 +211,7 @@ class TableColumn(models.Model):
 
     class Meta:
         unique_together = ["table", "name"]
-        ordering = ['table']
+        ordering = ['table', 'pk']
 
     def __str__(self):
         return "[{}] {} ({})".format(self.table, self.name, self.field_type)
@@ -300,7 +300,7 @@ class Entry(models.Model):
 
     # def clean_fields(self, exclude=None):
     #     super().clean_fields(exclude=exclude)
-        
+
 
 
 class FilterJoinTable(models.Model):

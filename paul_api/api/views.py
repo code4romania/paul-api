@@ -221,6 +221,12 @@ class TableViewSet(viewsets.ModelViewSet):
                 field_format=field["field_format"],
                 table_column=table_column
             )
+            table_column.required = field['required']
+            table_column.unique = field['unique']
+            table_column.save()
+            csv_field_map.required = field['required']
+            csv_field_map.unique = field['unique']
+            csv_field_map.save()
 
         try:
             file_content = csv_import.file.read().decode("utf-8")
@@ -235,15 +241,17 @@ class TableViewSet(viewsets.ModelViewSet):
         else:
             reader = csv.DictReader(decoded_file, delimiter=csv_import.delimiter)
 
-        errors, errors_count, imports_count = utils.import_csv(reader, table)
+        errors, errors_count, import_count_created, import_count_updated = utils.import_csv(reader, table)
         csv_import.errors = errors
         csv_import.errors_count = errors_count
-        csv_import.imports_count = imports_count
+        csv_import.import_count_created = import_count_created
+        csv_import.import_count_updated = import_count_updated
         csv_import.table = table
         csv_import.save()
         response = {
             "errors_count": errors_count,
-            "imports_count": imports_count,
+            "import_count_created": import_count_created,
+            "import_count_updated": import_count_updated,
             "errors": errors,
             "id": table.id,
         }
@@ -268,8 +276,13 @@ class TableViewSet(viewsets.ModelViewSet):
                 original_name=field["original_name"]
             )
             csv_field_map.field_format=field["field_format"]
+            csv_field_map.unique=field["unique"]
+
+            csv_field_map.required=field["required"]
+
             if field["table_field"]:
                 csv_field_map.table_column_id=field["table_field"]
+
             csv_field_map.save()
 
 
@@ -287,15 +300,18 @@ class TableViewSet(viewsets.ModelViewSet):
             reader = csv.DictReader(decoded_file, delimiter=csv_import.delimiter)
 
 
-        errors, errors_count, imports_count = utils.import_csv(reader, table, csv_import)
+        errors, errors_count, import_count_created, import_count_updated = utils.import_csv(reader, table, csv_import)
+
         csv_import.errors = errors
         csv_import.errors_count = errors_count
-        csv_import.imports_count = imports_count
+        csv_import.import_count_created = import_count_created
+        csv_import.import_count_updated = import_count_updated
         csv_import.table = table
         csv_import.save()
         response = {
             "errors_count": errors_count,
-            "imports_count": imports_count,
+            "import_count_created": import_count_created,
+            "import_count_updated": import_count_updated,
             "errors": errors,
             "id": table.id,
             "import_id": csv_import.pk,
@@ -453,7 +469,7 @@ class TableViewSet(viewsets.ModelViewSet):
 
         
         for i in paginator.page_range:  # A 1-based range iterator of page numbers, e.g. yielding [1, 2, 3, 4].
-            print("Writing page:", i)
+            # print("Writing page:", i)
             data = paginator.get_page(i)
             page = data.object_list
 
@@ -544,10 +560,7 @@ class FilterViewSet(viewsets.ModelViewSet):
         url_path="all",
     )
     def all(self, request):
-        print('self.queryset', self.queryset)
         response = serializers.filters.FilterListSerializer(self.queryset, many=True, context={'request': request})
-        print(response)
-        print(response.data)
         return Response(response.data)
 
     @action(
@@ -867,7 +880,7 @@ class FilterViewSet(viewsets.ModelViewSet):
                 )
                 writer.writeheader()
                 for i in paginator.page_range:  # A 1-based range iterator of page numbers, e.g. yielding [1, 2, 3, 4].
-                    print("Writing page:", i)
+                    # print("Writing page:", i)
                     data = paginator.get_page(i)
                     page = data.object_list
 
@@ -920,7 +933,7 @@ class FilterViewSet(viewsets.ModelViewSet):
                 )
                 writer.writeheader()
                 for i in paginator.page_range:  # A 1-based range iterator of page numbers, e.g. yielding [1, 2, 3, 4].
-                    print("Writing page:", i)
+                    # print("Writing page:", i)
                     data = paginator.get_page(i)
                     page = data.object_list
 
@@ -1035,7 +1048,10 @@ class EntryViewSet(viewsets.ModelViewSet):
             context={"fields": fields, "table": table, "request": request},
         )
         serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+        try:
+            self.perform_update(serializer)
+        except Exception as e:
+            return Response({"detail": e.detail[0]}, status=status.HTTP_409_CONFLICT)
         return Response(serializer.data)
 
     def create(self, request, table_pk):
@@ -1047,9 +1063,11 @@ class EntryViewSet(viewsets.ModelViewSet):
             data=data,
             context={"fields": fields, "table": table, "request": request},
         )
-        serializer.is_valid(raise_exception=True)
-
-        self.perform_create(serializer)
+        serializer.is_valid(raise_exception=False)
+        try:
+            self.perform_create(serializer)
+        except Exception as e:
+            return Response({"detail": e.detail[0]}, status=status.HTTP_409_CONFLICT)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 

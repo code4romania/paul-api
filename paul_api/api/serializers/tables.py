@@ -66,7 +66,7 @@ class TableCreateSerializer(ObjectPermissionsAssignmentMixin, serializers.ModelS
             serializers.UniqueTogetherValidator(
                 queryset=model.objects.all(),
                 fields=('name', 'database'),
-                message="This table name is already in use. Please choose another one."
+                message="Această denumire de tabel este folosită deja."
             )
         ]
 

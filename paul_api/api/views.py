@@ -335,7 +335,7 @@ class TableViewSet(viewsets.ModelViewSet):
         with open("/tmp/{}".format(file_name), "w", encoding="utf-8-sig") as csv_export_file:
             writer = csv.DictWriter(
                 csv_export_file,
-                delimiter=";",
+                delimiter=",",
                 quoting=csv.QUOTE_MINIMAL,
                 fieldnames=table.fields.values_list("name", flat=True),
             )
@@ -874,7 +874,7 @@ class FilterViewSet(viewsets.ModelViewSet):
             with open("/tmp/{}".format(file_name), "w", encoding="utf-8-sig") as csv_export_file:
                 writer = csv.DictWriter(
                     csv_export_file,
-                    delimiter=";",
+                    delimiter=",",
                     quoting=csv.QUOTE_MINIMAL,
                     fieldnames=fields,
                 )
@@ -927,7 +927,7 @@ class FilterViewSet(viewsets.ModelViewSet):
             with open("/tmp/{}".format(file_name), "w", encoding="utf-8-sig") as csv_export_file:
                 writer = csv.DictWriter(
                     csv_export_file,
-                    delimiter=";",
+                    delimiter=",",
                     quoting=csv.QUOTE_MINIMAL,
                     fieldnames=fields,
                 )
@@ -1100,7 +1100,7 @@ class CsvImportViewSet(viewsets.ModelViewSet):
         with open("/tmp/{}".format(file_name), "w", encoding="utf-8-sig") as csv_export_file:
             writer = csv.DictWriter(
                 csv_export_file,
-                delimiter=";",
+                delimiter=",",
                 quoting=csv.QUOTE_MINIMAL,
                 fieldnames=csv_import.errors[0]["row"].keys(),
             )

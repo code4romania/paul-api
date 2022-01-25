@@ -12,7 +12,7 @@ from pprint import pprint
 
 class TableColumnSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
-    choices = serializers.SerializerMethodField()
+    # choices = serializers.SerializerMethodField()
 
     class Meta:
         model = models.TableColumn
@@ -27,10 +27,10 @@ class TableColumnSerializer(serializers.ModelSerializer):
             "choices",
         ]
 
-    def get_choices(self, obj):
-        if type(obj.choices) == list:
-            return sorted([x for x in obj.choices if x])
-        return []
+    # def get_choices(self, obj):
+    #     if type(obj.choices) == list:
+    #         return sorted([x for x in obj.choices if x])
+    #     return []
 
 
 class TableDatabaseSerializer(serializers.HyperlinkedModelSerializer):

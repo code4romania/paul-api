@@ -6,10 +6,11 @@ from django.conf import settings
 
 def forwards_func(apps, schema_editor):
 
-    site = Site.objects.last()
-    site.domain = settings.FRONTEND_DOMAIN
-    site.name = settings.FRONTEND_DOMAIN
-    site.save()
+    # site = Site.objects.last()
+    # site.domain = settings.FRONTEND_DOMAIN
+    # site.name = settings.FRONTEND_DOMAIN
+    # site.save()
+    pass
 
 class Migration(migrations.Migration):
 

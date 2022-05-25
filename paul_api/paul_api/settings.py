@@ -50,10 +50,10 @@ INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
+    "django.contrib.sites",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django.contrib.sites",
     "guardian",
     "rest_framework.authtoken",
     "django_extensions",
@@ -207,7 +207,6 @@ try:
     EMAIL_BACKEND = "sendgrid_backend.SendgridBackend"
     SENDGRID_ECHO_TO_STDOUT = False
 except:
-    print('---SMTP Email---')
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
     EMAIL_BACKEND = env('EMAIL_BACKEND')
     EMAIL_HOST = env('EMAIL_HOST')
@@ -229,3 +228,5 @@ DJANGO_ADMIN_USERNAME = env('DJANGO_ADMIN_USERNAME')
 DJANGO_ADMIN_EMAIL = env('DJANGO_ADMIN_EMAIL')
 DJANGO_ADMIN_PASSWORD = env('DJANGO_ADMIN_PASSWORD')
 FRONTEND_DOMAIN = env('FRONTEND_DOMAIN')
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

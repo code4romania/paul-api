@@ -99,7 +99,6 @@ class UserCard(models.Model):
     order = models.IntegerField(
         verbose_name='Order',
         help_text='What order to display this card within the profile dashboard.',
-        max_length=255,
         default=1
     )
 

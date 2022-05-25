@@ -127,14 +127,12 @@ class UserView(APIView):
             "filters": filters_serializer.data
         }
 
-        avatar_url = profile.avatar.url if profile.avatar else None
-
         response = {
             "username": user.username,
             "id": user.id,
             "dashboard": dashboard,
             "is_admin": admin_group in user.groups.all(),
-            "avatar": request.build_absolute_uri(avatar_url)
+            "avatar": request.build_absolute_uri(profile.avatar.url) if profile.avatar else None
         }
         return Response(response)
 

@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",
     "guardian",
     "rest_framework.authtoken",
     "django_extensions",
@@ -64,6 +65,8 @@ INSTALLED_APPS = [
     "django_celery_beat",
     "django_celery_results",
 ]
+
+SITE_ID = 1
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

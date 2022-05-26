@@ -19,7 +19,7 @@ def forwards_func(apps, schema_editor):
     # User = get_user_model()
     if not User.objects.exists():
         admin = User.objects.create(
-            username=settings.DJANGO_ADMIN_USERNAME,
+            username=settings.DJANGO_ADMIN_EMAIL,
             email=settings.DJANGO_ADMIN_EMAIL,
             last_login=timezone.now(),
             is_superuser=True,

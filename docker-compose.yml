@@ -8,7 +8,7 @@ services:
     tty: true
     build:
       context: .
-      dockerfile: docker/api/Dockerfile
+      dockerfile: Dockerfile
     command: dockerize -wait tcp://paul-db:5432 -timeout 90s -- web
     env_file:
       - .env
@@ -17,7 +17,6 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./:/opt
       - media:/var/www/paul-api/media
     restart: on-failure
     depends_on:
@@ -26,11 +25,8 @@ services:
 
 
   paul-db:
-    container_name: paul-db
     hostname: paul-db
-    build:
-      context: .
-      dockerfile: docker/postgres/Dockerfile
+    image: postgres:12
     # ports:
     #   - "5434:5432"
     env_file:
@@ -49,12 +45,14 @@ services:
   celery_worker:
     build:
       context: .
-      dockerfile: docker/api/Dockerfile
+      dockerfile: Dockerfile
     command: dockerize -wait tcp://paul-db:5432 -wait tcp://redis:6379 -timeout 90s -- celery
     depends_on:
       - api
       - paul-db
       - redis
+    env_file:
+      - .env
     deploy:
       # replicas: 2
       restart_policy:
@@ -67,19 +65,21 @@ services:
   celery_beat:
     build:
       context: .
-      dockerfile: docker/api/Dockerfile
+      dockerfile: Dockerfile
     command: dockerize -wait tcp://paul-db:5432 -wait tcp://redis:6379 -timeout 90s -- celerybeat
     depends_on:
       - api
       - paul-db
       - redis
+    env_file:
+      - .env
     restart: on-failure
 
-  flower:  
+  flower:
     image: mher/flower:0.9.5
-    command: ["flower", "--broker=redis://redis:6379/0", "--port=8888"]  
-    ports:  
-       - 8888:8888  
+    command: ["flower", "--broker=redis://redis:6379/0", "--port=8888"]
+    ports:
+       - 8888:8888
     depends_on:
       - redis
 networks:

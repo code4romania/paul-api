@@ -29,7 +29,7 @@ RUN pip3 install -r requirements.txt
 
 WORKDIR /opt/paul_api/
 
-COPY ./docker/api/docker-entrypoint /
+COPY ./docker-entrypoint /
 COPY ./ /opt/
 
 ENTRYPOINT ["/docker-entrypoint"]

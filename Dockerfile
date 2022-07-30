@@ -1,32 +1,31 @@
-FROM python:3.7.4-alpine
+FROM python:3.10.5-slim
 
-RUN apk update --no-cache && \
-    apk add --no-cache --virtual .build-deps python-dev postgresql-dev git python3-dev gcc g++ musl-dev \
-        jpeg-dev zlib-dev freetype-dev lcms2-dev openjpeg-dev \
-        tiff-dev tk-dev tcl-dev harfbuzz-dev fribidi-dev libc-dev
+ARG ENVIRONMENT
 
-RUN pip3 install --upgrade pip setuptools greenlet cython
+ENV ENVIRONMENT ${ENVIRONMENT:-production}
+ENV DJANGO_SETTINGS_MODULE=paul_api.settings
+
+RUN apt update && \
+    apt install -y git gcc g++ && \
+    pip install --upgrade pip setuptools cython
 
 COPY --from=jwilder/dockerize:0.6.1 /usr/local/bin/dockerize /usr/local/bin/dockerize
 
-
-
 WORKDIR /opt/
 
-ENV DJANGO_SETTINGS_MODULE=paul_api.settings
-# mkdir media dir
 RUN mkdir -p /var/www/paul-api/media
 
 # Copy just the requirements for caching
-COPY ./requirements* /opt/
-RUN pip3 install -r requirements.txt
-
-# RUN apk del .build-deps gcc musl-dev g++
+COPY ./requirements*.txt ./
+RUN if [ "${ENVIRONMENT}" = "production" ]; \
+    then pip install -r requirements.txt; \
+    else pip install -r requirements-dev.txt; \
+fi
 
 WORKDIR /opt/paul_api/
 
-COPY ./docker-entrypoint /
-COPY ./ /opt/
+COPY ./docker-entrypoint.sh /
+COPY ./paul_api/ /opt/paul_api/
 
-ENTRYPOINT ["/docker-entrypoint"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
 EXPOSE 8000

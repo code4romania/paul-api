@@ -13,7 +13,8 @@ https://docs.djangoproject.com/en/dev/ref/settings/
 from pathlib import Path
 import os
 import environ
-from celery.schedules import crontab
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
 
@@ -23,19 +24,32 @@ env = environ.Env(
     # set casting, default value
     DEBUG=(bool, False),
     ALLOWED_HOSTS=(list, []),
+    CELERY_BROKER_URL=(str, "redis://redis:6379/0"),
+    EMAIL_BACKEND=(str, "django.core.mail.backends.console.EmailBackend"),
+    EMAIL_HOST=(str, ""),
+    EMAIL_PORT=(str, ""),
+    EMAIL_HOST_USER=(str, ""),
+    EMAIL_HOST_PASSWORD=(str, ""),
+    EMAIL_USE_TLS=(str, ""),
+    IS_CONTAINERIZED=(bool, True),
+    SECRET_KEY=(str, "secret"),
 )
 environ.Env.read_env(f"{root}/.env")  # reading .env file
+
+# some settings will be different if it's not running in a container (i.e. locally, on a Mac)
+IS_CONTAINERIZED = env.bool("IS_CONTAINERIZED")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/dev/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "xs-&03)q!&%akd_)+%#bmsp9$8tsyekp$u9c7ep0&)l1+d5+05"
+SECRET_KEY = env("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool("DEBUG")
 
 CORS_ORIGIN_ALLOW_ALL = True
+X_FRAME_OPTIONS = 'SAMEORIGIN'
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 
 # Application definition
@@ -81,8 +95,6 @@ MIDDLEWARE = [
     # "silk.middleware.SilkyMiddleware",
 ]
 
-X_FRAME_OPTIONS = 'SAMEORIGIN'
-
 ROOT_URLCONF = "paul_api.urls"
 
 TEMPLATES = [
@@ -106,8 +118,6 @@ WSGI_APPLICATION = "paul_api.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/dev/ref/settings/#databases
-
-# DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3",}}
 
 DATABASES = {"default": env.db("DATABASE_URL")}
 AUTHENTICATION_BACKENDS = (
@@ -152,12 +162,16 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/dev/howto/static-files/
 
 STATIC_URL = "/api/static/"
-STATIC_ROOT = "/var/www/paul-api/static"
-STATICFILES_DIRS = (os.path.join(BASE_DIR, "static"),)
-
 MEDIA_URL = "/api/media/"
-# MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-MEDIA_ROOT = "/var/www/paul-api/media"
+
+if IS_CONTAINERIZED:
+    STATIC_ROOT = "/var/www/paul-api/static"  # noqa
+    MEDIA_ROOT = "/var/www/paul-api/media"  # noqa
+    STATICFILES_DIRS = (os.path.join(BASE_DIR, "static"),)
+else:
+    STATIC_ROOT = os.path.join(BASE_DIR, "static")
+    MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+    STATICFILES_DIRS = ()
 
 
 REST_FRAMEWORK = {
@@ -170,7 +184,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.coreapi.AutoSchema",
-    "ORDERING_PARAM": "__order"
+    "ORDERING_PARAM": "__order",
 }
 
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
@@ -198,34 +212,31 @@ DJOSER = {
     "USERNAME_CHANGED_EMAIL_CONFIRMATION": True,
 }
 
-DEFAULT_FROM_EMAIL=env("NO_REPLY_EMAIL")
-SERVER_EMAIL=env("NO_REPLY_EMAIL")
+DEFAULT_FROM_EMAIL = env("NO_REPLY_EMAIL")
+SERVER_EMAIL = env("NO_REPLY_EMAIL")
+NO_REPLY_EMAIL = env("NO_REPLY_EMAIL")
 
 try:
     SENDGRID_API_KEY = env("SENDGRID_API_KEY")
-    SENDGRID_SANDBOX_MODE_IN_DEBUG = False
     EMAIL_BACKEND = "sendgrid_backend.SendgridBackend"
+    SENDGRID_SANDBOX_MODE_IN_DEBUG = False
     SENDGRID_ECHO_TO_STDOUT = False
-except:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    EMAIL_BACKEND = env('EMAIL_BACKEND')
-    EMAIL_HOST = env('EMAIL_HOST')
-    EMAIL_PORT = env('EMAIL_PORT')
-    EMAIL_HOST_USER = env('EMAIL_HOST_USER')
-    EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
-    EMAIL_USE_TLS = env('EMAIL_USE_TLS')
-
-NO_REPLY_EMAIL = env('NO_REPLY_EMAIL')
-
+except environ.ImproperlyConfigured:
+    EMAIL_BACKEND = env("EMAIL_BACKEND")
+    EMAIL_HOST = env("EMAIL_HOST")
+    EMAIL_PORT = env("EMAIL_PORT")
+    EMAIL_HOST_USER = env("EMAIL_HOST_USER")
+    EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
+    EMAIL_USE_TLS = env("EMAIL_USE_TLS")
 
 # Celery config
-CELERY_BROKER_URL = 'redis://redis:6379/0'
-CELERY_RESULT_BACKEND = 'django-db'
-CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'
+CELERY_BROKER_URL = env("CELERY_BROKER_URL")
+CELERY_RESULT_BACKEND = "django-db"
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers.DatabaseScheduler"
 
+# Admin config
+DJANGO_ADMIN_EMAIL = env("DJANGO_ADMIN_EMAIL")
+DJANGO_ADMIN_PASSWORD = env("DJANGO_ADMIN_PASSWORD")
+FRONTEND_DOMAIN = env("FRONTEND_DOMAIN")
 
-DJANGO_ADMIN_EMAIL = env('DJANGO_ADMIN_EMAIL')
-DJANGO_ADMIN_PASSWORD = env('DJANGO_ADMIN_PASSWORD')
-FRONTEND_DOMAIN = env('FRONTEND_DOMAIN')
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

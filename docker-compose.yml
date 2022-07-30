@@ -1,4 +1,4 @@
-version: '3.4'
+version: '3.9'
 
 services:
 
@@ -15,32 +15,37 @@ services:
     environment:
       - "PYTHONUNBUFFERED=1"
     ports:
-      - "8000:8000"
+      - "8037:8000"
     volumes:
-      - media:/var/www/paul-api/media
+      - ./paul_api/media:/var/www/paul-api/media
+      - ./paul_api:/opt/paul_api/
     restart: on-failure
     depends_on:
       - paul-db
       - redis
-
+    networks:
+      - main
 
   paul-db:
     hostname: paul-db
     image: postgres:12
-    # ports:
-    #   - "5434:5432"
+    ports:
+      - "5434:5432"
     env_file:
       - .env
     volumes:
       - database-data:/var/lib/postgresql/data/
     restart: on-failure
+    networks:
+      - main
 
   redis:
     image: redis:latest
-    # ports:
-    #  - '6379:6379'
+    ports:
+      - '6879:6379'
     restart: on-failure
-
+    networks:
+      - main
 
   celery_worker:
     build:
@@ -61,6 +66,8 @@ services:
         limits:
           memory: 200M
     restart: on-failure
+    networks:
+      - main
 
   celery_beat:
     build:
@@ -74,17 +81,23 @@ services:
     env_file:
       - .env
     restart: on-failure
+    networks:
+      - main
 
   flower:
     image: mher/flower:0.9.5
     command: ["flower", "--broker=redis://redis:6379/0", "--port=8888"]
     ports:
-       - 8888:8888
+      - "8787:8888"
     depends_on:
       - redis
+    networks:
+      - main
+
 networks:
   main:
 
 volumes:
   database-data:
+    name: paul-pgdata
   media:

@@ -1,7 +1,5 @@
 from django.urls import path, include
-from django.contrib.auth.models import User
 
-# from rest_framework import routers
 from rest_framework.schemas import get_schema_view
 from rest_framework.authtoken import views as token_views
 
@@ -10,7 +8,6 @@ from rest_framework_nested import routers
 from . import views
 from django.views.generic import TemplateView
 
-# app_name = 'api'
 
 router = routers.DefaultRouter()
 
@@ -47,6 +44,7 @@ urlpatterns = [
         ),
         name="swagger-ui",
     ),
+    path("i18n/", include("django.conf.urls.i18n")),
     path("user/", views.UserView.as_view()),
     path("auth/", include('djoser.urls')),
     path("", include(router.urls)),

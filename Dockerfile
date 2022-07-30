@@ -6,7 +6,7 @@ ENV ENVIRONMENT ${ENVIRONMENT:-production}
 ENV DJANGO_SETTINGS_MODULE=paul_api.settings
 
 RUN apt update && \
-    apt install -y git gcc g++ && \
+    apt install -y gettext git gcc g++ && \
     pip install --upgrade pip setuptools cython
 
 COPY --from=jwilder/dockerize:0.6.1 /usr/local/bin/dockerize /usr/local/bin/dockerize

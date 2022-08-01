@@ -90,6 +90,7 @@ django==3.2.14
     #   django-guardian
     #   django-jazzmin
     #   django-sendgrid-v5
+    #   django-storages
     #   django-timezone-field
     #   djangorestframework
     #   djangorestframework-guardian
@@ -124,6 +125,8 @@ django-rest-swagger==2.2.0
     #   -r requirements.txt
     #   drf-tweaks
 django-sendgrid-v5==0.9.1
+    # via -r requirements.txt
+django-storages==1.12.3
     # via -r requirements.txt
 django-templated-mail==1.1.1
     # via
@@ -386,6 +389,8 @@ wcwidth==0.2.5
     #   prompt-toolkit
 wheel==0.37.1
     # via pip-tools
+whitenoise==6.0.0
+    # via -r requirements.txt
 zope-event==4.5.0
     # via
     #   -r requirements.txt

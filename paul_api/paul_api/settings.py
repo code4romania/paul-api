@@ -29,10 +29,14 @@ env = environ.Env(
     AWS_ACCESS_KEY_ID=(str, ""),
     AWS_SECRET_ACCESS_KEY=(str, ""),
     AWS_STORAGE_BUCKET_NAME=(str, ""),
-    AWS_SUBDOMAIN=(str, ""),
+    AWS_SUBDOMAIN=(str, "s3.amazonaws.com"),
     AWS_S3_REGION_NAME=(str, ""),
     # azure settings
     USE_AZURE=(bool, False),
+    AZURE_ACCOUNT_NAME=(str, ""),
+    AZURE_ACCOUNT_KEY=(str, ""),
+    AZURE_CONTAINER=(str, "data"),
+    # django settings
     DEBUG=(bool, False),
     ALLOWED_HOSTS=(list, []),
     CELERY_BROKER_URL=(str, "redis://redis:6379/0"),
@@ -64,6 +68,12 @@ CORS_ORIGIN_ALLOW_ALL = True
 X_FRAME_OPTIONS = "SAMEORIGIN"
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 
+USE_S3 = (
+    env.bool("USE_S3") and env("AWS_ACCESS_KEY_ID") and env("AWS_SECRET_ACCESS_KEY") and env("AWS_STORAGE_BUCKET_NAME")
+)
+USE_AZURE = env.bool("USE_AZURE") and env("AZURE_ACCOUNT_NAME") and env("AZURE_ACCOUNT_KEY")
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -83,6 +93,7 @@ INSTALLED_APPS = [
     "guardian",
     "rest_framework.authtoken",
     "django_extensions",
+    "storages",
     "corsheaders",
     "django_filters",
     "crispy_forms",
@@ -91,6 +102,8 @@ INSTALLED_APPS = [
     "django_celery_beat",
     "django_celery_results",
 ]
+if not (USE_S3 or USE_AZURE):
+    INSTALLED_APPS.append("whitenoise.runserver_nostatic")
 
 SITE_ID = 1
 
@@ -104,8 +117,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # "api.middlewares.SqlPrintMiddleware",
-    # "silk.middleware.SilkyMiddleware",
 ]
 
 ROOT_URLCONF = "paul_api.urls"
@@ -182,6 +193,9 @@ MODELTRANSLATION_DEFAULT_LANGUAGE = "en"
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/dev/howto/static-files/
 
+PUBLIC_STATIC_LOCATION = "static"
+PUBLIC_MEDIA_LOCATION = "media"
+
 STATIC_URL = "/api/static/"
 MEDIA_URL = "/api/media/"
 
@@ -194,31 +208,37 @@ else:
     MEDIA_ROOT = os.path.join(BASE_DIR, "media")
     STATICFILES_DIRS = ()
 
-PRIVATE_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
-
-USE_S3 = (
-    env.bool("USE_S3") and env("AWS_ACCESS_KEY_ID") and env("AWS_SECRET_ACCESS_KEY") and env("AWS_STORAGE_BUCKET_NAME")
-)
-USE_AZURE = env.bool("USE_AZURE")
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 if USE_S3:
-    # aws settings
+    # https://django-storages.readthedocs.io/en/latest/backends/amazon-S3.html
     AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY")
     AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME")
 
     AWS_DEFAULT_ACL = None
+    AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME")
     AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.{env("AWS_SUBDOMAIN")}'
     AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
     AWS_S3_FILE_OVERWRITE = False
-    AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME")
+
     # s3 public media settings
-    PUBLIC_MEDIA_LOCATION = "media"
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{PUBLIC_MEDIA_LOCATION}/"
+
     DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    STATICFILES_STORAGE = "storages.backends.s3boto3.S3StaticStorage"
 elif USE_AZURE:
-    # TODO: implement azure storage
-    pass
+    # https://django-storages.readthedocs.io/en/latest/backends/azure.html
+    AZURE_ACCOUNT_NAME = env("AZURE_ACCOUNT_NAME")
+    AZURE_ACCOUNT_KEY = env("AZURE_ACCOUNT_KEY")
+    AZURE_CONTAINER = env("AZURE_CONTAINER")
+    AZURE_CUSTOM_DOMAIN = f"{AZURE_ACCOUNT_NAME}.blob.core.windows.net"
+
+    # azure public media settings
+    MEDIA_URL = f"https://{AZURE_CUSTOM_DOMAIN}/{PUBLIC_MEDIA_LOCATION}/"
+
+    DEFAULT_FILE_STORAGE = "storages.backends.azure_storage.AzureStorage"
+    STATICFILES_STORAGE = "storages.backends.azure_storage.AzureStorage"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -240,8 +260,6 @@ CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS")
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880
 
-# SILKY_PYTHON_PROFILER = True
-# SILKY_PYTHON_PROFILER_BINARY = True
 SILKY_AUTHENTICATION = True  # User must login
 SILKY_AUTHORISATION = True  # User must have permissions
 
@@ -475,6 +493,6 @@ JAZZMIN_UI_TWEAKS = {
         "info": "btn-outline-info",
         "warning": "btn-outline-warning",
         "danger": "btn-outline-danger",
-        "success": "btn-outline-success"
-    }
+        "success": "btn-outline-success",
+    },
 }

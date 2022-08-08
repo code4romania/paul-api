@@ -11,12 +11,10 @@ RUN_DEV_SERVER=${RUN_DEV_SERVER:-"no"}
 RUN_COLLECT_STATIC=${RUN_COLLECT_STATIC:-"no"}
 RUN_CREATE_SUPER_USER=${RUN_CREATE_SUPER_USER:-"no"}
 
-if [ "${1}" = "${prefix}" ];
-then
+if [ "${1}" = "${prefix}" ]; then
     DOCKERIZE="dockerize"
     shift
-    while [ "${1}" != '--' ];
-    do
+    while [ "${1}" != '--' ]; do
         DOCKERIZE="${DOCKERIZE} ${1}"
         shift
     done
@@ -71,9 +69,9 @@ exec_celery() {
 }
 
 case "${1}" in
-    "web")         exec_web;;
-    "celery")      exec_celery worker;;
-    "celerybeat")  exec_celery beat;;
+"web") exec_web ;;
+"celery") exec_celery worker ;;
+"celerybeat") exec_celery beat ;;
 esac
 
 exec "${@}"

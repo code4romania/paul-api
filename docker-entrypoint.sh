@@ -62,7 +62,7 @@ exec_web() {
 exec_celery() {
     PROCESS_TYPE="${1}"
 
-    if [ "${RUN_DEV_SERVER}" = "yes" ]; then
+    if [ "${DEBUG}" = "True" ]; then
         echo "Start celery ${PROCESS_TYPE} in DEBUG mode"
         exec celery -A paul_api "${PROCESS_TYPE}" -l DEBUG
     else

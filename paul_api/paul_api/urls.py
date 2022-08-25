@@ -20,13 +20,31 @@ from django.conf.urls.static import static
 from django.conf import settings
 
 
+plugin_urlpatterns = []
+
+if settings.PLUGIN_MAILCHIMP_ENABLED:
+    plugin_urlpatterns.append(
+        path(
+            "api/mailchimp/",
+            include("plugin_mailchimp.urls", namespace="plugin_mailchimp"),
+        )
+    )
+
+if settings.PLUGIN_WOOCOMMERCE_ENABLED:
+    plugin_urlpatterns.append(
+        path(
+            "api/woocommerce/",
+            include("plugin_woocommerce.urls", namespace="plugin_woocommerce"),
+        )
+    )
+
+
 urlpatterns = (
     i18n_patterns(
         path("api/api-token-auth/", include("rest_framework.urls")),
         path("api/admin/", admin.site.urls),
         # path("api/silk/", include("silk.urls", namespace="silk")),
-        path("api/mailchimp/", include('plugin_mailchimp.urls', namespace='plugin_mailchimp')),
-        path("api/woocommerce/", include('plugin_woocommerce.urls', namespace="plugin_woocommerce")),
+        *plugin_urlpatterns,
         path("api/", include("api.urls")),
     )
     + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

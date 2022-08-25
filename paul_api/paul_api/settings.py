@@ -69,17 +69,24 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 
 USE_S3 = (
-    env.bool("USE_S3") and env("AWS_ACCESS_KEY_ID") and env("AWS_SECRET_ACCESS_KEY") and env("AWS_STORAGE_BUCKET_NAME")
+    env.bool("USE_S3")
+    and env("AWS_ACCESS_KEY_ID")
+    and env("AWS_SECRET_ACCESS_KEY")
+    and env("AWS_STORAGE_BUCKET_NAME")
 )
-USE_AZURE = env.bool("USE_AZURE") and env("AZURE_ACCOUNT_NAME") and env("AZURE_ACCOUNT_KEY")
+USE_AZURE = (
+    env.bool("USE_AZURE") and env("AZURE_ACCOUNT_NAME") and env("AZURE_ACCOUNT_KEY")
+)
+
+# Optional plugins
+PLUGIN_MAILCHIMP_ENABLED = env.bool("PLUGIN_MAILCHIMP_ENABLED")
+PLUGIN_WOOCOMMERCE_ENABLED = env.bool("PLUGIN_WOOCOMMERCE_ENABLED")
 
 
 # Application definition
 
 INSTALLED_APPS = [
     "api",
-    "plugin_woocommerce",
-    "plugin_mailchimp",
     "rest_framework",
     "rest_framework_tricks",
     "jazzmin",
@@ -102,8 +109,16 @@ INSTALLED_APPS = [
     "django_celery_beat",
     "django_celery_results",
 ]
+
+if PLUGIN_WOOCOMMERCE_ENABLED:
+    INSTALLED_APPS.append("plugin_woocommerce")
+
+if PLUGIN_MAILCHIMP_ENABLED:
+    INSTALLED_APPS.append("plugin_mailchimp")
+
 if not (USE_S3 or USE_AZURE):
     INSTALLED_APPS.append("whitenoise.runserver_nostatic")
+
 
 SITE_ID = 1
 

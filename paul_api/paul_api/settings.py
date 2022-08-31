@@ -78,9 +78,9 @@ USE_AZURE = (
     env.bool("USE_AZURE") and env("AZURE_ACCOUNT_NAME") and env("AZURE_ACCOUNT_KEY")
 )
 
-# Optional plugins
-PLUGIN_MAILCHIMP_ENABLED = env.bool("PLUGIN_MAILCHIMP_ENABLED")
-PLUGIN_WOOCOMMERCE_ENABLED = env.bool("PLUGIN_WOOCOMMERCE_ENABLED")
+# Optional plugins, which require a task queue
+PLUGIN_MAILCHIMP_ENABLED = env.bool("PLUGIN_MAILCHIMP_ENABLED", False)
+PLUGIN_WOOCOMMERCE_ENABLED = env.bool("PLUGIN_WOOCOMMERCE_ENABLED", False)
 
 
 # Application definition

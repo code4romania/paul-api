@@ -1,4 +1,4 @@
-version: '3.4'
+version: '3.9'
 
 services:
 
@@ -15,20 +15,21 @@ services:
     environment:
       - "PYTHONUNBUFFERED=1"
     ports:
-      - "8000:8000"
+      - "8037:8000"
     volumes:
-      - media:/var/www/paul-api/media
+      - ./paul_api/media:/var/www/paul-api/media
+      - ./paul_api:/opt/paul_api/
     restart: on-failure
     depends_on:
       - paul-db
-      - redis
-
+      # Redis is only needed for Celery
+      # - redis
 
   paul-db:
     hostname: paul-db
     image: postgres:12
-    # ports:
-    #   - "5434:5432"
+    ports:
+      - "5434:5432"
     env_file:
       - .env
     volumes:
@@ -37,10 +38,11 @@ services:
 
   redis:
     image: redis:latest
-    # ports:
-    #  - '6379:6379'
+    ports:
+      - '6879:6379'
+    profiles:
+      - with-task-queue
     restart: on-failure
-
 
   celery_worker:
     build:
@@ -51,6 +53,8 @@ services:
       - api
       - paul-db
       - redis
+    profiles:
+      - with-task-queue
     env_file:
       - .env
     deploy:
@@ -71,6 +75,8 @@ services:
       - api
       - paul-db
       - redis
+    profiles:
+      - with-task-queue
     env_file:
       - .env
     restart: on-failure
@@ -79,12 +85,13 @@ services:
     image: mher/flower:0.9.5
     command: ["flower", "--broker=redis://redis:6379/0", "--port=8888"]
     ports:
-       - 8888:8888
+      - "8787:8888"
     depends_on:
       - redis
-networks:
-  main:
+    profiles:
+      - with-task-queue
 
 volumes:
   database-data:
+    name: paul-pgdata
   media:

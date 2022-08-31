@@ -1,6 +1,5 @@
 from copy import deepcopy
 
-from django.contrib.admin.widgets import AdminSplitDateTime
 from django.forms import (
     BooleanField,
     CharField,
@@ -18,11 +17,9 @@ from .validators import (
     validate_int,
     validate_date,
     validate_bool,
-    validate_object,
     validate_enum,
 )
 from datetime import datetime
-from pprint import pprint
 
 
 class BaseDynamicEntityForm(ModelForm):
@@ -113,7 +110,7 @@ class BaseDynamicEntityForm(ModelForm):
         print("SAVE inainte errors")
         if self.errors:
             raise ValueError(
-                _("The %s could not be saved because the data" "didn't validate." % self.instance._meta.object_name)
+                _("The %s could not be saved because the data didn't validate." % self.instance._meta.object_name)
             )
 
         # Create entity instance, don't save yet.
